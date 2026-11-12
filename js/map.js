@@ -1,8 +1,8 @@
 // MapLibre map: base styles, 3D terrain, BC WMS overlays, identify, waypoints/tracks, open-WMU shading.
-import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js';
-import { store } from './db.js';
-import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js';
-import { esc, earthLink, fmtDT } from './util.js';
+import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261112230233-4f3bcaf';
+import { store } from './db.js?v=20261112230233-4f3bcaf';
+import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261112230233-4f3bcaf';
+import { esc, earthLink, fmtDT } from './util.js?v=20261112230233-4f3bcaf';
 
 export let map;
 const state = { base: 'sat', terrain: false, exag: 1.5, hillshade: false, ref: false, hiddenWmu: [], layers: {}, opacity: {}, shade: null, custom: [] };

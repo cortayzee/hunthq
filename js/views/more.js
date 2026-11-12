@@ -1,9 +1,9 @@
-import * as db from '../db.js';
-import { store } from '../db.js';
-import { esc, download, toast, todayISO, fmtDate } from '../util.js';
-import { exportKML } from '../exporters.js';
-import { BC_WMS, BC_WFS, LEH_LAYER, LEH_TYPE_FIELD, MVPR_LAYER, WMU_LAYER } from '../config.js';
-import * as M from '../map.js';
+import * as db from '../db.js?v=20261112230233-4f3bcaf';
+import { store } from '../db.js?v=20261112230233-4f3bcaf';
+import { esc, download, toast, todayISO, fmtDate } from '../util.js?v=20261112230233-4f3bcaf';
+import { exportKML } from '../exporters.js?v=20261112230233-4f3bcaf';
+import { BC_WMS, BC_WFS, LEH_LAYER, LEH_TYPE_FIELD, MVPR_LAYER, WMU_LAYER } from '../config.js?v=20261112230233-4f3bcaf';
+import * as M from '../map.js?v=20261112230233-4f3bcaf';
 
 export function render(v) {
   const mode = db.getMode(); const u = db.getUser();

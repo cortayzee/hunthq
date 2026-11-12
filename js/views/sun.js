@@ -1,5 +1,5 @@
-import { esc, fmtTime, todayISO } from '../util.js';
-import * as M from '../map.js';
+import { esc, fmtTime, todayISO } from '../util.js?v=20261112230233-4f3bcaf';
+import * as M from '../map.js?v=20261112230233-4f3bcaf';
 
 const PH = [[0.03, 'New moon', '🌑'], [0.22, 'Waxing crescent', '🌒'], [0.28, 'First quarter', '🌓'], [0.47, 'Waxing gibbous', '🌔'], [0.53, 'Full moon', '🌕'], [0.72, 'Waning gibbous', '🌖'], [0.78, 'Last quarter', '🌗'], [0.97, 'Waning crescent', '🌘'], [1.01, 'New moon', '🌑']];
 const add = (d, min) => (d && !isNaN(d) ? new Date(d.getTime() + min * 60000) : null);

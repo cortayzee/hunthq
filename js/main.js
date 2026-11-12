@@ -1,19 +1,19 @@
-import * as db from './db.js';
-import { store } from './db.js';
-import * as M from './map.js';
-import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js';
-import { $, $$, esc, toast, closeModal, requestClose, todayISO, earthLink } from './util.js';
-import { REGS_URL, BASES } from './config.js';
-import { sunInfo } from './views/sun.js';
-import { mvprSummary, mvprStatus } from './mvpr.js';
-import { icon, hydrateIcons } from './icons.js';
-import * as V from './vis.js';
+import * as db from './db.js?v=20261112230233-4f3bcaf';
+import { store } from './db.js?v=20261112230233-4f3bcaf';
+import * as M from './map.js?v=20261112230233-4f3bcaf';
+import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261112230233-4f3bcaf';
+import { $, $$, esc, toast, closeModal, requestClose, todayISO, earthLink } from './util.js?v=20261112230233-4f3bcaf';
+import { REGS_URL, BASES } from './config.js?v=20261112230233-4f3bcaf';
+import { sunInfo } from './views/sun.js?v=20261112230233-4f3bcaf';
+import { mvprSummary, mvprStatus } from './mvpr.js?v=20261112230233-4f3bcaf';
+import { icon, hydrateIcons } from './icons.js?v=20261112230233-4f3bcaf';
+import * as V from './vis.js?v=20261112230233-4f3bcaf';
 
 const views = {};
 const viewModules = {
-  layers: () => import('./views/layers.js'), open: () => import('./views/open.js'), log: () => import('./views/log.js'),
-  trips: () => import('./views/trips.js'), tags: () => import('./views/tags.js'), insights: () => import('./views/insights.js'),
-  import: () => import('./views/import.js'), sun: () => import('./views/sun.js'), more: () => import('./views/more.js'),
+  layers: () => import('./views/layers.js?v=20261112230233-4f3bcaf'), open: () => import('./views/open.js?v=20261112230233-4f3bcaf'), log: () => import('./views/log.js?v=20261112230233-4f3bcaf'),
+  trips: () => import('./views/trips.js?v=20261112230233-4f3bcaf'), tags: () => import('./views/tags.js?v=20261112230233-4f3bcaf'), insights: () => import('./views/insights.js?v=20261112230233-4f3bcaf'),
+  import: () => import('./views/import.js?v=20261112230233-4f3bcaf'), sun: () => import('./views/sun.js?v=20261112230233-4f3bcaf'), more: () => import('./views/more.js?v=20261112230233-4f3bcaf'),
 };
 export const app = { tab: 'layers', date: todayISO(), dropMode: false };
 const isPhone = () => innerWidth <= 760;
@@ -25,14 +25,20 @@ async function showTab(tab) {
   $$('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
   const tb = $(`#tabs button[data-tab="${tab}"]`), nav = $('#tabs');
   if (tb) { const l = tb.offsetLeft - nav.offsetLeft, r = l + tb.offsetWidth; if (l < nav.scrollLeft) nav.scrollLeft = l - 8; else if (r > nav.scrollLeft + nav.clientWidth) nav.scrollLeft = r - nav.clientWidth + 24; }
-  const mod = views[tab] || (views[tab] = await viewModules[tab]());
-  const v = $('#view'); v.innerHTML = ''; v.scrollTop = 0;
+  const v = $('#view');
   openPanel();
-  await mod.render(v);
+  let mod;
+  try { mod = views[tab] || (views[tab] = await viewModules[tab]()); }
+  catch (e) { console.error(e); v.innerHTML = loadFail(); return; }
+  v.innerHTML = ''; v.scrollTop = 0;
+  try { await mod.render(v); } catch (e) { console.error(e); v.innerHTML = loadFail(e); return; }
   hydrateIcons(v);
   try { localStorage.setItem('hunthq_tab', tab); } catch {}
 }
 export const rerender = () => showTab(app.tab);
+// If a view can't load (usually a half-updated cache right after a deploy) say so instead of doing nothing.
+const loadFail = (e) => `<div class="empty" style="margin-top:24px"><b>This section didn't load</b><span class="muted">The app was probably just updated. Reloading fixes it.${e ? '<br><small>' + esc(String(e.message || e)).slice(0, 140) + '</small>' : ''}</span>
+  <button class="primary" onclick="location.reload()">Reload app</button></div>`;
 export function openPanel() {
   if (!panelOpen()) { $('#app').classList.remove('panel-closed'); $('#panel').classList.remove('full'); }
   if (!isPhone()) M.map?.setPadding({ left: 400, top: 0, right: 0, bottom: 0 });
@@ -42,7 +48,7 @@ export function closePanel() {
   M.setSelection?.(null); M.map?.setPadding({ left: 0, top: 0, right: 0, bottom: 0 });
 }
 export async function openWmu(mu, region) {
-  const { showWmu } = await import('./views/wmu.js');
+  const { showWmu } = await import('./views/wmu.js?v=20261112230233-4f3bcaf');
   if (app.tab === 'open') views.open?.onLeave?.();
   $$('#tabs button').forEach((b) => b.classList.remove('active'));
   openPanel(); const v = $('#view'); v.scrollTop = 0;
@@ -175,10 +181,10 @@ function wireUI() {
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const { act, id } = b.dataset;
-    if (act === 'edit-spot') (await import('./views/log.js')).openSpotForm(store.spots.find((s) => s.id === id));
-    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'edit-spot') (await import('./views/log.js?v=20261112230233-4f3bcaf')).openSpotForm(store.spots.find((s) => s.id === id));
+    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261112230233-4f3bcaf')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
     if (act === 'wmu') { e.preventDefault(); popup?.remove(); M.selectWmu(b.dataset.mu); openWmu(b.dataset.mu, b.dataset.region); }
-    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261112230233-4f3bcaf')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
   });
   document.addEventListener('submit', (e) => {
     if (!e.target.matches('[data-wmuform]')) return; e.preventDefault();
@@ -188,7 +194,7 @@ function wireUI() {
   M.onMapClick(async (e) => {
     if (app.dropMode) {
       setDropMode(false);
-      const { openSpotForm } = await import('./views/log.js');
+      const { openSpotForm } = await import('./views/log.js?v=20261112230233-4f3bcaf');
       const form = openSpotForm({ lat: e.lngLat.lat, lon: e.lngLat.lng });
       const res = await M.identify(e.lngLat, ['wmu']);
       const w = M.wmuFromIdentify(res); if (w && form?.wmu && !form.wmu.value) form.wmu.value = w;

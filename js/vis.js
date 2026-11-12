@@ -1,9 +1,9 @@
 // What's shown on the map: hide by hunt (trip), group, waypoint type, year or hunter.
 // Stored in prefs.vis as lists of hidden keys so new hunts/groups/years show by default.
-import * as db from './db.js';
-import { store } from './db.js';
-import * as M from './map.js';
-import { uuid } from './util.js';
+import * as db from './db.js?v=20261112230233-4f3bcaf';
+import { store } from './db.js?v=20261112230233-4f3bcaf';
+import * as M from './map.js?v=20261112230233-4f3bcaf';
+import { uuid } from './util.js?v=20261112230233-4f3bcaf';
 
 const KEYS = ['trips', 'groups', 'kinds', 'years', 'hunters'];
 const vis = () => { const v = store.prefs.vis || {}; return Object.fromEntries(KEYS.map((k) => [k, new Set(v[k] || [])])); };

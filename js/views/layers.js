@@ -1,11 +1,11 @@
-import * as M from '../map.js';
-import { KINDS } from '../config.js';
-import { store, hunters } from '../db.js';
-import { esc } from '../util.js';
-import { icon } from '../icons.js';
-import { saveMapPrefs } from '../main.js';
-import { muSort } from '../seasons.js';
-import * as V from '../vis.js';
+import * as M from '../map.js?v=20261112230233-4f3bcaf';
+import { KINDS } from '../config.js?v=20261112230233-4f3bcaf';
+import { store, hunters } from '../db.js?v=20261112230233-4f3bcaf';
+import { esc } from '../util.js?v=20261112230233-4f3bcaf';
+import { icon } from '../icons.js?v=20261112230233-4f3bcaf';
+import { saveMapPrefs } from '../main.js?v=20261112230233-4f3bcaf';
+import { muSort } from '../seasons.js?v=20261112230233-4f3bcaf';
+import * as V from '../vis.js?v=20261112230233-4f3bcaf';
 
 const GROUPS = ['Boundaries', 'Access', 'LEH', 'Land', 'Custom'];
 const REGION_ORDER = ['Vancouver Island', 'Lower Mainland', 'Thompson', 'Kootenay', 'Cariboo', 'Skeena', 'Omineca', 'Peace', 'Okanagan'];

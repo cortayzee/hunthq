@@ -1,16 +1,16 @@
-import * as db from '../db.js';
-import { store, hunters } from '../db.js';
-import { WEAPONS, RESULTS, kindColor } from '../config.js';
-import { esc, opts, modal, closeModal, requestClose, toast, formData, todayISO, num, parseCSV, yearOf } from '../util.js';
-import { normMU } from '../seasons.js';
-import { hunterDatalist, speciesDatalist, spotRow, dateSpan, openSpotForm } from './log.js';
-import { exportCSV } from '../exporters.js';
-import { pickOnMap, closePanel, openPanel } from '../main.js';
-import * as M from '../map.js';
-import * as V from '../vis.js';
-import { tripTitle, tripSpots, harvested } from '../vis.js';
-import { icon, hydrateIcons } from '../icons.js';
-import { glyphSVG, animalFor } from '../animals.js';
+import * as db from '../db.js?v=20261112230233-4f3bcaf';
+import { store, hunters } from '../db.js?v=20261112230233-4f3bcaf';
+import { WEAPONS, RESULTS, kindColor } from '../config.js?v=20261112230233-4f3bcaf';
+import { esc, opts, modal, closeModal, requestClose, toast, formData, todayISO, num, parseCSV, yearOf } from '../util.js?v=20261112230233-4f3bcaf';
+import { normMU } from '../seasons.js?v=20261112230233-4f3bcaf';
+import { hunterDatalist, speciesDatalist, spotRow, dateSpan, openSpotForm } from './log.js?v=20261112230233-4f3bcaf';
+import { exportCSV } from '../exporters.js?v=20261112230233-4f3bcaf';
+import { pickOnMap, closePanel, openPanel } from '../main.js?v=20261112230233-4f3bcaf';
+import * as M from '../map.js?v=20261112230233-4f3bcaf';
+import * as V from '../vis.js?v=20261112230233-4f3bcaf';
+import { tripTitle, tripSpots, harvested } from '../vis.js?v=20261112230233-4f3bcaf';
+import { icon, hydrateIcons } from '../icons.js?v=20261112230233-4f3bcaf';
+import { glyphSVG, animalFor } from '../animals.js?v=20261112230233-4f3bcaf';
 
 // A hunt = one outing (a day or a multi-day trip). Its kills & sightings are waypoints linked by extra.trip_id.
 const ui = { year: '' };

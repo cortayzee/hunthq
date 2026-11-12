@@ -18,6 +18,11 @@ UI is map-first (iHunter-like): tap map → popup → WMU detail panel with Open
 Still to verify on the live site: BC layer field names / LEH type values / MVPR routes layer (More → Layer diagnostics),
 then enable GitHub Pages and set the Supabase Site URL.
 
+## Deploying
+- GitHub Pages from `main` (root). **Before every commit that changes JS/CSS run `python3 scripts/bump_version.py`**: it stamps
+  every module import with `?v=<version>` so phones never mix cached old/new modules (Pages caches ~10 min per file).
+- Keep all local imports versioned (the script does it); an unversioned import of the same file loads a second copy.
+
 ## Backend (Supabase)
 - Project ref: `mdzvqqhreqaxyclbjqbb` (being renamed from "Fantasy HQ" to a personal-projects name;
   it also holds an unrelated `fantasy` schema, do not touch it).
