@@ -25,23 +25,24 @@ export const BASES = {
 export const TERRAIN_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 
 // BC government WMS overlays. `cql` filters a layer; `group` is for display only.
-// LEH per-species toggles filter by zone type (ILIKE so case does not matter). Run Layer diagnostics to confirm values.
-const leh = (sp, pat, color) => ({ id: 'leh_' + sp.toLowerCase().replace(/\W+/g, '_'), name: `LEH zones – ${sp}`, layer: LEH_LAYER, cql: `${LEH_TYPE_FIELD} ILIKE '%${pat}%'`, color, group: 'LEH', identify: true });
+// LEH per-species toggles filter by exact zone type (values verified on the live layer, Nov 2026).
+const leh = (sp, pat, color) => ({ id: 'leh_' + sp.toLowerCase().replace(/\W+/g, '_'), name: `LEH zones – ${sp}`, layer: LEH_LAYER, cql: `${LEH_TYPE_FIELD} = '${pat}'`, color, group: 'LEH', identify: true });
 export const BC_LAYERS = [
   { id: 'wmu', name: 'Wildlife Management Units', layer: WMU_LAYER, color: '#e0a100', group: 'Boundaries', identify: true, on: true },
   { id: 'gmz', name: 'Game Management Zones', layer: 'WHSE_WILDLIFE_MANAGEMENT.WAA_GAME_MANAGEMENT_ZONES_SVW', color: '#c78b00', group: 'Boundaries', identify: true },
   { id: 'leh_all', name: 'LEH zones – all (current year)', layer: LEH_LAYER, color: '#7b3fb5', group: 'LEH', identify: true },
-  leh('Moose', 'moose', '#8a4b08'),
-  leh('Elk', 'elk', '#a0522d'),
-  leh('Mule deer', 'mule', '#6b8e23'),
-  leh('White-tailed deer', 'white', '#556b2f'),
-  leh('Mountain goat', 'goat', '#708090'),
-  leh('Bighorn sheep', 'sheep', '#9370db'),
-  leh('Bison', 'bison', '#5a3825'),
-  leh('Caribou', 'caribou', '#4682b4'),
-  leh('Grizzly bear', 'grizzly', '#8b0000'),
+  leh('Moose', 'MOOSE', '#8a4b08'),
+  leh('Elk', 'ELK', '#a0522d'),
+  leh('Mule deer', 'MULE DEER', '#6b8e23'),
+  leh('White-tailed deer', 'WHITE-TAILED DEER', '#556b2f'),
+  leh('Mountain goat', 'MOUNTAIN GOAT', '#708090'),
+  leh('Mountain sheep', 'MOUNTAIN SHEEP', '#9370db'),
+  leh('Caribou', 'CARIBOU', '#4682b4'),
+  leh('Bison', 'BISON', '#5a3825'),
+  leh('Turkey', 'TURKEY', '#c0392b'),
+  leh('Black bear', 'BLACK BEAR', '#333333'),
   { id: 'mvpr', name: 'Motor vehicle prohibitions / MVHCA (areas)', layer: MVPR_LAYER, color: '#d62728', group: 'Access', identify: true },
-  { id: 'mvpr_routes', name: 'Motor vehicle prohibitions (routes)', layer: 'WHSE_WILDLIFE_MANAGEMENT.WAA_MVPR_ROUTES_SP', color: '#ff4f4f', group: 'Access', identify: true },
+  { id: 'mvpr_routes', name: 'Motor vehicle prohibitions (routes)', layer: 'WHSE_WILDLIFE_MANAGEMENT.WAA_MVPR_ROUTES_SP', color: '#ff4f4f', group: 'Access', identify: true, geom: 'line' },
   { id: 'parks', name: 'Parks & protected areas', layer: 'WHSE_TANTALIS.TA_PARK_ECORES_PA_SVW', color: '#2e8b57', group: 'Land', identify: true },
   { id: 'reserves', name: 'First Nations reserves', layer: 'WHSE_ADMIN_BOUNDARIES.CLAB_INDIAN_RESERVES', color: '#b5651d', group: 'Land', identify: true },
   { id: 'private', name: 'Private land (ParcelMap BC, zoom 12+)', layer: 'WHSE_CADASTRE.PMBC_PARCEL_FABRIC_POLY_SVW', cql: "OWNER_TYPE = 'Private'", color: '#cc3399', group: 'Land', identify: true, minzoom: 12 },

@@ -14,6 +14,14 @@ const wmsTiles = (layer, { cql, sld, styles = '' } = {}) => {
   return `${BC_WMS}?${p.toString()}&bbox={bbox-epsg-3857}`;
 };
 
+// iHunter-style overlay look: coloured outline + light tint instead of the layer's default solid fill.
+const sldStyle = (l) => {
+  const sym = l.geom === 'line'
+    ? `<LineSymbolizer><Stroke><CssParameter name="stroke">${l.color}</CssParameter><CssParameter name="stroke-width">3</CssParameter></Stroke></LineSymbolizer>`
+    : `<PolygonSymbolizer><Fill><CssParameter name="fill">${l.color}</CssParameter><CssParameter name="fill-opacity">0.12</CssParameter></Fill><Stroke><CssParameter name="stroke">${l.color}</CssParameter><CssParameter name="stroke-width">2</CssParameter></Stroke></PolygonSymbolizer>`;
+  return `<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld"><NamedLayer><Name>pub:${l.layer}</Name><UserStyle><FeatureTypeStyle><Rule>${sym}</Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>`;
+};
+
 export const allLayers = () => [...BC_LAYERS, ...state.custom];
 
 export function initMap(container, saved = {}) {
@@ -71,8 +79,8 @@ function firstDataLayer() { return ['shade-open', 'shade-foot', 'hot-fill', 'tra
 function addWms(l) {
   const id = 'wms-' + l.id;
   if (map.getSource(id)) return;
-  map.addSource(id, { type: 'raster', tiles: [wmsTiles(l.layer, { cql: l.cql })], tileSize: 256, attribution: 'BC Gov (OGL-BC)' });
-  map.addLayer({ id, type: 'raster', source: id, minzoom: l.minzoom || 0, paint: { 'raster-opacity': state.opacity[l.id] ?? 0.8 } }, firstDataLayer());
+  map.addSource(id, { type: 'raster', tiles: [wmsTiles(l.layer, { cql: l.cql, sld: l.color ? sldStyle(l) : undefined })], tileSize: 256, attribution: 'BC Gov (OGL-BC)' });
+  map.addLayer({ id, type: 'raster', source: id, minzoom: l.minzoom || 0, paint: { 'raster-opacity': state.opacity[l.id] ?? 0.9 } }, firstDataLayer());
 }
 function removeWms(l) { const id = 'wms-' + l.id; if (map.getLayer(id)) map.removeLayer(id); if (map.getSource(id)) map.removeSource(id); }
 
@@ -81,7 +89,7 @@ export function setLayer(id, on) {
   state.layers[id] = on; on ? addWms(l) : removeWms(l);
 }
 export const layerOn = (id) => { const l = allLayers().find((x) => x.id === id); return !!(state.layers[id] ?? l?.on); };
-export const layerOpacity = (id) => state.opacity[id] ?? 0.8;
+export const layerOpacity = (id) => state.opacity[id] ?? 0.9;
 export function setOpacity(id, v) { state.opacity[id] = v; if (map.getLayer('wms-' + id)) map.setPaintProperty('wms-' + id, 'raster-opacity', v); }
 export function setCustomLayers(list) {
   for (const l of state.custom) removeWms(l);

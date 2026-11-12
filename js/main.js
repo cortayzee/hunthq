@@ -156,6 +156,15 @@ async function weather(lat, lng) {
 }
 
 const BIG_RE = /deer|moose|elk|goat|sheep|caribou|bison/i;
+function fitPopup(p) {
+  requestAnimationFrame(() => {
+    const r = p.getElement()?.getBoundingClientRect(); if (!r) return;
+    const top = 60, bottom = innerHeight - (innerWidth <= 760 && !$('#app').classList.contains('panel-closed') ? innerHeight * 0.5 : 0) - 10;
+    const dy = r.bottom > bottom ? Math.min(r.bottom - bottom, r.top - top) : r.top < top ? r.top - top : 0;
+    if (dy) M.map.panBy([0, dy], { duration: 300 });
+  });
+}
+
 async function identifyPopup(lngLat) {
   const { lat, lng } = lngLat;
   const head = (wx, wmu = '') => `<div class="pop-head"><div><div class="coords">${lat.toFixed(6)}, ${lng.toFixed(6)}</div><div class="wx">${wx}</div></div>
@@ -195,6 +204,7 @@ async function identifyPopup(lngLat) {
     <a href="${earthLink(lat, lng)}" target="_blank" rel="noopener">Google Earth</a>
     <a href="${REGS_URL}" target="_blank" rel="noopener">In-season changes</a></div></div>`;
   p.setHTML(h);
+  fitPopup(p);
 }
 
 boot();

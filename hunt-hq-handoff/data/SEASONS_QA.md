@@ -18,3 +18,9 @@ File: `data/bc_seasons_2026_2028.json`, 394 rows from the "General Open Seasons"
 - LEH-only seasons are NOT in this file (they're in the separate LEH synopsis). Bird seasons that state
   years (2026/2027) are stored as YYYY-MM-DD; pick the range matching the chosen date.
 - In-season changes: always link https://www.gov.bc.ca/hunting.
+
+## Checked against the live WMU layer (2026-11-12)
+- 221 of 225 MUs match `WILDLIFE_MGMT_UNIT_ID`. In the season data but not on the layer: 4-10, 4-11, 4-12, 4-13
+  (probably retired/merged units, check the PDF). On the layer with no general seasons parsed: 2-1, 3-45, 5-16, 7-1
+  (likely a parser miss: check those tables).
+- Some PDF symbol characters leaked into fields (e.g. `\x90` in a Peace moose row); the app strips them at load.

@@ -25,9 +25,10 @@ Run locally: `python3 -m http.server` in the repo root, open http://localhost:80
 - `js/config.js` – Supabase keys, base maps, BC layer list and field names.
 - Season data and handoff notes: `hunt-hq-handoff/` (see its `CLAUDE.md` and `data/SEASONS_QA.md`).
 
-## Unverified against the live BC layers (the build sandbox couldn't reach openmaps.gov.bc.ca)
-Run **Menu → More → Layer diagnostics** once on the live site and adjust `js/config.js` if needed:
-- WMU id field assumed `WILDLIFE_MGMT_UNIT_ID` (used for identify, open-WMU shading, boundary highlight).
-- Per-species LEH toggles filter `LTD_ENTRY_HUNTING_ZONE_TYPE ILIKE '%moose%'` etc.
-- MVPR routes layer name guessed as `WAA_MVPR_ROUTES_SP`; MVPR "in effect on date" is inferred from date fields/text.
-- Private land uses ParcelMap BC `OWNER_TYPE = 'Private'` (zoom 12+).
+## BC layer notes (verified against the live layers, Nov 2026)
+- WMU id field `WILDLIFE_MGMT_UNIT_ID` ("4-24"), region `REGION_RESPONSIBLE_NAME`.
+- LEH toggles filter `LTD_ENTRY_HUNTING_ZONE_TYPE` = MOOSE, ELK, MULE DEER, WHITE-TAILED DEER, MOUNTAIN GOAT, MOUNTAIN SHEEP,
+  CARIBOU, BISON, TURKEY, BLACK BEAR.
+- MVPR areas: `PROHIBITION_TYPE` + `EFFECTIVE_DESCRIPTION` ("Closed April 1 to June 30 and September 1 to …"), parsed to decide
+  whether a closure is in effect on the chosen date; routes layer `WAA_MVPR_ROUTES_SP` uses `ACCESS_STATUS`/`ACCESS_RANGE`.
+- Weather: Open-Meteo (free, no key, 10k calls/day per IP).

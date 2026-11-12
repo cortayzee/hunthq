@@ -25,7 +25,8 @@ export const normQual = (q) => (q || '').replace(/^H(?=Youth)/, '').trim();
 
 export async function loadSeasons() {
   const r = await fetch(SEASONS_URL); SEASONS = await r.json();
-  SEASONS.forEach((row, i) => { row.i = i; row.g = speciesGroups(row.sp); row.q = normQual(row.q); });
+  const clean = (v) => String(v || '').replace(/[\u0080-\u009f\ue000-\uf8ff]/g, '').trim();
+  SEASONS.forEach((row, i) => { row.i = i; for (const k of ['sp', 'c', 'q', 'b']) row[k] = clean(row[k]); row.g = speciesGroups(row.sp); row.q = normQual(row.q); });
   return SEASONS;
 }
 
