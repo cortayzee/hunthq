@@ -27,15 +27,24 @@ export function toast(msg, ms = 2600) {
   clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.add('off'), ms);
 }
 
+// Modals track unsaved edits: closing by backdrop / ✕ / Esc asks first instead of silently dropping changes.
 export function modal(content, { wide = false } = {}) {
   const m = $('#modal'); const body = $('#modalBody');
   body.innerHTML = ''; if (typeof content === 'string') body.innerHTML = content; else body.append(content);
   m.querySelector('.modal-card').classList.toggle('wide', wide);
-  m.classList.remove('hidden');
+  m.classList.remove('hidden'); m.classList.remove('dirty'); m.dataset.dirty = '';
+  const mark = (e) => { if (e.target.closest('form')) markDirty(); };
+  body.addEventListener('input', mark); body.addEventListener('change', mark);
   import('./icons.js').then((i) => i.hydrateIcons(body));
   return body;
 }
-export const closeModal = () => $('#modal').classList.add('hidden');
+export function markDirty() { const m = $('#modal'); m.dataset.dirty = '1'; m.classList.add('dirty'); }
+export const closeModal = () => { const m = $('#modal'); m.classList.add('hidden'); m.dataset.dirty = ''; m.classList.remove('dirty'); };
+export function requestClose() {
+  const m = $('#modal'); if (m.classList.contains('hidden')) return;
+  if (m.dataset.dirty && !confirm('You have unsaved changes. Discard them?')) return;
+  closeModal();
+}
 
 export function download(name, text, type = 'application/octet-stream') {
   const blob = text instanceof Blob ? text : new Blob([text], { type });

@@ -1,7 +1,7 @@
 // MapLibre map: base styles, 3D terrain, BC WMS overlays, identify, waypoints/tracks, open-WMU shading.
 import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js';
 import { store } from './db.js';
-import { badgeImage, glyphFor, glyphSVG } from './animals.js';
+import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js';
 import { esc, earthLink, fmtDT } from './util.js';
 
 export let map;
@@ -249,7 +249,7 @@ function addDataLayers() {
     if (!map.hasImage(e.id)) map.addImage(e.id, image, { pixelRatio: ratio });
   });
   map.addLayer({ id: 'spots-dot', type: 'symbol', source: 'spots',
-    layout: { 'icon-image': ['get', 'icon'], 'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 0.65, 11, 0.95, 14, 1.12], 'icon-allow-overlap': true, 'icon-ignore-placement': true,
+    layout: { 'icon-image': ['get', 'icon'], 'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 0.65, 11, 0.95, 14, 1.12], 'icon-allow-overlap': true, 'icon-ignore-placement': false,
       'symbol-sort-key': ['get', 'z'],
       'text-field': ['step', ['zoom'], '', 12, ['get', 'name']], 'text-font': ['Open Sans Semibold'], 'text-size': 12, 'text-offset': [0, 1.7], 'text-anchor': 'top', 'text-optional': true, 'text-max-width': 9 },
     paint: { 'text-color': '#fff', 'text-halo-color': 'rgba(12,16,12,.9)', 'text-halo-width': 1.5 } });
@@ -265,7 +265,7 @@ function addDataLayers() {
 let spotFilter = () => true;
 export function setSpotFilter(fn) { spotFilter = fn || (() => true); refreshData(); }
 function spotsGeo() {
-  return { type: 'FeatureCollection', features: store.spots.filter(spotFilter).map((s) => ({ type: 'Feature', id: undefined, properties: { id: s.id, kind: s.kind, icon: `hq|${KINDS.some((k) => k.id === s.kind) ? s.kind : 'note'}|${glyphFor(s)}`, name: s.name || '', z: s.kind === 'kill' ? 3 : s.kind === 'sighting' ? 2 : 1 }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } })) };
+  return { type: 'FeatureCollection', features: store.spots.filter(spotFilter).map((s) => ({ type: 'Feature', id: undefined, properties: { id: s.id, kind: s.kind, icon: `hq|${KINDS.some((k) => k.id === s.kind) ? s.kind : 'note'}|${glyphFor(s)}`, name: spotLabel(s), z: s.kind === 'kill' ? 3 : s.kind === 'sighting' ? 2 : 1 }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } })) };
 }
 function tracksGeo() {
   return { type: 'FeatureCollection', features: store.tracks.map((t) => ({ type: 'Feature', properties: { id: t.id, name: t.name }, geometry: { type: 'LineString', coordinates: (t.coords || []).map((c) => [c[0], c[1]]) } })) };
@@ -279,8 +279,8 @@ export function setHotspots(fc) { map.getSource('hot')?.setData(fc || { type: 'F
 
 export function spotPopupHTML(s) {
   const k = KINDS.find((x) => x.id === s.kind)?.name || s.kind;
-  return `<div class="popup"><h4><span class="spot-badge" style="background:${kindColor(s.kind)}">${glyphSVG(glyphFor(s), { size: 20, color: "#fff", bg: kindColor(s.kind) })}</span> ${esc(s.name || k)}</h4>
-  <dl><dt>Kind</dt><dd>${esc(k)}</dd>${s.species ? `<dt>Species</dt><dd>${esc(s.species)} ${esc(s.sex || '')}</dd>` : ''}
+  return `<div class="popup"><h4><span class="spot-badge" style="background:${kindColor(s.kind)}">${glyphSVG(glyphFor(s), { size: 20, color: "#fff", bg: kindColor(s.kind) })}</span> ${esc(spotLabel(s))}</h4>
+  <dl><dt>Kind</dt><dd>${esc(k)}</dd>${s.species ? `<dt>Species</dt><dd>${esc(s.species)}${s.sex === 'M' || s.sex === 'F' ? ' · ' + esc(sexTerms(s.species)[s.sex === 'M' ? 0 : 1]) : ''}${s.extra?.points ? ' · ' + s.extra.points + ' pt' : ''}</dd>` : ''}
   <dt>Hunter</dt><dd>${esc(s.hunter || '')}</dd>${s.observed_at ? `<dt>When</dt><dd>${esc(fmtDT(s.observed_at))}</dd>` : ''}
   ${s.wmu ? `<dt>WMU</dt><dd>${esc(s.wmu)}</dd>` : ''}${s.weapon ? `<dt>Weapon</dt><dd>${esc(s.weapon)}</dd>` : ''}
   <dt>Lat/Lon</dt><dd>${(+s.lat).toFixed(5)}, ${(+s.lon).toFixed(5)}</dd></dl>

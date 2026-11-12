@@ -1,12 +1,12 @@
 import * as db from '../db.js';
 import { store, hunters } from '../db.js';
 import { KINDS, SPECIES, WEAPONS, SEXES, kindColor } from '../config.js';
-import { esc, opts, modal, closeModal, toast, formData, localDT, fmtDT, earthLink, parseLatLon, parseCSV, yearOf } from '../util.js';
+import { esc, opts, modal, closeModal, requestClose, markDirty, toast, formData, localDT, fmtDT, earthLink, parseLatLon, parseCSV, yearOf } from '../util.js';
 import * as M from '../map.js';
 import { normMU } from '../seasons.js';
 import { pickOnMap } from '../main.js';
 import { exportKML, exportGPX, exportCSV } from '../exporters.js';
-import { glyphSVG, animalFor } from '../animals.js';
+import { glyphSVG, animalFor, sexTerms, hasPoints, autoName, spotLabel } from '../animals.js';
 
 const PICK = [['Moose', 'moose'], ['Elk', 'elk'], ['Mule Deer', 'deer'], ['White-tailed Deer', 'deer'], ['Black Bear', 'bear'], ['Grizzly Bear', 'bear'],
   ['Bighorn Sheep', 'sheep'], ['Mountain Goat', 'goat'], ['Caribou', 'caribou'], ['Cougar', 'cougar'], ['Wolf', 'wolf'], ['Coyote', 'wolf'],
@@ -42,7 +42,7 @@ export function render(v) {
     const rows = filteredSpots().sort((a, b) => String(b.observed_at || b.created_at).localeCompare(String(a.observed_at || a.created_at)));
     v.querySelector('#spotList').innerHTML = `<p class="muted">${rows.length} of ${store.spots.length}</p><div class="scroll-x"><table><thead><tr><th></th><th>Name / species</th><th>When</th><th>Hunter</th><th>WMU</th><th></th></tr></thead><tbody>${rows.slice(0, 500).map((s) => `
       <tr><td><span class="swatch" style="background:${kindColor(s.kind)};border-radius:50%"></span></td>
-      <td><a href="#" data-fly="${s.id}">${esc(s.name || KINDS.find((k) => k.id === s.kind)?.name || s.kind)}</a><div class="muted">${esc([s.species, s.sex, s.weapon].filter(Boolean).join(' · '))}</div></td>
+      <td><a href="#" data-fly="${s.id}">${esc(spotLabel(s))}</a><div class="muted">${esc([s.species, s.sex, s.weapon].filter(Boolean).join(' · '))}</div></td>
       <td>${esc(fmtDT(s.observed_at))}</td><td>${esc(s.hunter || '')}</td><td>${esc(s.wmu || '')}</td>
       <td><button class="small" data-act="edit-spot" data-id="${s.id}">Edit</button></td></tr>`).join('')}</tbody></table></div>${rows.length > 500 ? '<p class="muted">Showing first 500.</p>' : ''}`;
     if (v.querySelector('#fmap').checked) { const ids = new Set(rows.map((r) => r.id)); M.setSpotFilter((s) => ids.has(s.id)); }
@@ -76,8 +76,9 @@ export function openSpotForm(s = {}, lookupWmu = false) {
       <span class="kb">${KIND_GLYPH[k.id] ? glyphSVG(KIND_GLYPH[k.id], { size: 18, color: '#fff', bg: k.color }) : ''}</span>${esc(k.name.replace(' / blind', '').replace(' / parking', ''))}</button>`).join('')}</div></div>
     <div class="span2"><div class="pick-label">Animal</div><div class="animal-pick" role="radiogroup">${PICK.map(([sp, g]) => `<button type="button" role="radio" data-sp="${esc(sp)}" aria-checked="${(d.species || '') === sp}">${glyphSVG(g, { size: 34 })}<span>${esc(sp.replace(' Deer', ' deer').replace('White-tailed deer', 'Whitetail'))}</span></button>`).join('')}</div></div>
     <label>Species <input name="species" list="speciesList" value="${esc(d.species || '')}" placeholder="or type one"></label>
-    <label>Name <input name="name" value="${esc(d.name || '')}" placeholder="e.g. 5 pt bull"></label>
-    <label>Sex <select name="sex">${opts(SEXES, d.sex)}</select></label>
+    <label>Sex <select name="sex"></select></label>
+    <label class="pts-field">Points <input name="points" type="number" min="1" max="20" inputmode="numeric" value="${esc(d.extra?.points ?? '')}" placeholder="e.g. 4"></label>
+    <label>Name <input name="name" value="${esc(d.name || '')}" placeholder="Filled in for you"></label>
     <label>Hunter <input name="hunter" list="hunterList" value="${esc(d.hunter || 'Me')}"></label>
     <label>Date/time <input type="datetime-local" name="observed_at" value="${d.observed_at ? localDT(d.observed_at) : ''}"></label>
     <label>WMU <input name="wmu" value="${esc(d.wmu || '')}" placeholder="3-15"></label>
@@ -86,10 +87,14 @@ export function openSpotForm(s = {}, lookupWmu = false) {
     <label>Longitude <input name="lon" type="number" step="any" required value="${d.lon != null && d.lon !== '' ? (+d.lon).toFixed(6) : ''}"></label>
     <label class="span2">Notes <textarea name="notes">${esc(d.notes || '')}</textarea></label>
     <div class="row span2">
-      <button class="primary" type="submit">Save</button>
-      <button type="button" id="pickBtn">Pick on map</button>
+      <button type="button" id="pickBtn" class="small">Move on map</button>
       ${d.lat != null ? `<a href="${earthLink(d.lat, d.lon)}" target="_blank" rel="noopener">Google Earth</a>` : ''}
+    </div>
+    <div class="form-foot span2">
       ${isNew ? '' : '<button type="button" class="danger" id="delSpot">Delete</button>'}
+      <span class="dirty-note muted">Unsaved changes</span>
+      <button type="button" class="cancel-btn">Cancel</button>
+      <button class="primary" type="submit">${isNew ? 'Save waypoint' : 'Save changes'}</button>
     </div>
   </form>${hunterDatalist()}${speciesDatalist()}`);
   const form = body.querySelector('#spotForm');
@@ -97,15 +102,30 @@ export function openSpotForm(s = {}, lookupWmu = false) {
     form.querySelectorAll('[data-kind]').forEach((x) => x.setAttribute('aria-checked', String(x.dataset.kind === form.kind.value)));
     form.querySelectorAll('[data-sp]').forEach((x) => x.setAttribute('aria-checked', String(x.dataset.sp.toLowerCase() === (form.species.value || '').toLowerCase())));
   };
+  // Sex labels follow the species (Bull/Cow, Buck/Doe…); points only for antlered animals; name auto-fills until you type your own.
+  let auto = !d.name || d.name === autoName(d);
+  const refresh = () => {
+    const [m, f] = sexTerms(form.species.value); const cur = form.sex.value || d.sex || '';
+    form.sex.innerHTML = `<option value="">Unknown</option><option value="M">${m}</option><option value="F">${f}</option>`; form.sex.value = cur;
+    form.querySelector('.pts-field').classList.toggle('hidden', !(hasPoints(form.species.value) && ['kill', 'sighting'].includes(form.kind.value) && form.sex.value !== 'F'));
+    if (auto) form.name.value = autoName({ kind: form.kind.value, species: form.species.value, sex: form.sex.value });
+  };
+  form.name.addEventListener('input', () => { auto = !form.name.value; });
   form.addEventListener('click', (e) => {
-    const k = e.target.closest('[data-kind]'); if (k) { form.kind.value = k.dataset.kind; syncPick(); }
-    const a = e.target.closest('[data-sp]'); if (a) { form.species.value = a.dataset.sp; if (!['kill', 'sighting'].includes(form.kind.value)) form.kind.value = 'sighting'; syncPick(); }
+    const k = e.target.closest('[data-kind]'); if (k) { form.kind.value = k.dataset.kind; syncPick(); refresh(); markDirty(); }
+    const a = e.target.closest('[data-sp]'); if (a) { form.species.value = a.dataset.sp; if (!['kill', 'sighting'].includes(form.kind.value)) form.kind.value = 'sighting'; syncPick(); refresh(); markDirty(); }
   });
-  form.species.addEventListener('input', syncPick);
+  form.species.addEventListener('input', () => { syncPick(); refresh(); });
+  form.sex.addEventListener('change', refresh);
+  form.querySelector('.cancel-btn').onclick = () => requestClose();
+  refresh();
   if (lookupWmu && d.lat != null && !d.wmu) M.identify({ lng: d.lon, lat: d.lat }, ['wmu']).then((r) => { const w = M.wmuFromIdentify(r); if (w && !form.wmu.value) form.wmu.value = w; });
   form.onsubmit = async (e) => {
     e.preventDefault();
     const o = formData(form); o.lat = +o.lat; o.lon = +o.lon; o.wmu = normMU(o.wmu) || null;
+    const pts = form.querySelector('.pts-field').classList.contains('hidden') ? null : +o.points || null; delete o.points;
+    o.extra = { ...(s.extra || {}), points: pts || undefined }; if (!pts) delete o.extra.points;
+    if (!o.name) o.name = autoName(o);
     o.observed_at = o.observed_at ? new Date(o.observed_at).toISOString() : null;
     try {
       if (isNew) { o.source = 'manual'; await db.insert('spots', o); lastDefaults = { hunter: o.hunter, kind: o.kind, species: o.species, weapon: o.weapon }; }

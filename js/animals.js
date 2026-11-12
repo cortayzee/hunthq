@@ -86,3 +86,25 @@ export function glyphSVG(glyph, { size = 32, color = 'currentColor', bg = 'var(-
     ${(g.cut || []).map((d) => `<path d="${d}" fill="${bg}" stroke="none"/>`).join('')}${g.dot ? `<circle cx="${g.dot[0]}" cy="${g.dot[1]}" r="${g.dot[2]}" stroke="none"/>` : ''}</g></svg>`;
 }
 export const PICKABLE = ['moose', 'elk', 'deer', 'caribou', 'bear', 'sheep', 'goat', 'cougar', 'wolf', 'grouse', 'turkey', 'duck', 'hare'];
+
+// ---- Consistent naming: "Bull Elk", "Cow Moose", "Whitetail Buck", "Bighorn Ram", "Black Bear Sow", "Camp" ----
+const TERMS = { bullcow: ['Bull', 'Cow'], deer: ['Buck', 'Doe'], sheep: ['Ram', 'Ewe'], goat: ['Billy', 'Nanny'], bear: ['Boar', 'Sow'], turkey: ['Tom', 'Hen'] };
+function termKey(sp) {
+  const a = animalFor(sp);
+  return a === 'elk' || a === 'moose' || a === 'caribou' || /bison/i.test(sp || '') ? 'bullcow' : TERMS[a] ? a : null;
+}
+export const sexTerms = (sp) => TERMS[termKey(sp)] || ['Male', 'Female'];
+export const hasPoints = (sp) => ['deer', 'elk', 'moose', 'caribou'].includes(animalFor(sp));
+const shortSp = (sp) => (sp || '').replace(/^White-?tailed Deer$/i, 'Whitetail').replace(/ \(.*\)$/, '').trim();
+const PLACE = { camp: 'Camp', trailcam: 'Trail Cam', stand: 'Stand', access: 'Access', note: 'Note' };
+export function autoName({ kind, species, sex } = {}) {
+  if (PLACE[kind] && !species) return PLACE[kind];
+  if (!species) return kind === 'kill' ? 'Kill' : kind === 'sighting' ? 'Sighting' : PLACE[kind] || '';
+  const k = termKey(species); const i = sex === 'M' ? 0 : sex === 'F' ? 1 : -1;
+  const sp = shortSp(species).replace(/\b\w/g, (c) => c.toUpperCase());
+  if (i < 0 || !k) return i < 0 ? sp : `${sp} ${['Male', 'Female'][i]}`;
+  const t = TERMS[k][i];
+  return k === 'bullcow' ? `${t} ${sp}` : `${sp} ${t}`;
+}
+// Map/list label: name plus points when known.
+export const spotLabel = (s) => (s.name || autoName(s)) + (s.extra?.points ? ` · ${s.extra.points} pt` : '');

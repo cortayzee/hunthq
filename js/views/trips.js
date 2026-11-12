@@ -1,7 +1,7 @@
 import * as db from '../db.js';
 import { store, hunters } from '../db.js';
 import { WEAPONS, RESULTS } from '../config.js';
-import { esc, opts, modal, closeModal, toast, formData, todayISO, fmtDate, num, parseCSV, yearOf } from '../util.js';
+import { esc, opts, modal, closeModal, requestClose, toast, formData, todayISO, fmtDate, num, parseCSV, yearOf } from '../util.js';
 import { normMU } from '../seasons.js';
 import { hunterDatalist, speciesDatalist } from './log.js';
 import { exportCSV } from '../exporters.js';
@@ -63,9 +63,11 @@ export function openTripForm(t = {}) {
     <label>Lon <input type="number" step="any" name="lon" value="${d.lon ?? ''}"></label>
     <div style="align-self:end"><button type="button" id="tPick">Pick on map</button></div>
     <label class="span2">Notes <textarea name="notes">${esc(d.notes || '')}</textarea></label>
-    <div class="row span2"><button class="primary" type="submit">Save</button>${isNew ? '' : '<button type="button" class="danger" id="tDel">Delete</button>'}</div>
+    <div class="form-foot span2">${isNew ? '' : '<button type="button" class="danger" id="tDel">Delete</button>'}<span class="dirty-note muted">Unsaved changes</span>
+      <button type="button" class="cancel-btn">Cancel</button><button class="primary" type="submit">${isNew ? 'Save trip' : 'Save changes'}</button></div>
   </form>${hunterDatalist()}${speciesDatalist()}`);
   const f = body.querySelector('form');
+  f.querySelector('.cancel-btn').onclick = () => requestClose();
   f.onsubmit = async (e) => {
     e.preventDefault(); const o = formData(f);
     for (const k of ['hours', 'animals_seen', 'temp_c', 'lat', 'lon']) o[k] = num(o[k]);

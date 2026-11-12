@@ -2,7 +2,7 @@ import * as db from './db.js';
 import { store } from './db.js';
 import * as M from './map.js';
 import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js';
-import { $, $$, esc, toast, closeModal, todayISO, earthLink } from './util.js';
+import { $, $$, esc, toast, closeModal, requestClose, todayISO, earthLink } from './util.js';
 import { REGS_URL, BASES } from './config.js';
 import { sunInfo } from './views/sun.js';
 import { mvprSummary, mvprStatus } from './mvpr.js';
@@ -168,8 +168,8 @@ function wireUI() {
   $('#dropBtn').onclick = () => setDropMode(true);
   $('#dropCancel').onclick = () => { setDropMode(false); if (app.pickHandler) { app.pickHandler = null; $('#app').classList.remove('pick-mode'); } };
   M.map.on('moveend', saveMapPrefs);
-  $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal' || e.target.closest('.modal-x')) closeModal(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeModal(); setDropMode(false); toggleBasePop(false); } });
+  $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal' || e.target.closest('.modal-x')) requestClose(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { requestClose(); setDropMode(false); toggleBasePop(false); } });
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const { act, id } = b.dataset;

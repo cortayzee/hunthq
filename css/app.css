@@ -62,8 +62,8 @@ label { display: block; font-size: .84em; color: var(--muted); }
 label > input, label > select, label > textarea { display: block; width: 100%; margin-top: 4px; color: var(--ink); font-size: 15px; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .row > * { flex: 0 0 auto; }
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
-.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 12px; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 12px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 12px; }
 .span2 { grid-column: span 2; } .span3 { grid-column: 1 / -1; }
 .card { border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; margin: 12px 0; background: var(--panel); }
 .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 99px; padding: 1px 8px; font-size: .78em; margin: 1px 2px; white-space: nowrap; }
@@ -333,3 +333,12 @@ details.region > summary .name { flex: 1; font-weight: 550; }
 .animal-pick button svg { color: var(--ink); }
 .animal-pick button[aria-checked=true] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); font-weight: 650; }
 .animal-pick button[aria-checked=true] svg { color: var(--accent-strong); }
+
+/* Sticky save bar in forms: always reachable, shows when there are unsaved edits */
+.form-foot { position: sticky; bottom: -20px; z-index: 2; display: flex; align-items: center; gap: 8px; margin: 6px -18px -20px; padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
+  background: var(--panel); border-top: 1px solid var(--line); }
+.form-foot .dirty-note { margin-right: auto; font-size: .82em; opacity: 0; transition: opacity 160ms ease; }
+.form-foot .danger + .dirty-note { margin-left: 4px; }
+.modal.dirty .form-foot .dirty-note { opacity: 1; color: var(--warn); }
+.form-foot button[type=submit] { min-width: 132px; }
+@media (max-width: 760px) { .form-foot { bottom: calc(-20px - env(safe-area-inset-bottom)); } .form-foot .cancel-btn { display: none; } }
