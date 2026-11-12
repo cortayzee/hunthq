@@ -24,3 +24,6 @@ File: `data/bc_seasons_2026_2028.json`, 394 rows from the "General Open Seasons"
   (probably retired/merged units, check the PDF). On the layer with no general seasons parsed: 2-1, 3-45, 5-16, 7-1
   (likely a parser miss: check those tables).
 - Some PDF symbol characters leaked into fields (e.g. `\x90` in a Peace moose row); the app strips them at load.
+- Fixed truncated class text from the 3-column PDF (2026-11-12): Skeena elk 6-1..6-9 "6 Point Bulls"; Omineca mule deer
+  youth "Either Sex", youth bow "Antlerless", bow "Bucks"; cleared junk on Omineca dusky grouse. **Skeena moose MU 6-2 Oct 20–Nov 15
+  class is unknown** (PDF said "...v 15, see Map F1"); check p.52.

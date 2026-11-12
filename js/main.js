@@ -19,6 +19,7 @@ const isPhone = () => innerWidth <= 760;
 const panelOpen = () => !$('#app').classList.contains('panel-closed');
 
 async function showTab(tab) {
+  if (app.tab !== tab) views[app.tab]?.onLeave?.();
   app.tab = tab;
   $$('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
   const tb = $(`#tabs button[data-tab="${tab}"]`), nav = $('#tabs');
@@ -41,6 +42,7 @@ export function closePanel() {
 }
 export async function openWmu(mu, region) {
   const { showWmu } = await import('./views/wmu.js');
+  if (app.tab === 'open') views.open?.onLeave?.();
   $$('#tabs button').forEach((b) => b.classList.remove('active'));
   openPanel(); const v = $('#view'); v.scrollTop = 0;
   await showWmu(v, mu, { region, date: app.date, onBack: () => showTab(app.tab) });
@@ -291,4 +293,6 @@ async function identifyPopup(lngLat) {
   fitPopup(p);
 }
 
+// The app is a fixed full-screen surface; never let the document itself scroll (phones do this on focus/scrollIntoView).
+addEventListener('scroll', (e) => { if (scrollY || scrollX) scrollTo(0, 0); const a = document.getElementById('app'); if (a && a.scrollTop) a.scrollTop = 0; }, { passive: true, capture: true });
 boot();
