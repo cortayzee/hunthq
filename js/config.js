@@ -70,6 +70,7 @@ export const KINDS = [
   { id: 'camp', name: 'Camp', color: '#2ca02c' },
   { id: 'trailcam', name: 'Trail cam', color: '#17becf' },
   { id: 'access', name: 'Access / parking', color: '#ff7f0e' },
+  { id: 'service', name: 'Cell service', color: '#5b5bd6' },
   { id: 'note', name: 'Note', color: '#7f7f7f' },
 ];
 export const kindColor = (k) => (KINDS.find((x) => x.id === k) || KINDS[KINDS.length - 1]).color;

@@ -14,7 +14,7 @@ import { icon } from '../icons.js';
 const PICK = [['Moose', 'moose'], ['Elk', 'elk'], ['Mule Deer', 'deer'], ['White-tailed Deer', 'deer'], ['Black Bear', 'bear'], ['Grizzly Bear', 'bear'],
   ['Bighorn Sheep', 'sheep'], ['Mountain Goat', 'goat'], ['Caribou', 'caribou'], ['Cougar', 'cougar'], ['Wolf', 'wolf'], ['Coyote', 'wolf'],
   ['Ruffed Grouse', 'grouse'], ['Turkey', 'turkey'], ['Ducks', 'duck'], ['Geese', 'duck'], ['Snowshoe Hare', 'hare']];
-const KIND_GLYPH = { kill: null, sighting: null, stand: 'stand', camp: 'camp', trailcam: 'trailcam', access: 'access', note: 'note' };
+const KIND_GLYPH = { kill: null, sighting: null, stand: 'stand', camp: 'camp', trailcam: 'trailcam', access: 'access', service: 'service', note: 'note' };
 
 export const hunterDatalist = () => `<datalist id="hunterList">${hunters().map((h) => `<option value="${esc(h)}">`).join('')}</datalist>`;
 export const speciesDatalist = () => `<datalist id="speciesList">${SPECIES.map((s) => `<option value="${esc(s)}">`).join('')}</datalist>`;

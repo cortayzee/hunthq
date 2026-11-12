@@ -32,6 +32,7 @@ export const ANIMALS = {
   trailcam: { name: 'Trail cam', f: ['M12 18 Q12 14 16 14 L48 14 Q52 14 52 18 L52 48 Q52 52 48 52 L16 52 Q12 52 12 48 Z'], cut: ['M32 35 m-10 0 a10 10 0 1 0 20 0 a10 10 0 1 0 -20 0', 'M17 19 L25 19 L25 24 L17 24 Z'], dot: [32, 35, 5.5] },
   stand: { name: 'Stand / blind', f: ['M14 14 L50 14 L50 24 L14 24 Z'], s: ['M20 24 L14 58', 'M44 24 L50 58', 'M18.5 34 L45.5 34', 'M16.5 46 L47.5 46', 'M14 14 L14 6', 'M50 14 L50 6', 'M14 6 L50 6'], sw: 4 },
   access: { name: 'Access / parking', f: ['M8 30 L14 18 Q15.5 15 19 15 L41 15 Q44.5 15 46 18 L52 30 L56 31 Q58 32 58 35 L58 44 L6 44 L6 35 Q6 32 8 30 Z', 'M18 44 m-6 0 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0', 'M46 44 m-6 0 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0'], cut: ['M15 29 L19 20 L30 20 L30 29 Z', 'M34 29 L34 20 L41 20 L45 29 Z'] },
+  service: { name: 'Cell service', f: ['M8 46 h8 v10 h-8 Z', 'M20 38 h8 v18 h-8 Z', 'M32 28 h8 v28 h-8 Z', 'M44 16 h8 v40 h-8 Z'] },
   note: { name: 'Note', f: ['M32 32 m-11 0 a11 11 0 1 0 22 0 a11 11 0 1 0 -22 0'] },
 };
 
@@ -55,7 +56,7 @@ export function animalFor(species = '') {
   return null;
 }
 // Which glyph a waypoint shows: the animal if it has one, else its kind's place symbol.
-export const glyphFor = (spot) => (['camp', 'trailcam', 'stand', 'access'].includes(spot.kind) ? spot.kind : animalFor(spot.species) || (spot.kind === 'note' ? 'note' : 'note'));
+export const glyphFor = (spot) => (['camp', 'trailcam', 'stand', 'access', 'service'].includes(spot.kind) ? spot.kind : animalFor(spot.species) || (spot.kind === 'note' ? 'note' : 'note'));
 
 function draw(ctx, g, color) {
   ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = g.sw || 2.6;
@@ -96,7 +97,7 @@ function termKey(sp) {
 export const sexTerms = (sp) => TERMS[termKey(sp)] || ['Male', 'Female'];
 export const hasPoints = (sp) => ['deer', 'elk', 'moose', 'caribou'].includes(animalFor(sp));
 const shortSp = (sp) => (sp || '').replace(/^White-?tailed Deer$/i, 'Whitetail').replace(/ \(.*\)$/, '').trim();
-const PLACE = { camp: 'Camp', trailcam: 'Trail Cam', stand: 'Stand', access: 'Access', note: 'Note' };
+const PLACE = { camp: 'Camp', trailcam: 'Trail Cam', stand: 'Stand', access: 'Access', service: 'Cell Service', note: 'Note' };
 export function autoName({ kind, species, sex } = {}) {
   if (PLACE[kind] && !species) return PLACE[kind];
   if (!species) return kind === 'kill' ? 'Kill' : kind === 'sighting' ? 'Sighting' : PLACE[kind] || '';
