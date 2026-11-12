@@ -1,15 +1,15 @@
-import * as db from '../db.js?v=20261112230233-4f3bcaf';
-import { store, hunters } from '../db.js?v=20261112230233-4f3bcaf';
-import { KINDS, SPECIES, WEAPONS, SEXES, kindColor } from '../config.js?v=20261112230233-4f3bcaf';
-import { esc, opts, modal, closeModal, requestClose, markDirty, toast, formData, localDT, fmtDT, earthLink, parseLatLon, parseCSV, yearOf } from '../util.js?v=20261112230233-4f3bcaf';
-import * as M from '../map.js?v=20261112230233-4f3bcaf';
-import { normMU } from '../seasons.js?v=20261112230233-4f3bcaf';
-import { pickOnMap, closePanel } from '../main.js?v=20261112230233-4f3bcaf';
-import { exportKML, exportGPX, exportCSV } from '../exporters.js?v=20261112230233-4f3bcaf';
-import { glyphSVG, glyphFor, animalFor, sexTerms, hasPoints, autoName, spotLabel } from '../animals.js?v=20261112230233-4f3bcaf';
-import * as V from '../vis.js?v=20261112230233-4f3bcaf';
-import { tripOf, groupOf, tripTitle, spotYear } from '../vis.js?v=20261112230233-4f3bcaf';
-import { icon } from '../icons.js?v=20261112230233-4f3bcaf';
+import * as db from '../db.js?v=20261112230742-8367d80';
+import { store, hunters } from '../db.js?v=20261112230742-8367d80';
+import { KINDS, SPECIES, WEAPONS, SEXES, kindColor } from '../config.js?v=20261112230742-8367d80';
+import { esc, opts, modal, closeModal, requestClose, markDirty, toast, formData, localDT, fmtDT, earthLink, parseLatLon, parseCSV, yearOf } from '../util.js?v=20261112230742-8367d80';
+import * as M from '../map.js?v=20261112230742-8367d80';
+import { normMU } from '../seasons.js?v=20261112230742-8367d80';
+import { pickOnMap, closePanel } from '../main.js?v=20261112230742-8367d80';
+import { exportKML, exportGPX, exportCSV } from '../exporters.js?v=20261112230742-8367d80';
+import { glyphSVG, glyphFor, animalFor, sexTerms, hasPoints, autoName, spotLabel } from '../animals.js?v=20261112230742-8367d80';
+import * as V from '../vis.js?v=20261112230742-8367d80';
+import { tripOf, groupOf, tripTitle, spotYear } from '../vis.js?v=20261112230742-8367d80';
+import { icon } from '../icons.js?v=20261112230742-8367d80';
 
 const PICK = [['Moose', 'moose'], ['Elk', 'elk'], ['Mule Deer', 'deer'], ['White-tailed Deer', 'deer'], ['Black Bear', 'bear'], ['Grizzly Bear', 'bear'],
   ['Bighorn Sheep', 'sheep'], ['Mountain Goat', 'goat'], ['Caribou', 'caribou'], ['Cougar', 'cougar'], ['Wolf', 'wolf'], ['Coyote', 'wolf'],
@@ -21,6 +21,11 @@ export const speciesDatalist = () => `<datalist id="speciesList">${SPECIES.map((
 
 // ---- Waypoints page: what's on the map (types / years / hunters), then Groups, Hunts and ungrouped lists ----
 const ui = { q: '', open: new Set(['groups', 'hunts', 'loose']) };
+// Folded/unfolded state of individual hunts & groups, remembered per device.
+const FOLD_KEY = 'hunthq_wp_open';
+const openG = (() => { try { return new Set(JSON.parse(localStorage.getItem(FOLD_KEY)) || []); } catch { return new Set(); } })();
+const isOpen = (key) => !!ui.q || openG.has(key);
+const saveFold = () => { try { localStorage.setItem(FOLD_KEY, JSON.stringify([...openG])); } catch {} };
 const fmtShort = (d) => (d ? new Date(d).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Vancouver' }) : '');
 export const spotBadge = (s, size = 30) => `<span class="spot-badge" style="width:${size}px;height:${size}px;background:${kindColor(s.kind)}">${glyphSVG(glyphFor(s), { size: Math.round(size * 0.66), color: '#fff', bg: kindColor(s.kind) })}</span>`;
 export function spotRow(s, { showTrip = false } = {}) {
@@ -45,11 +50,12 @@ export function render(v) {
   const grps = V.groups(); const trips = store.trips.filter((t) => list.some((s) => s.extra?.trip_id === t.id)).sort((a, b) => String(b.date_start).localeCompare(String(a.date_start)));
   const loose = list.filter((s) => !groupOf(s) && !tripOf(s));
   const sec = (id, title, body, count, actions = '') => `<details class="wp-sec" data-sec="${id}" ${ui.open.has(id) || ui.q ? 'open' : ''}><summary>${icon('chevR', { size: 16 })}<h3>${title}</h3><span class="muted tnum">${count}</span>${actions}</summary>${body}</details>`;
-  const block = (key, kind, title, color, spots, meta) => `<div class="wp-group ${V.shown(kind, key) ? '' : 'off'}">
+  // Each hunt / group folds away. The switch (show on map) stays usable while folded.
+  const block = (key, kind, title, color, spots, meta) => { const open = isOpen(key); return `<div class="wp-group ${V.shown(kind, key) ? '' : 'off'} ${open ? 'open' : ''}" data-gkey="${esc(key)}">
       <div class="wp-group-h"><label class="switch" title="Show on map"><input type="checkbox" data-vk="${kind}" data-vkey="${esc(key)}" ${V.shown(kind, key) ? 'checked' : ''} aria-label="Show ${esc(title)} on map"></label>
-      <span class="dot" style="background:${color}"></span><div class="t"><b>${esc(title)}</b><span class="muted">${meta}</span></div>
-      ${kind === 'groups' ? `<button class="icon-btn" data-grp-menu="${esc(key)}" aria-label="Group options">${icon('dots', { size: 18 })}</button>` : `<button class="icon-btn" data-open-trip="${esc(key)}" aria-label="Open hunt">${icon('chevR', { size: 18 })}</button>`}</div>
-      ${spots.map((s) => spotRow(s)).join('') || '<p class="muted small-pad">No waypoints yet. Pick this group when you add or edit one.</p>'}</div>`;
+      <button class="wp-fold" data-fold="${esc(key)}" aria-expanded="${open}" aria-controls="rows-${esc(key)}"><span class="dot" style="background:${color}"></span><span class="t"><b>${esc(title)}</b><span class="muted">${meta}</span></span>${icon('chevR', { size: 16, cls: 'fold-chev' })}</button>
+      ${kind === 'groups' ? `<button class="icon-btn" data-grp-menu="${esc(key)}" aria-label="Group options">${icon('dots', { size: 18 })}</button>` : `<button class="icon-btn" data-open-trip="${esc(key)}" aria-label="Open hunt details">${icon('info', { size: 18 })}</button>`}</div>
+      <div class="wp-rows" id="rows-${esc(key)}" ${open ? '' : 'hidden'}>${spots.map((s) => spotRow(s)).join('') || '<p class="muted small-pad">No waypoints yet. Pick this group when you add or edit one.</p>'}</div></div>`; };
 
   v.innerHTML = `<div class="page-h"><h2>Waypoints</h2>
     <div class="row"><button class="primary" id="newSpot">${icon('pinPlus', { size: 18 })}New</button>
@@ -86,13 +92,19 @@ export function render(v) {
       if (m === 'csv') exportCSV(store.spots);
       return;
     }
+    const fold = e.target.closest('[data-fold]');
+    if (fold) {
+      const key = fold.dataset.fold; const g = fold.closest('.wp-group'); const open = !g.classList.contains('open');
+      g.classList.toggle('open', open); fold.setAttribute('aria-expanded', String(open)); g.querySelector('.wp-rows').hidden = !open;
+      open ? openG.add(key) : openG.delete(key); saveFold(); return;
+    }
     const gm = e.target.closest('[data-grp-menu]')?.dataset.grpMenu;
     if (gm) {
       const g = V.groups().find((x) => x.id === gm); const a = prompt(`Rename “${g.name}”, or type DELETE to remove the group (its waypoints are kept):`, g.name);
       if (a === 'DELETE') await V.deleteGroup(gm); else if (a?.trim() && a !== g.name) await V.renameGroup(gm, a.trim());
       render(v); return;
     }
-    const ot = e.target.closest('[data-open-trip]')?.dataset.openTrip; if (ot) { (await import('./trips.js?v=20261112230233-4f3bcaf')).openTrip(ot); return; }
+    const ot = e.target.closest('[data-open-trip]')?.dataset.openTrip; if (ot) { (await import('./trips.js?v=20261112230742-8367d80')).openTrip(ot); return; }
     if (e.target.closest('[data-act]')) return;
     const row = e.target.closest('[data-fly]');
     if (row) { const s = store.spots.find((x) => x.id === row.dataset.fly); if (s) { if (!V.isVisible(s)) toast('That waypoint is hidden by a filter above'); M.flyTo(s.lon, s.lat, 14); if (innerWidth <= 760) closePanel(); } }
