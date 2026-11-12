@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f2a1f">
+<title>Hunt HQ</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='22' fill='none' stroke='%23d98c2b' stroke-width='6'/%3E%3Cpath d='M32 2v20M32 42v20M2 32h20M42 32h20' stroke='%23d98c2b' stroke-width='6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<link rel="stylesheet" href="css/app.css">
+<script src="vendor/maplibre-gl.js"></script>
+<script src="vendor/supabase.js"></script>
+<script src="vendor/suncalc.js"></script>
+<script src="vendor/togeojson.umd.js"></script>
+<script src="vendor/jszip.min.js"></script>
+</head>
+<body>
+<div id="auth" class="auth hidden">
+  <form id="authForm" class="auth-card">
+    <h1>Hunt HQ <small>BC</small></h1>
+    <label>Email <input name="email" type="email" autocomplete="username" required></label>
+    <label>Password <input name="password" type="password" autocomplete="current-password" required minlength="6"></label>
+    <div class="row">
+      <button type="submit" class="primary">Sign in</button>
+      <button type="button" id="signupBtn">Create account</button>
+    </div>
+    <p class="muted">Data syncs to your Supabase project. No connection? <a href="#" id="localModeBtn">Use local mode</a> (stored only in this browser).</p>
+    <p id="authMsg" class="err"></p>
+  </form>
+</div>
+
+<div id="app" class="app hidden panel-closed">
+  <div id="map"></div>
+  <div id="mapTools" class="map-tools">
+    <button id="menuBtn" title="Tools &amp; logs">☰ Menu</button>
+    <button id="layersBtn" title="Map layers">◫ Layers</button>
+    <button id="dropBtn" title="Drop a waypoint by tapping the map">＋ Waypoint</button>
+    <button id="terrainBtn" title="Toggle 3D terrain">3D</button>
+    <select id="baseSel" title="Base map">
+      <option value="sat">Satellite</option>
+      <option value="topo">Topo (Esri)</option>
+      <option value="otm">Topo (OpenTopoMap)</option>
+      <option value="road">Road</option>
+    </select>
+  </div>
+  <div id="dropHint" class="drop-hint hidden">Tap the map to place a waypoint · <a href="#" id="dropCancel">cancel</a></div>
+
+  <aside id="panel" class="panel">
+    <div class="panel-head">
+      <button id="sheetBtn" class="sheet-btn" aria-label="Expand or collapse panel">▴</button>
+      <nav id="tabs" class="tabs">
+        <button data-tab="layers">Layers</button>
+        <button data-tab="open">Season map</button>
+        <button data-tab="log">Waypoints</button>
+        <button data-tab="trips">Trips</button>
+        <button data-tab="tags">Tags &amp; LEH</button>
+        <button data-tab="insights">Insights</button>
+        <button data-tab="import">Import</button>
+        <button data-tab="sun">Sun &amp; moon</button>
+        <button data-tab="more">More</button>
+      </nav>
+      <button id="panelX" class="panel-x" aria-label="Close panel">×</button>
+    </div>
+    <div id="view" class="view"></div>
+  </aside>
+</div>
+
+<div id="modal" class="modal hidden"><div class="modal-card"><button class="modal-x" aria-label="Close">×</button><div id="modalBody"></div></div></div>
+<div id="toast" class="toast hidden"></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

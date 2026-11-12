@@ -13,7 +13,10 @@ Done:
   for verifying the BC MVPR layer and writing popups. The layer is the primary source.
 - Andrew has the synopsis PDF (2026–2028 Hunting & Trapping Regulations Synopsis); ask him to add it to the repo
   as `data/synopsis_2026_2028.pdf` if you need to re-parse.
-Not started: the app itself. Andrew still needs to make a GitHub account/repo for hosting.
+App built (2026-11-12): static site at the repo root (`index.html`, `js/`, `css/`, `vendor/`); see root `README.md`.
+UI is map-first (iHunter-like): tap map → popup → WMU detail panel with Open/Closed seasons. Other tools behind ☰ Menu.
+Still to verify on the live site: BC layer field names / LEH type values / MVPR routes layer (More → Layer diagnostics),
+then enable GitHub Pages and set the Supabase Site URL.
 
 ## Backend (Supabase)
 - Project ref: `mdzvqqhreqaxyclbjqbb` (being renamed from "Fantasy HQ" to a personal-projects name;
