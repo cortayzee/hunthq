@@ -1,15 +1,16 @@
-import * as db from '../db.js?v=20261112230742-8367d80';
-import { store, hunters } from '../db.js?v=20261112230742-8367d80';
-import { KINDS, SPECIES, WEAPONS, SEXES, kindColor } from '../config.js?v=20261112230742-8367d80';
-import { esc, opts, modal, closeModal, requestClose, markDirty, toast, formData, localDT, fmtDT, earthLink, parseLatLon, parseCSV, yearOf } from '../util.js?v=20261112230742-8367d80';
-import * as M from '../map.js?v=20261112230742-8367d80';
-import { normMU } from '../seasons.js?v=20261112230742-8367d80';
-import { pickOnMap, closePanel } from '../main.js?v=20261112230742-8367d80';
-import { exportKML, exportGPX, exportCSV } from '../exporters.js?v=20261112230742-8367d80';
-import { glyphSVG, glyphFor, animalFor, sexTerms, hasPoints, autoName, spotLabel } from '../animals.js?v=20261112230742-8367d80';
-import * as V from '../vis.js?v=20261112230742-8367d80';
-import { tripOf, groupOf, tripTitle, spotYear } from '../vis.js?v=20261112230742-8367d80';
-import { icon } from '../icons.js?v=20261112230742-8367d80';
+import * as db from '../db.js?v=20261112232000-e9fd32d';
+import { store, hunters } from '../db.js?v=20261112232000-e9fd32d';
+import { KINDS, SPECIES, WEAPONS, SEXES, kindColor } from '../config.js?v=20261112232000-e9fd32d';
+import { esc, opts, modal, closeModal, requestClose, markDirty, toast, formData, localDT, fmtDT, earthLink, parseLatLon, parseCSV, yearOf } from '../util.js?v=20261112232000-e9fd32d';
+import * as M from '../map.js?v=20261112232000-e9fd32d';
+import { normMU } from '../seasons.js?v=20261112232000-e9fd32d';
+import { pickOnMap, closePanel } from '../main.js?v=20261112232000-e9fd32d';
+import { exportKML, exportGPX, exportCSV } from '../exporters.js?v=20261112232000-e9fd32d';
+import { glyphSVG, glyphFor, animalFor, sexTerms, hasPoints, autoName, spotLabel } from '../animals.js?v=20261112232000-e9fd32d';
+import { MODES, fmtKm, fmtHours } from '../elevation.js?v=20261112232000-e9fd32d';
+import * as V from '../vis.js?v=20261112232000-e9fd32d';
+import { tripOf, groupOf, tripTitle, spotYear } from '../vis.js?v=20261112232000-e9fd32d';
+import { icon } from '../icons.js?v=20261112232000-e9fd32d';
 
 const PICK = [['Moose', 'moose'], ['Elk', 'elk'], ['Mule Deer', 'deer'], ['White-tailed Deer', 'deer'], ['Black Bear', 'bear'], ['Grizzly Bear', 'bear'],
   ['Bighorn Sheep', 'sheep'], ['Mountain Goat', 'goat'], ['Caribou', 'caribou'], ['Cougar', 'cougar'], ['Wolf', 'wolf'], ['Coyote', 'wolf'],
@@ -36,6 +37,14 @@ export function spotRow(s, { showTrip = false } = {}) {
     <button class="icon-btn" data-act="edit-spot" data-id="${s.id}" aria-label="Edit ${esc(spotLabel(s))}">${icon('chevR', { size: 18 })}</button></div>`;
 }
 const chip = (kind, key, label, count, extra = '') => `<button class="f-chip" data-vk="${kind}" data-vkey="${esc(key)}" aria-pressed="${V.shown(kind, key)}">${extra}<span>${esc(label)}</span><span class="n tnum">${count}</span></button>`;
+
+function trackRow(t) {
+  const m = MODES[t.extra?.mode] || { name: t.source && t.source !== 'drawn' ? 'GPS track' : 'Route', color: '#ff3d7f' };
+  const on = V.trackVisible(t);
+  const sub = [m.name, t.distance_km ? fmtKm(+t.distance_km) : '', t.extra?.up != null ? '↑' + t.extra.up + ' m' : '', t.extra?.hours ? fmtHours(t.extra.hours) : ''].filter(Boolean).join(' · ');
+  return `<div class="wp-row ${on ? '' : 'off'}" data-track="${t.id}"><label class="switch" title="Show on map"><input type="checkbox" data-vk="tracks" data-vkey="${t.id}" ${V.shown('tracks', t.id) ? 'checked' : ''} aria-label="Show ${esc(t.name || 'route')} on map"></label>
+    <span class="route-sw" style="background:${m.color}"></span><div class="t"><b>${esc(t.name || 'Route')}</b><span class="muted">${esc(sub)}</span></div>${icon('chevR', { size: 18 })}</div>`;
+}
 
 export function filteredSpots() {
   const q = ui.q.toLowerCase();
@@ -65,7 +74,7 @@ export function render(v) {
   <input id="fq" type="search" placeholder="Search waypoints" value="${esc(ui.q)}" style="width:100%" aria-label="Search waypoints">
   <div class="vis-box">
     <div class="vis-h"><b>Show on map</b>${V.anyHidden() ? '<button class="link" id="showAll">Show everything</button>' : ''}</div>
-    <div class="f-row">${kinds.map((k) => chip('kinds', k.id, k.name.replace(' / blind', '').replace(' / parking', ''), all.filter((s) => (s.kind || 'note') === k.id).length, `<span class="spot-badge" style="width:20px;height:20px;background:${k.color}"></span>`)).join('')}</div>
+    <div class="f-row">${store.tracks.length ? chip('kinds', 'route', 'Routes', store.tracks.length, `<span class="spot-badge" style="width:20px;height:20px;background:#ff7a00">${icon('route', { size: 13 })}</span>`) : ''}${kinds.map((k) => chip('kinds', k.id, k.name.replace(' / blind', '').replace(' / parking', ''), all.filter((s) => (s.kind || 'note') === k.id).length, `<span class="spot-badge" style="width:20px;height:20px;background:${k.color}"></span>`)).join('')}</div>
     ${years.length > 1 || years[0] !== 'none' ? `<div class="f-row">${years.map((y) => chip('years', y, y === 'none' ? 'No date' : y, all.filter((s) => spotYear(s) === y).length)).join('')}</div>` : ''}
     ${hs.length > 1 ? `<div class="f-row">${hs.map((h) => chip('hunters', h, h, all.filter((s) => (s.hunter || 'Me') === h).length)).join('')}</div>` : ''}
   </div>
@@ -74,6 +83,7 @@ export function render(v) {
     ${grps.map((g) => { const sp = list.filter((s) => s.extra?.group_id === g.id); return block(g.id, 'groups', g.name, g.color, sp, `${sp.length} waypoint${sp.length === 1 ? '' : 's'}`); }).join('')}
     <button class="small" data-m="group">${icon('plus', { size: 16 })}New group</button>`, grps.length) : ''}
   ${trips.length ? sec('hunts', 'Hunts', trips.map((t) => { const sp = list.filter((s) => s.extra?.trip_id === t.id); return block(t.id, 'trips', tripTitle(t), '#d4661c', sp, `${dateSpan(t)} · ${sp.length} waypoint${sp.length === 1 ? '' : 's'}`); }).join(''), trips.length) : ''}
+  ${store.tracks.length ? sec('routes', 'Routes & tracks', store.tracks.map((t) => trackRow(t)).join(''), store.tracks.length) : ''}
   ${loose.length ? sec('loose', 'Not grouped', loose.sort((a, b) => String(b.observed_at || b.created_at).localeCompare(String(a.observed_at || a.created_at))).map((s) => spotRow(s, { showTrip: true })).join(''), loose.length) : ''}`;
 
   v.querySelector('#fq').oninput = (e) => { ui.q = e.target.value; const pos = e.target.selectionStart; render(v); const i = v.querySelector('#fq'); i.focus(); i.setSelectionRange(pos, pos); };
@@ -104,15 +114,17 @@ export function render(v) {
       if (a === 'DELETE') await V.deleteGroup(gm); else if (a?.trim() && a !== g.name) await V.renameGroup(gm, a.trim());
       render(v); return;
     }
-    const ot = e.target.closest('[data-open-trip]')?.dataset.openTrip; if (ot) { (await import('./trips.js?v=20261112230742-8367d80')).openTrip(ot); return; }
+    const ot = e.target.closest('[data-open-trip]')?.dataset.openTrip; if (ot) { (await import('./trips.js?v=20261112232000-e9fd32d')).openTrip(ot); return; }
     if (e.target.closest('[data-act]')) return;
+    const tr = e.target.closest('[data-track]');
+    if (tr && !e.target.closest('.switch')) { const t = store.tracks.find((x) => x.id === tr.dataset.track); if (t) (await import('../route.js?v=20261112232000-e9fd32d')).openRoute(t); return; }
     const row = e.target.closest('[data-fly]');
     if (row) { const s = store.spots.find((x) => x.id === row.dataset.fly); if (s) { if (!V.isVisible(s)) toast('That waypoint is hidden by a filter above'); M.flyTo(s.lon, s.lat, 14); if (innerWidth <= 760) closePanel(); } }
   };
   v.querySelector('#newSpot').onclick = async () => { const ll = await pickOnMap('Tap the map where the waypoint goes'); openSpotForm({ lat: ll.lat, lon: ll.lng }, true); };
   render.v = v;
 }
-export function onData(what) { if (['spots', 'all', 'trips'].includes(what) && render.v?.isConnected) render(render.v); }
+export function onData(what) { if (['spots', 'all', 'trips', 'tracks'].includes(what) && render.v?.isConnected) render(render.v); }
 export const dateSpan = (t) => {
   const a = new Date(t.date_start + 'T12:00'), b = t.date_end ? new Date(t.date_end + 'T12:00') : a;
   const o = { month: 'short', day: 'numeric' };

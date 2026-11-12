@@ -427,3 +427,41 @@ details.more > summary { cursor: pointer; color: var(--accent-strong); font-size
 .wp-group.open .fold-chev { transform: rotate(90deg); }
 .wp-group:not(.open) .wp-group-h { background: var(--panel); }
 @media (hover: hover) and (pointer: fine) { .wp-fold:hover .t b { color: var(--accent-strong); } }
+
+/* ---------- Route drawing ---------- */
+.app.draw-mode #map canvas { cursor: crosshair; }
+.app.draw-mode .chrome-b, .app.draw-mode .map-chip { opacity: 0; pointer-events: none; }
+.chrome-b { gap: 8px; }
+.chrome-b #routeBtn { padding: 0 18px 0 14px; }
+.route-bar { position: absolute; z-index: 6; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(560px, calc(100vw - 20px));
+  background: var(--chrome); color: var(--chrome-ink); border-radius: 18px; box-shadow: var(--shadow); padding: 12px; display: grid; gap: 10px;
+  transition: opacity 180ms ease, transform 220ms var(--ease-out); }
+@starting-style { .route-bar { opacity: 0; transform: translateX(-50%) translateY(14px); } }
+.rb-hint { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: .92em; padding: 2px 4px; }
+.rb-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.rb-stats div { background: var(--chrome-2); border-radius: 10px; padding: 7px 8px; }
+.rb-stats b { display: block; font-size: 1.02em; } .rb-stats span { font-size: .72em; color: var(--chrome-muted); }
+.rb-modes { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.rb-modes::-webkit-scrollbar { display: none; }
+.rb-modes button { flex: 0 0 auto; min-height: 34px; padding: 0 12px 0 10px; border-radius: 99px; font-size: .82em; gap: 6px; }
+.rb-modes button::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--k); }
+.route-bar .rb-modes button { background: var(--chrome-2); color: var(--chrome-ink); border-color: transparent; }
+.rb-modes button[aria-checked=true] { border-color: var(--k); background: color-mix(in srgb, var(--k) 22%, var(--panel)); font-weight: 650; }
+.route-bar .rb-modes button[aria-checked=true] { background: color-mix(in srgb, var(--k) 35%, var(--chrome)); }
+.rb-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.route-bar .rb-actions button:not(.primary) { background: var(--chrome-2); color: var(--chrome-ink); border-color: transparent; }
+.route-bar .rb-actions .primary { min-width: 96px; }
+.route-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.diff { display: inline-flex; align-items: center; gap: 6px; margin: 10px 0 2px; padding: 5px 12px; border-radius: 99px; font-weight: 650; font-size: .9em; background: var(--panel-2); }
+.diff-0 { background: var(--ok-soft); color: var(--ok); } .diff-1 { background: var(--warn-soft); color: var(--warn); }
+.diff-2, .diff-3 { background: var(--bad-soft); color: var(--bad); }
+.fine { font-size: .78em; margin: 6px 0 0; }
+.prof-wrap { margin-top: 12px; border: 1px solid var(--line); border-radius: var(--r); padding: 8px 8px 6px; background: var(--panel); }
+.prof { width: 100%; height: 170px; display: block; touch-action: none; cursor: crosshair; }
+.pg-grid { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.pg-lbl { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.pg-cur { stroke: var(--ink); stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-dasharray: 3 3; }
+.prof-read { font-size: .82em; padding: 4px 4px 0; min-height: 1.4em; }
+.route-sw { width: 22px; height: 6px; border-radius: 99px; flex: 0 0 auto; box-shadow: 0 0 0 1.5px rgba(0,0,0,.35); }
+@media (max-width: 760px) { .chrome-b #routeBtn span { display: none; } .chrome-b #routeBtn { width: 50px; padding: 0; } .rb-stats b { font-size: .95em; } }
+.pill-btn span { white-space: nowrap; }

@@ -1,19 +1,20 @@
-import * as db from './db.js?v=20261112230742-8367d80';
-import { store } from './db.js?v=20261112230742-8367d80';
-import * as M from './map.js?v=20261112230742-8367d80';
-import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261112230742-8367d80';
-import { $, $$, esc, toast, closeModal, requestClose, todayISO, earthLink } from './util.js?v=20261112230742-8367d80';
-import { REGS_URL, BASES } from './config.js?v=20261112230742-8367d80';
-import { sunInfo } from './views/sun.js?v=20261112230742-8367d80';
-import { mvprSummary, mvprStatus } from './mvpr.js?v=20261112230742-8367d80';
-import { icon, hydrateIcons } from './icons.js?v=20261112230742-8367d80';
-import * as V from './vis.js?v=20261112230742-8367d80';
+import * as db from './db.js?v=20261112232000-e9fd32d';
+import { store } from './db.js?v=20261112232000-e9fd32d';
+import * as M from './map.js?v=20261112232000-e9fd32d';
+import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261112232000-e9fd32d';
+import { $, $$, esc, toast, closeModal, requestClose, todayISO, earthLink } from './util.js?v=20261112232000-e9fd32d';
+import { REGS_URL, BASES } from './config.js?v=20261112232000-e9fd32d';
+import { sunInfo } from './views/sun.js?v=20261112232000-e9fd32d';
+import { mvprSummary, mvprStatus } from './mvpr.js?v=20261112232000-e9fd32d';
+import { icon, hydrateIcons } from './icons.js?v=20261112232000-e9fd32d';
+import * as R from './route.js?v=20261112232000-e9fd32d';
+import * as V from './vis.js?v=20261112232000-e9fd32d';
 
 const views = {};
 const viewModules = {
-  layers: () => import('./views/layers.js?v=20261112230742-8367d80'), open: () => import('./views/open.js?v=20261112230742-8367d80'), log: () => import('./views/log.js?v=20261112230742-8367d80'),
-  trips: () => import('./views/trips.js?v=20261112230742-8367d80'), tags: () => import('./views/tags.js?v=20261112230742-8367d80'), insights: () => import('./views/insights.js?v=20261112230742-8367d80'),
-  import: () => import('./views/import.js?v=20261112230742-8367d80'), sun: () => import('./views/sun.js?v=20261112230742-8367d80'), more: () => import('./views/more.js?v=20261112230742-8367d80'),
+  layers: () => import('./views/layers.js?v=20261112232000-e9fd32d'), open: () => import('./views/open.js?v=20261112232000-e9fd32d'), log: () => import('./views/log.js?v=20261112232000-e9fd32d'),
+  trips: () => import('./views/trips.js?v=20261112232000-e9fd32d'), tags: () => import('./views/tags.js?v=20261112232000-e9fd32d'), insights: () => import('./views/insights.js?v=20261112232000-e9fd32d'),
+  import: () => import('./views/import.js?v=20261112232000-e9fd32d'), sun: () => import('./views/sun.js?v=20261112232000-e9fd32d'), more: () => import('./views/more.js?v=20261112232000-e9fd32d'),
 };
 export const app = { tab: 'layers', date: todayISO(), dropMode: false };
 const isPhone = () => innerWidth <= 760;
@@ -48,7 +49,7 @@ export function closePanel() {
   M.setSelection?.(null); M.map?.setPadding({ left: 0, top: 0, right: 0, bottom: 0 });
 }
 export async function openWmu(mu, region) {
-  const { showWmu } = await import('./views/wmu.js?v=20261112230742-8367d80');
+  const { showWmu } = await import('./views/wmu.js?v=20261112232000-e9fd32d');
   if (app.tab === 'open') views.open?.onLeave?.();
   $$('#tabs button').forEach((b) => b.classList.remove('active'));
   openPanel(); const v = $('#view'); v.scrollTop = 0;
@@ -174,17 +175,18 @@ function wireUI() {
   M.onMapState(syncChrome);
 
   $('#dropBtn').onclick = () => setDropMode(true);
+  $('#routeBtn').onclick = () => { popup?.remove(); setDropMode(false); if (isPhone()) closePanel(); R.start(); };
   $('#dropCancel').onclick = () => { setDropMode(false); if (app.pickHandler) { app.pickHandler = null; $('#app').classList.remove('pick-mode'); } };
   M.map.on('moveend', saveMapPrefs);
   $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal' || e.target.closest('.modal-x')) requestClose(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { requestClose(); setDropMode(false); toggleBasePop(false); } });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { requestClose(); setDropMode(false); toggleBasePop(false); if (R.drawing()) R.stop(); } });
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const { act, id } = b.dataset;
-    if (act === 'edit-spot') (await import('./views/log.js?v=20261112230742-8367d80')).openSpotForm(store.spots.find((s) => s.id === id));
-    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261112230742-8367d80')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'edit-spot') (await import('./views/log.js?v=20261112232000-e9fd32d')).openSpotForm(store.spots.find((s) => s.id === id));
+    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261112232000-e9fd32d')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
     if (act === 'wmu') { e.preventDefault(); popup?.remove(); M.selectWmu(b.dataset.mu); openWmu(b.dataset.mu, b.dataset.region); }
-    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261112230742-8367d80')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261112232000-e9fd32d')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
   });
   document.addEventListener('submit', (e) => {
     if (!e.target.matches('[data-wmuform]')) return; e.preventDefault();
@@ -192,23 +194,25 @@ function wireUI() {
   });
 
   M.onMapClick(async (e) => {
+    if (R.drawing()) { R.add(e.lngLat); return; }
     if (app.dropMode) {
       setDropMode(false);
-      const { openSpotForm } = await import('./views/log.js?v=20261112230742-8367d80');
+      const { openSpotForm } = await import('./views/log.js?v=20261112232000-e9fd32d');
       const form = openSpotForm({ lat: e.lngLat.lat, lon: e.lngLat.lng });
       const res = await M.identify(e.lngLat, ['wmu']);
       const w = M.wmuFromIdentify(res); if (w && form?.wmu && !form.wmu.value) form.wmu.value = w;
       return;
     }
     if (app.pickHandler) { const h = app.pickHandler; app.pickHandler = null; $('#dropHint').classList.add('hidden'); $('#app').classList.remove('pick-mode'); h(e.lngLat); return; }
-    const f = M.map.queryRenderedFeatures(e.point, { layers: ['spots-dot', 'tracks-line'] })[0];
+    const hit = (layers, r) => M.map.queryRenderedFeatures([[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]], { layers })[0];
+    const f = hit(['spots-dot'], 4) || hit(['tracks-line'], 10);
     if (f?.layer.id === 'spots-dot') {
       const s = store.spots.find((x) => x.id === f.properties.id);
       if (s) { showPopup(e.lngLat, M.spotPopupHTML(s)); return; }
     }
     if (f?.layer.id === 'tracks-line') {
       const t = store.tracks.find((x) => x.id === f.properties.id);
-      if (t) { showPopup(e.lngLat, `<div class="popup"><h4>${icon('route', { size: 18 })}${esc(t.name || 'Track')}</h4><div class="muted">${esc(t.hunter || '')}${t.distance_km ? ' · ' + (+t.distance_km).toFixed(1) + ' km' : ''}</div></div>`); return; }
+      if (t) { popup?.remove(); R.openRoute(t); return; }
     }
     identifyPopup(e.lngLat);
   });

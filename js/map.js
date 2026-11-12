@@ -1,8 +1,9 @@
 // MapLibre map: base styles, 3D terrain, BC WMS overlays, identify, waypoints/tracks, open-WMU shading.
-import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261112230742-8367d80';
-import { store } from './db.js?v=20261112230742-8367d80';
-import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261112230742-8367d80';
-import { esc, earthLink, fmtDT } from './util.js?v=20261112230742-8367d80';
+import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261112232000-e9fd32d';
+import { store } from './db.js?v=20261112232000-e9fd32d';
+import { MODES, fmtKm } from './elevation.js?v=20261112232000-e9fd32d';
+import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261112232000-e9fd32d';
+import { esc, earthLink, fmtDT } from './util.js?v=20261112232000-e9fd32d';
 
 export let map;
 const state = { base: 'sat', terrain: false, exag: 1.5, hillshade: false, ref: false, hiddenWmu: [], layers: {}, opacity: {}, shade: null, custom: [] };
@@ -239,7 +240,20 @@ export const wmuFromIdentify = (res) => res.results?.wmu?.feats?.[0]?.[WMU_FIELD
 // ---- Waypoints & tracks ----
 function addDataLayers() {
   map.addSource('tracks', { type: 'geojson', data: tracksGeo() });
-  map.addLayer({ id: 'tracks-line', type: 'line', source: 'tracks', paint: { 'line-color': '#ff3d7f', 'line-width': 3, 'line-opacity': 0.85 } });
+  map.addLayer({ id: 'tracks-casing', type: 'line', source: 'tracks', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': 'rgba(0,0,0,.55)', 'line-width': 6 } });
+  map.addLayer({ id: 'tracks-line', type: 'line', source: 'tracks', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': 3.5 } });
+  // Labels sit at each route's midpoint (line-placed labels drop out when a long name spans map tiles).
+  map.addSource('tracks-mid', { type: 'geojson', data: tracksMid() });
+  map.addLayer({ id: 'tracks-label', type: 'symbol', source: 'tracks-mid', minzoom: 10.5,
+    layout: { 'text-field': ['get', 'label'], 'text-font': ['Open Sans Semibold'], 'text-size': 12, 'text-max-width': 12, 'text-offset': [0, -1.1], 'text-anchor': 'bottom', 'text-optional': true },
+    paint: { 'text-color': '#fff', 'text-halo-color': 'rgba(12,16,12,.9)', 'text-halo-width': 1.5 } });
+  // Route drawing + elevation-profile cursor
+  map.addSource('draw', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+  map.addSource('draw-pts', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+  map.addSource('cursor', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+  map.addLayer({ id: 'draw-casing', type: 'line', source: 'draw', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': 'rgba(0,0,0,.6)', 'line-width': 7 } });
+  map.addLayer({ id: 'draw-line', type: 'line', source: 'draw', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffd23f', 'line-width': 4, 'line-dasharray': [2, 1.2] } });
+  map.addLayer({ id: 'draw-pts', type: 'circle', source: 'draw-pts', paint: { 'circle-radius': ['case', ['==', ['get', 'end'], 1], 7, 5], 'circle-color': '#ffd23f', 'circle-stroke-color': '#111', 'circle-stroke-width': 2 } });
   map.addSource('spots', { type: 'geojson', data: spotsGeo() });
   // Waypoint badges: kind colour + animal/place silhouette, generated on demand (id 'hq|<kind>|<glyph>').
   map.on('styleimagemissing', (e) => {
@@ -268,11 +282,28 @@ function spotsGeo() {
   return { type: 'FeatureCollection', features: store.spots.filter(spotFilter).map((s) => ({ type: 'Feature', id: undefined, properties: { id: s.id, kind: s.kind, icon: `hq|${KINDS.some((k) => k.id === s.kind) ? s.kind : 'note'}|${glyphFor(s)}`, name: spotLabel(s), z: s.kind === 'kill' ? 3 : s.kind === 'sighting' ? 2 : 1 }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } })) };
 }
 function tracksGeo() {
-  return { type: 'FeatureCollection', features: store.tracks.map((t) => ({ type: 'Feature', properties: { id: t.id, name: t.name }, geometry: { type: 'LineString', coordinates: (t.coords || []).map((c) => [c[0], c[1]]) } })) };
+  return { type: 'FeatureCollection', features: store.tracks.filter(trackFilter).map((t) => ({ type: 'Feature',
+    properties: { id: t.id, name: t.name, color: MODES[t.extra?.mode]?.color || '#ff3d7f', label: [t.name, t.distance_km ? fmtKm(+t.distance_km) : ''].filter(Boolean).join(' · ') },
+    geometry: { type: 'LineString', coordinates: (t.coords || []).map((c) => [c[0], c[1]]) } })) };
+}
+function tracksMid() {
+  return { type: 'FeatureCollection', features: tracksGeo().features.filter((f) => f.geometry.coordinates.length > 1).map((f) => {
+    const c = f.geometry.coordinates; let total = 0; const seg = c.slice(1).map((p, i) => { const d = Math.hypot(p[0] - c[i][0], (p[1] - c[i][1]) * 1.5); total += d; return d; });
+    let acc = 0, i = 0; while (i < seg.length - 1 && acc + seg[i] < total / 2) acc += seg[i++];
+    const t = seg[i] ? (total / 2 - acc) / seg[i] : 0; const a = c[i], b = c[i + 1];
+    return { type: 'Feature', properties: f.properties, geometry: { type: 'Point', coordinates: [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t] } };
+  }) };
+}
+let trackFilter = () => true;
+export function setTrackFilter(fn) { trackFilter = fn || (() => true); refreshData(); }
+export function setDraw(line, pts) { map.getSource('draw')?.setData(line); map.getSource('draw-pts')?.setData(pts); }
+export function setCursor(lon, lat) {
+  if (!map.getLayer('cursor-pt')) map.addLayer({ id: 'cursor-pt', type: 'circle', source: 'cursor', paint: { 'circle-radius': 8, 'circle-color': '#fff', 'circle-stroke-color': '#d4661c', 'circle-stroke-width': 4 } });
+  map.getSource('cursor').setData(lon == null ? { type: 'FeatureCollection', features: [] } : { type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [lon, lat] } });
 }
 export function refreshData() {
   if (!map?.getSource('spots')) return;
-  map.getSource('spots').setData(spotsGeo()); map.getSource('tracks').setData(tracksGeo());
+  map.getSource('spots').setData(spotsGeo()); map.getSource('tracks').setData(tracksGeo()); map.getSource('tracks-mid')?.setData(tracksMid());
 }
 export function setSelection(fc) { map.getSource('sel')?.setData(fc || { type: 'FeatureCollection', features: [] }); if (!fc) selectWmu(null); }
 export function setHotspots(fc) { map.getSource('hot')?.setData(fc || { type: 'FeatureCollection', features: [] }); }
