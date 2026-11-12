@@ -1,6 +1,7 @@
 import { store, hunters } from '../db.js';
 import { esc, opts, yearOf, groupBy } from '../util.js';
 import * as M from '../map.js';
+import { harvested } from '../vis.js';
 
 const f = { hunter: '', species: '', from: '', to: '' };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -27,11 +28,11 @@ function draw(v) {
   const trips = store.trips.filter((t) => (!f.hunter || t.hunter === f.hunter) && (!f.species || t.species === f.species) && okY(yearOf(t.date_start)));
   const spots = store.spots.filter((s) => (!f.hunter || s.hunter === f.hunter) && (!f.species || s.species === f.species) && (!s.observed_at || okY(yearOf(s.observed_at))));
   const kills = spots.filter((s) => s.kind === 'kill');
-  const hrs = trips.reduce((a, t) => a + (+t.hours || 0), 0), harv = trips.filter((t) => t.result === 'harvest').length;
+  const hrs = trips.reduce((a, t) => a + (+t.hours || 0), 0), harv = trips.filter((t) => harvested(t)).length;
   const seen = trips.reduce((a, t) => a + (+t.animals_seen || 0), 0);
   const tripStats = (key) => {
     const g = groupBy(trips, key);
-    return [...g].map(([k, ts]) => { const h = ts.filter((t) => t.result === 'harvest').length; const hr = ts.reduce((a, t) => a + (+t.hours || 0), 0); return { k, n: ts.length, h, rate: h / ts.length, hr, hph: h ? hr / h : null }; });
+    return [...g].map(([k, ts]) => { const h = ts.filter((t) => harvested(t)).length; const hr = ts.reduce((a, t) => a + (+t.hours || 0), 0); return { k, n: ts.length, h, rate: h / ts.length, hr, hph: h ? hr / h : null }; });
   };
   const table = (title, rows, order) => {
     if (!rows.length) return '';
@@ -81,7 +82,7 @@ export function hotspots(trips, spots) {
   const cell = (lat, lon) => { const i = Math.floor(lat / DLAT), j = Math.floor(lon / DLON), k = i + ':' + j;
     if (!m.has(k)) m.set(k, { i, j, lat: (i + 0.5) * DLAT, lon: (j + 0.5) * DLON, kills: 0, sight: 0, hours: 0, trips: 0, wmus: new Map() }); return m.get(k); };
   for (const s of spots) { const c = cell(s.lat, s.lon); if (s.kind === 'kill') c.kills++; if (s.kind === 'sighting') c.sight++; if (s.wmu) c.wmus.set(s.wmu, (c.wmus.get(s.wmu) || 0) + 1); }
-  for (const t of trips) { if (t.lat == null || t.lon == null) continue; const c = cell(+t.lat, +t.lon); c.hours += +t.hours || 0; c.trips++; if (t.result === 'harvest' && !spots.some((s) => s.kind === 'kill')) c.kills++; c.sight += +t.animals_seen ? 1 : 0; }
+  for (const t of trips) { if (t.lat == null || t.lon == null) continue; const c = cell(+t.lat, +t.lon); c.hours += +t.hours || 0; c.trips++; if (harvested(t) && !spots.some((s) => s.kind === 'kill')) c.kills++; c.sight += +t.animals_seen ? 1 : 0; }
   const out = [...m.values()].map((c) => ({ ...c, wmu: [...c.wmus].sort((a, b) => b[1] - a[1])[0]?.[0] || '',
     cls: c.kills > 0 ? 'productive' : c.hours >= 10 ? 'cold' : c.sight >= 2 && c.hours < 5 ? 'under-scouted' : 'neutral' }));
   return out.sort((a, b) => b.kills - a.kills || b.sight - a.sight || b.hours - a.hours);

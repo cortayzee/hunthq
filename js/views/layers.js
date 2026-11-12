@@ -5,8 +5,8 @@ import { esc } from '../util.js';
 import { icon } from '../icons.js';
 import { saveMapPrefs } from '../main.js';
 import { muSort } from '../seasons.js';
+import * as V from '../vis.js';
 
-const shown = { kinds: new Set(KINDS.map((k) => k.id)), hunter: '' };
 const GROUPS = ['Boundaries', 'Access', 'LEH', 'Land', 'Custom'];
 const REGION_ORDER = ['Vancouver Island', 'Lower Mainland', 'Thompson', 'Kootenay', 'Cariboo', 'Skeena', 'Omineca', 'Peace', 'Okanagan'];
 
@@ -27,8 +27,8 @@ export function render(v) {
   <div id="wmuList"></div>
   <div class="section-h"><h3>My waypoints</h3></div>
   <div id="kindList"></div>
-  <label style="margin-top:10px">Hunter <select id="spotHunter"><option value="">All hunters</option>${hunters().map((h) => `<option ${h === shown.hunter ? 'selected' : ''}>${esc(h)}</option>`).join('')}</select></label>
-  <p class="muted">${store.spots.length} waypoints · ${store.tracks.length} tracks. Base map, roads &amp; 3D are on the map button at right.</p>
+  <label style="margin-top:10px">Hunter <select id="spotHunter"><option value="">All hunters</option>${hunters().map((h) => `<option>${esc(h)}</option>`).join('')}</select></label>
+  <p class="muted">${store.spots.length} waypoints · ${store.tracks.length} tracks. Hide by hunt, group or year in Waypoints. Base map, roads &amp; 3D are on the map button at right.</p>
   <p class="muted">BC layers © Province of BC (OGL-BC). Tap the map to see the WMU, seasons and whatever layers are switched on.</p>`;
   const q = () => v.querySelector('#lyrSearch').value.trim().toLowerCase();
 
@@ -91,9 +91,8 @@ export function render(v) {
   v.querySelector('#wmuAll').onclick = () => { M.setWmuHidden([]); if (!M.layerOn('wmu')) M.setLayer('wmu', true); drawLayers(); drawWmu(); saveMapPrefs(); };
 
   const kl = v.querySelector('#kindList');
-  kl.innerHTML = KINDS.map((k) => `<div class="layer-item"><label class="switch" style="min-height:0;flex:1"><input type="checkbox" data-k="${k.id}" ${shown.kinds.has(k.id) ? 'checked' : ''}>
+  kl.innerHTML = KINDS.map((k) => `<div class="layer-item"><label class="switch" style="min-height:0;flex:1"><input type="checkbox" data-k="${k.id}" ${V.shown('kinds', k.id) ? 'checked' : ''}>
     <span class="swatch" style="background:${k.color};border-radius:50%"></span><span class="name">${k.name}</span></label><span class="muted tnum">${store.spots.filter((s) => s.kind === k.id).length}</span></div>`).join('');
-  const apply = () => M.setSpotFilter((s) => shown.kinds.has(s.kind || 'note') && (!shown.hunter || s.hunter === shown.hunter));
-  kl.onchange = (e) => { const k = e.target.dataset.k; e.target.checked ? shown.kinds.add(k) : shown.kinds.delete(k); apply(); };
-  v.querySelector('#spotHunter').onchange = (e) => { shown.hunter = e.target.value; apply(); };
+  kl.onchange = (e) => { const k = e.target.dataset.k; if (k) V.setShown('kinds', k, e.target.checked); };
+  v.querySelector('#spotHunter').onchange = (e) => { for (const h of hunters()) V.setShown('hunters', h, !e.target.value || e.target.value === h); };
 }

@@ -4,9 +4,12 @@ import { KINDS, SPECIES, WEAPONS, SEXES, kindColor } from '../config.js';
 import { esc, opts, modal, closeModal, requestClose, markDirty, toast, formData, localDT, fmtDT, earthLink, parseLatLon, parseCSV, yearOf } from '../util.js';
 import * as M from '../map.js';
 import { normMU } from '../seasons.js';
-import { pickOnMap } from '../main.js';
+import { pickOnMap, closePanel } from '../main.js';
 import { exportKML, exportGPX, exportCSV } from '../exporters.js';
-import { glyphSVG, animalFor, sexTerms, hasPoints, autoName, spotLabel } from '../animals.js';
+import { glyphSVG, glyphFor, animalFor, sexTerms, hasPoints, autoName, spotLabel } from '../animals.js';
+import * as V from '../vis.js';
+import { tripOf, groupOf, tripTitle, spotYear } from '../vis.js';
+import { icon } from '../icons.js';
 
 const PICK = [['Moose', 'moose'], ['Elk', 'elk'], ['Mule Deer', 'deer'], ['White-tailed Deer', 'deer'], ['Black Bear', 'bear'], ['Grizzly Bear', 'bear'],
   ['Bighorn Sheep', 'sheep'], ['Mountain Goat', 'goat'], ['Caribou', 'caribou'], ['Cougar', 'cougar'], ['Wolf', 'wolf'], ['Coyote', 'wolf'],
@@ -16,53 +19,94 @@ const KIND_GLYPH = { kill: null, sighting: null, stand: 'stand', camp: 'camp', t
 export const hunterDatalist = () => `<datalist id="hunterList">${hunters().map((h) => `<option value="${esc(h)}">`).join('')}</datalist>`;
 export const speciesDatalist = () => `<datalist id="speciesList">${SPECIES.map((s) => `<option value="${esc(s)}">`).join('')}</datalist>`;
 
-const flt = { q: '', kind: '', hunter: '', year: '', species: '' };
+// ---- Waypoints page: what's on the map (types / years / hunters), then Groups, Hunts and ungrouped lists ----
+const ui = { q: '', open: new Set(['groups', 'hunts', 'loose']) };
+const fmtShort = (d) => (d ? new Date(d).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Vancouver' }) : '');
+export const spotBadge = (s, size = 30) => `<span class="spot-badge" style="width:${size}px;height:${size}px;background:${kindColor(s.kind)}">${glyphSVG(glyphFor(s), { size: Math.round(size * 0.66), color: '#fff', bg: kindColor(s.kind) })}</span>`;
+export function spotRow(s, { showTrip = false } = {}) {
+  const t = tripOf(s);
+  const when = s.observed_at ? fmtShort(s.observed_at) : s.extra?.date_range ? 'During hunt' : '';
+  const sub = [when, s.hunter && s.hunter !== 'Me' ? s.hunter : '', showTrip && t ? tripTitle(t) : '', s.wmu ? 'WMU ' + s.wmu : ''].filter(Boolean).join(' · ');
+  return `<div class="wp-row ${V.isVisible(s) ? '' : 'off'}" data-fly="${s.id}">${spotBadge(s)}<div class="t"><b>${esc(spotLabel(s))}</b><span class="muted">${esc(sub)}</span></div>
+    <button class="icon-btn" data-act="edit-spot" data-id="${s.id}" aria-label="Edit ${esc(spotLabel(s))}">${icon('chevR', { size: 18 })}</button></div>`;
+}
+const chip = (kind, key, label, count, extra = '') => `<button class="f-chip" data-vk="${kind}" data-vkey="${esc(key)}" aria-pressed="${V.shown(kind, key)}">${extra}<span>${esc(label)}</span><span class="n tnum">${count}</span></button>`;
+
 export function filteredSpots() {
-  const q = flt.q.toLowerCase();
-  return store.spots.filter((s) => (!flt.kind || s.kind === flt.kind) && (!flt.hunter || s.hunter === flt.hunter) && (!flt.species || s.species === flt.species)
-    && (!flt.year || String(yearOf(s.observed_at)) === flt.year) && (!q || [s.name, s.notes, s.species, s.wmu, s.hunter].join(' ').toLowerCase().includes(q)));
+  const q = ui.q.toLowerCase();
+  return store.spots.filter((s) => !q || [spotLabel(s), s.notes, s.species, s.wmu, s.hunter, tripOf(s) && tripTitle(tripOf(s)), groupOf(s)?.name].join(' ').toLowerCase().includes(q));
 }
 
 export function render(v) {
-  const years = [...new Set(store.spots.map((s) => yearOf(s.observed_at)).filter(Boolean))].sort((a, b) => b - a);
-  const species = [...new Set(store.spots.map((s) => s.species).filter(Boolean))].sort();
-  v.innerHTML = `<h2>Waypoints</h2>
-  <div class="row"><button class="primary" id="newSpot">＋ New</button><button id="bulkSpot">Bulk entry</button>
-  <button id="expKml">Export KML</button><button id="expGpx">GPX</button><button id="expCsv">CSV</button></div>
-  <div class="grid2" style="margin-top:8px">
-    <input id="fq" placeholder="Search…" value="${esc(flt.q)}" class="span2">
-    <select id="fkind"><option value="">All kinds</option>${opts(KINDS, flt.kind)}</select>
-    <select id="fhunter"><option value="">All hunters</option>${opts(hunters(), flt.hunter)}</select>
-    <select id="fyear"><option value="">All years</option>${opts(years.map(String), flt.year)}</select>
-    <select id="fsp"><option value="">All species</option>${opts(species, flt.species)}</select>
+  const all = store.spots; const list = filteredSpots();
+  const years = [...new Set(all.map(spotYear))].sort((a, b) => (a === 'none' ? 1 : b === 'none' ? -1 : b - a));
+  const kinds = KINDS.filter((k) => all.some((s) => (s.kind || 'note') === k.id));
+  const hs = [...new Set(all.map((s) => s.hunter || 'Me'))];
+  const grps = V.groups(); const trips = store.trips.filter((t) => list.some((s) => s.extra?.trip_id === t.id)).sort((a, b) => String(b.date_start).localeCompare(String(a.date_start)));
+  const loose = list.filter((s) => !groupOf(s) && !tripOf(s));
+  const sec = (id, title, body, count, actions = '') => `<details class="wp-sec" data-sec="${id}" ${ui.open.has(id) || ui.q ? 'open' : ''}><summary>${icon('chevR', { size: 16 })}<h3>${title}</h3><span class="muted tnum">${count}</span>${actions}</summary>${body}</details>`;
+  const block = (key, kind, title, color, spots, meta) => `<div class="wp-group ${V.shown(kind, key) ? '' : 'off'}">
+      <div class="wp-group-h"><label class="switch" title="Show on map"><input type="checkbox" data-vk="${kind}" data-vkey="${esc(key)}" ${V.shown(kind, key) ? 'checked' : ''} aria-label="Show ${esc(title)} on map"></label>
+      <span class="dot" style="background:${color}"></span><div class="t"><b>${esc(title)}</b><span class="muted">${meta}</span></div>
+      ${kind === 'groups' ? `<button class="icon-btn" data-grp-menu="${esc(key)}" aria-label="Group options">${icon('dots', { size: 18 })}</button>` : `<button class="icon-btn" data-open-trip="${esc(key)}" aria-label="Open hunt">${icon('chevR', { size: 18 })}</button>`}</div>
+      ${spots.map((s) => spotRow(s)).join('') || '<p class="muted small-pad">No waypoints yet. Pick this group when you add or edit one.</p>'}</div>`;
+
+  v.innerHTML = `<div class="page-h"><h2>Waypoints</h2>
+    <div class="row"><button class="primary" id="newSpot">${icon('pinPlus', { size: 18 })}New</button>
+    <details class="menu"><summary class="icon-btn" aria-label="More">${icon('dots')}</summary><div class="menu-pop">
+      <button data-m="bulk">${icon('list', { size: 18 })}Bulk entry</button><button data-m="group">${icon('plus', { size: 18 })}New group</button>
+      <button data-m="kml">${icon('globe', { size: 18 })}Export KML (Google Earth)</button><button data-m="gpx">${icon('route', { size: 18 })}Export GPX</button><button data-m="csv">${icon('upload', { size: 18 })}Export CSV</button></div></details></div></div>
+  <input id="fq" type="search" placeholder="Search waypoints" value="${esc(ui.q)}" style="width:100%" aria-label="Search waypoints">
+  <div class="vis-box">
+    <div class="vis-h"><b>Show on map</b>${V.anyHidden() ? '<button class="link" id="showAll">Show everything</button>' : ''}</div>
+    <div class="f-row">${kinds.map((k) => chip('kinds', k.id, k.name.replace(' / blind', '').replace(' / parking', ''), all.filter((s) => (s.kind || 'note') === k.id).length, `<span class="spot-badge" style="width:20px;height:20px;background:${k.color}"></span>`)).join('')}</div>
+    ${years.length > 1 || years[0] !== 'none' ? `<div class="f-row">${years.map((y) => chip('years', y, y === 'none' ? 'No date' : y, all.filter((s) => spotYear(s) === y).length)).join('')}</div>` : ''}
+    ${hs.length > 1 ? `<div class="f-row">${hs.map((h) => chip('hunters', h, h, all.filter((s) => (s.hunter || 'Me') === h).length)).join('')}</div>` : ''}
   </div>
-  <div class="row" style="margin-top:6px"><label style="color:var(--ink)"><input type="checkbox" id="fmap"> Show only these on map</label></div>
-  <div id="spotList"></div>`;
-  const draw = () => {
-    const rows = filteredSpots().sort((a, b) => String(b.observed_at || b.created_at).localeCompare(String(a.observed_at || a.created_at)));
-    v.querySelector('#spotList').innerHTML = `<p class="muted">${rows.length} of ${store.spots.length}</p><div class="scroll-x"><table><thead><tr><th></th><th>Name / species</th><th>When</th><th>Hunter</th><th>WMU</th><th></th></tr></thead><tbody>${rows.slice(0, 500).map((s) => `
-      <tr><td><span class="swatch" style="background:${kindColor(s.kind)};border-radius:50%"></span></td>
-      <td><a href="#" data-fly="${s.id}">${esc(spotLabel(s))}</a><div class="muted">${esc([s.species, s.sex, s.weapon].filter(Boolean).join(' · '))}</div></td>
-      <td>${esc(fmtDT(s.observed_at))}</td><td>${esc(s.hunter || '')}</td><td>${esc(s.wmu || '')}</td>
-      <td><button class="small" data-act="edit-spot" data-id="${s.id}">Edit</button></td></tr>`).join('')}</tbody></table></div>${rows.length > 500 ? '<p class="muted">Showing first 500.</p>' : ''}`;
-    if (v.querySelector('#fmap').checked) { const ids = new Set(rows.map((r) => r.id)); M.setSpotFilter((s) => ids.has(s.id)); }
-  };
-  const read = () => Object.assign(flt, { q: v.querySelector('#fq').value, kind: v.querySelector('#fkind').value, hunter: v.querySelector('#fhunter').value, year: v.querySelector('#fyear').value, species: v.querySelector('#fsp').value });
-  v.querySelectorAll('select,#fq').forEach((el) => el.addEventListener('input', () => { read(); draw(); }));
-  v.querySelector('#fmap').onchange = (e) => { if (!e.target.checked) M.setSpotFilter(null); draw(); };
-  v.querySelector('#spotList').onclick = (e) => {
-    const id = e.target.dataset.fly; if (!id) return; e.preventDefault();
-    const s = store.spots.find((x) => x.id === id); M.flyTo(s.lon, s.lat, 14);
+  ${!all.length ? `<div class="empty">${icon('pin', { size: 22 })}<b>No waypoints yet</b><span class="muted">Tap “Drop waypoint” on the map, or import from onX / iHunter.</span></div>` : ''}
+  ${grps.length || all.length ? sec('groups', 'Groups', `<p class="muted sec-help">Permanent spots: camps, stands, cams, access. They stay on the map no matter which years or hunts are hidden.</p>
+    ${grps.map((g) => { const sp = list.filter((s) => s.extra?.group_id === g.id); return block(g.id, 'groups', g.name, g.color, sp, `${sp.length} waypoint${sp.length === 1 ? '' : 's'}`); }).join('')}
+    <button class="small" data-m="group">${icon('plus', { size: 16 })}New group</button>`, grps.length) : ''}
+  ${trips.length ? sec('hunts', 'Hunts', trips.map((t) => { const sp = list.filter((s) => s.extra?.trip_id === t.id); return block(t.id, 'trips', tripTitle(t), '#d4661c', sp, `${dateSpan(t)} · ${sp.length} waypoint${sp.length === 1 ? '' : 's'}`); }).join(''), trips.length) : ''}
+  ${loose.length ? sec('loose', 'Not grouped', loose.sort((a, b) => String(b.observed_at || b.created_at).localeCompare(String(a.observed_at || a.created_at))).map((s) => spotRow(s, { showTrip: true })).join(''), loose.length) : ''}`;
+
+  v.querySelector('#fq').oninput = (e) => { ui.q = e.target.value; const pos = e.target.selectionStart; render(v); const i = v.querySelector('#fq'); i.focus(); i.setSelectionRange(pos, pos); };
+  v.addEventListener('toggle', (e) => { const id = e.target.dataset?.sec; if (id && !ui.q) e.target.open ? ui.open.add(id) : ui.open.delete(id); }, true);
+  v.onchange = (e) => { const el = e.target; if (el.dataset.vk) { V.setShown(el.dataset.vk, el.dataset.vkey, el.checked); render(v); } };
+  v.onclick = async (e) => {
+    const c = e.target.closest('button.f-chip'); if (c) { V.setShown(c.dataset.vk, c.dataset.vkey, c.getAttribute('aria-pressed') !== 'true'); render(v); return; }
+    if (e.target.closest('#showAll')) { V.showAll(); render(v); return; }
+    const m = e.target.closest('[data-m]')?.dataset.m;
+    if (m) {
+      e.target.closest('details.menu')?.removeAttribute('open');
+      if (m === 'bulk') bulkSpots();
+      if (m === 'group') { const n = prompt('Group name (e.g. Camps, Stands, Palliser River)'); if (n?.trim()) { await V.addGroup(n); ui.open.add('groups'); render(v); } }
+      if (m === 'kml') exportKML(store.spots.filter((s) => V.isVisible(s)), store.tracks);
+      if (m === 'gpx') exportGPX(store.spots.filter((s) => V.isVisible(s)), store.tracks);
+      if (m === 'csv') exportCSV(store.spots);
+      return;
+    }
+    const gm = e.target.closest('[data-grp-menu]')?.dataset.grpMenu;
+    if (gm) {
+      const g = V.groups().find((x) => x.id === gm); const a = prompt(`Rename “${g.name}”, or type DELETE to remove the group (its waypoints are kept):`, g.name);
+      if (a === 'DELETE') await V.deleteGroup(gm); else if (a?.trim() && a !== g.name) await V.renameGroup(gm, a.trim());
+      render(v); return;
+    }
+    const ot = e.target.closest('[data-open-trip]')?.dataset.openTrip; if (ot) { (await import('./trips.js')).openTrip(ot); return; }
+    if (e.target.closest('[data-act]')) return;
+    const row = e.target.closest('[data-fly]');
+    if (row) { const s = store.spots.find((x) => x.id === row.dataset.fly); if (s) { if (!V.isVisible(s)) toast('That waypoint is hidden by a filter above'); M.flyTo(s.lon, s.lat, 14); if (innerWidth <= 760) closePanel(); } }
   };
   v.querySelector('#newSpot').onclick = async () => { const ll = await pickOnMap('Tap the map where the waypoint goes'); openSpotForm({ lat: ll.lat, lon: ll.lng }, true); };
-  v.querySelector('#bulkSpot').onclick = () => bulkSpots();
-  v.querySelector('#expKml').onclick = () => exportKML(filteredSpots(), flt.hunter || flt.kind ? [] : store.tracks);
-  v.querySelector('#expGpx').onclick = () => exportGPX(filteredSpots(), flt.hunter || flt.kind ? [] : store.tracks);
-  v.querySelector('#expCsv').onclick = () => exportCSV(filteredSpots());
-  draw();
-  render.redraw = draw;
+  render.v = v;
 }
-export function onData(what) { if (what === 'spots' || what === 'all') render.redraw?.(); }
+export function onData(what) { if (['spots', 'all', 'trips'].includes(what) && render.v?.isConnected) render(render.v); }
+export const dateSpan = (t) => {
+  const a = new Date(t.date_start + 'T12:00'), b = t.date_end ? new Date(t.date_end + 'T12:00') : a;
+  const o = { month: 'short', day: 'numeric' };
+  if (+a === +b) return a.toLocaleDateString('en-CA', { ...o, year: 'numeric' });
+  return `${a.toLocaleDateString('en-CA', o)} – ${b.toLocaleDateString('en-CA', a.getMonth() === b.getMonth() ? { day: 'numeric' } : o)}, ${b.getFullYear()}`;
+};
 
 // ---- Single waypoint form (new or edit) ----
 let lastDefaults = { hunter: 'Me', kind: 'sighting' };
@@ -80,6 +124,8 @@ export function openSpotForm(s = {}, lookupWmu = false) {
     <label class="pts-field">Points <input name="points" type="number" min="1" max="20" inputmode="numeric" value="${esc(d.extra?.points ?? '')}" placeholder="e.g. 4"></label>
     <label>Name <input name="name" value="${esc(d.name || '')}" placeholder="Filled in for you"></label>
     <label>Hunter <input name="hunter" list="hunterList" value="${esc(d.hunter || 'Me')}"></label>
+    <label>Hunt <select name="trip_id"><option value="">None</option>${[...store.trips].sort((a, b) => String(b.date_start).localeCompare(String(a.date_start))).map((t) => `<option value="${t.id}" ${d.extra?.trip_id === t.id ? 'selected' : ''}>${esc(tripTitle(t))} (${esc(dateSpan(t))})</option>`).join('')}</select></label>
+    <label>Group <select name="group_id"><option value="">None</option>${V.groups().map((g) => `<option value="${g.id}" ${d.extra?.group_id === g.id ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}<option value="__new">New group…</option></select></label>
     <label>Date/time <input type="datetime-local" name="observed_at" value="${d.observed_at ? localDT(d.observed_at) : ''}"></label>
     <label>WMU <input name="wmu" value="${esc(d.wmu || '')}" placeholder="3-15"></label>
     <label>Weapon <select name="weapon">${opts(WEAPONS, d.weapon, { blank: true })}</select></label>
@@ -117,6 +163,11 @@ export function openSpotForm(s = {}, lookupWmu = false) {
   });
   form.species.addEventListener('input', () => { syncPick(); refresh(); });
   form.sex.addEventListener('change', refresh);
+  form.group_id.addEventListener('change', async () => {
+    if (form.group_id.value !== '__new') return;
+    const n = prompt('New group name'); if (!n?.trim()) { form.group_id.value = ''; return; }
+    const g = await V.addGroup(n); form.group_id.insertAdjacentHTML('beforeend', ''); const o = new Option(g.name, g.id, true, true); form.group_id.insertBefore(o, form.group_id.lastElementChild);
+  });
   form.querySelector('.cancel-btn').onclick = () => requestClose();
   refresh();
   if (lookupWmu && d.lat != null && !d.wmu) M.identify({ lng: d.lon, lat: d.lat }, ['wmu']).then((r) => { const w = M.wmuFromIdentify(r); if (w && !form.wmu.value) form.wmu.value = w; });
@@ -125,6 +176,7 @@ export function openSpotForm(s = {}, lookupWmu = false) {
     const o = formData(form); o.lat = +o.lat; o.lon = +o.lon; o.wmu = normMU(o.wmu) || null;
     const pts = form.querySelector('.pts-field').classList.contains('hidden') ? null : +o.points || null; delete o.points;
     o.extra = { ...(s.extra || {}), points: pts || undefined }; if (!pts) delete o.extra.points;
+    for (const k of ['trip_id', 'group_id']) { if (o[k]) o.extra[k] = o[k]; else delete o.extra[k]; delete o[k]; }
     if (!o.name) o.name = autoName(o);
     o.observed_at = o.observed_at ? new Date(o.observed_at).toISOString() : null;
     try {

@@ -119,6 +119,9 @@ export async function savePrefs(patch) {
   store.prefs = { ...store.prefs, ...patch };
   if (mode === 'local') localSave();
   else {
+    // Read-merge-write so a stale tab can't wipe keys another device (or Claude) saved.
+    const { data: cur } = await client().from('hunt_prefs').select('data').maybeSingle();
+    store.prefs = { ...(cur?.data || {}), ...store.prefs, ...patch };
     const { error } = await client().from('hunt_prefs').upsert({ user_id: user.id, data: store.prefs, updated_at: new Date().toISOString() });
     if (error) throw error;
   }

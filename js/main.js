@@ -7,6 +7,7 @@ import { REGS_URL, BASES } from './config.js';
 import { sunInfo } from './views/sun.js';
 import { mvprSummary, mvprStatus } from './mvpr.js';
 import { icon, hydrateIcons } from './icons.js';
+import * as V from './vis.js';
 
 const views = {};
 const viewModules = {
@@ -49,7 +50,7 @@ export async function openWmu(mu, region) {
   hydrateIcons(v);
 }
 db.onChange((what) => {
-  if (['spots', 'tracks', 'all'].includes(what)) M.refreshData();
+  if (['spots', 'tracks', 'all', 'trips'].includes(what)) V.apply();
   if (what !== 'prefs' && views[app.tab]?.onData && panelOpen()) views[app.tab].onData(what);
 });
 
@@ -80,6 +81,7 @@ async function start() {
   const saved = store.prefs.map || {};
   await M.initMap('map', store.prefs);
   if (saved.pitch && !saved.terrain) M.map.setPitch(0);
+  V.apply();
   wireUI();
   syncChrome();
   const t = (() => { try { return localStorage.getItem('hunthq_tab'); } catch { return null; } })();
