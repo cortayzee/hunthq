@@ -3,11 +3,12 @@ import { seasonsFor, openRange, fmtMD } from '../seasons.js';
 import { REGS_URL, BC_WFS, WMU_LAYER, WMU_FIELD } from '../config.js';
 import { esc, todayISO } from '../util.js';
 import * as M from '../map.js';
+import { icon } from '../icons.js';
 
 const BIG = /deer|moose|elk|goat|sheep|caribou|bison/i;
 const PRED = /bear|cougar|wolf|coyote|lynx|bobcat|wolverine|raccoon|skunk|fox|marten|fisher/i;
 export const category = (sp) => (BIG.test(sp) ? 'big' : PRED.test(sp) ? 'pred' : 'bird');
-const CATS = [['big', 'Big game', '🦌'], ['pred', 'Bears & predators', '🐻'], ['bird', 'Birds & small game', '🦆']];
+const CATS = [['big', 'Big game', 'deer'], ['pred', 'Bears & predators', 'paw'], ['bird', 'Birds & small game', 'bird']];
 let cat = 'big';
 
 let mvText = null;
@@ -36,10 +37,12 @@ export async function showWmu(view, mu, { region, date = todayISO(), onBack } = 
   if (!counts[cat].length) cat = CATS.find(([k]) => counts[k].length)?.[0] || 'big';
   const openNow = rows.filter((r) => openRange(r, date)).length;
   view.innerHTML = `<div class="wmu-head">
-    <div class="row" style="justify-content:space-between"><button class="link" id="wBack">‹ Back</button><button class="small" id="wJump">📍 Jump to boundary</button></div>
-    <h2 style="margin:.3em 0 0">WMU ${esc(mu)}</h2><div class="muted">${esc(region)} · ${openNow} season${openNow === 1 ? '' : 's'} open</div>
-    <label style="margin-top:6px">Date <input type="date" id="wDate" value="${date}"></label></div>
-  <div class="cat-tabs">${CATS.map(([k, n, ic]) => `<button data-cat="${k}" class="${k === cat ? 'active' : ''}" title="${n}"><span>${ic}</span>${n} <span class="muted">${counts[k].length}</span></button>`).join('')}</div>
+    <div class="row" style="justify-content:space-between"><button class="small" id="wBack">${icon('chevL', { size: 16 })}Back</button>
+      <div class="row"><button class="small" id="wHide">${icon(M.wmuHidden(mu) ? 'eye' : 'eyeOff', { size: 16 })}${M.wmuHidden(mu) ? 'Show on map' : 'Hide on map'}</button>
+      <button class="small primary" id="wJump">${icon('pin', { size: 16 })}Jump to boundary</button></div></div>
+    <h2>WMU ${esc(mu)}</h2><div class="muted">${esc(region)} · ${openNow} season${openNow === 1 ? '' : 's'} open${date === todayISO() ? ' today' : ''}</div>
+    <label style="margin-top:8px;max-width:220px">Date <input type="date" id="wDate" value="${date}"></label></div>
+  <div class="cat-tabs" role="tablist">${CATS.map(([k, n, ic]) => `<button role="tab" data-cat="${k}" class="${k === cat ? 'active' : ''}" aria-selected="${k === cat}">${icon(ic, { size: 22 })}<span>${n}</span><span class="n tnum">${counts[k].length}</span></button>`).join('')}</div>
   <div id="wList"></div>
   <details class="card"><summary><b>Motor vehicle closures in ${esc(region || 'this region')}</b> <span class="muted">(synopsis text)</span></summary><pre id="wMv" class="mv-text">Loading…</pre>
   <p class="muted">Tap the map to see if a mapped closure (MVPR layer) covers a spot.</p></details>
@@ -52,7 +55,7 @@ export async function showWmu(view, mu, { region, date = todayISO(), onBack } = 
       const ranges = r.d.filter((x) => x[0].length !== 10 || occurrence(x, d)[1] >= d).slice(0, 2);
       return `<div class="season">
         <div class="s-main"><div class="s-sp">${esc(r.sp)}</div>${r.c ? `<div>${esc(r.c)}</div>` : ''}${r.b ? `<div class="muted">Limit: ${esc(r.b)}</div>` : ''}${r.q ? `<div><b>${esc(r.q)}</b></div>` : ''}</div>
-        <div class="s-when"><div class="${on ? 'ok' : 'err'}"><b>${on ? '● Open' : '✕ Closed'}</b></div>${(ranges.length ? ranges : r.d.slice(-1)).map((x) => { const o = occurrence(x, d); return `<div class="muted">${fmtFull(o[0])} –<br>${fmtFull(o[1])}</div>`; }).join('')}</div>
+        <div class="s-when"><div class="status ${on ? 'ok' : 'err'}">${on ? 'Open' : 'Closed'}</div>${(ranges.length ? ranges : r.d.slice(-1)).map((x) => { const o = occurrence(x, d); return `<div class="muted">${fmtFull(o[0])} –<br>${fmtFull(o[1])}</div>`; }).join('')}</div>
         <details class="s-more"><summary>View restrictions</summary>
           ${r.n ? `<div class="notice">Has a footnote in the synopsis (p.${r.p}): may apply to only part of the MU, special antler rules, youth/senior, or island-only. Read it before hunting.</div>` : ''}
           ${!r.c && BIG.test(r.sp) ? '<div class="notice">Class not captured by the parser — check the synopsis table.</div>' : ''}
@@ -62,10 +65,11 @@ export async function showWmu(view, mu, { region, date = todayISO(), onBack } = 
   };
   draw();
   view.querySelector('#wDate').onchange = draw;
-  view.querySelector('.cat-tabs').onclick = (e) => { const b = e.target.closest('[data-cat]'); if (!b) return; cat = b.dataset.cat; view.querySelectorAll('.cat-tabs button').forEach((x) => x.classList.toggle('active', x === b)); draw(); };
+  view.querySelector('.cat-tabs').onclick = (e) => { const b = e.target.closest('[data-cat]'); if (!b) return; cat = b.dataset.cat; view.querySelectorAll('.cat-tabs button').forEach((x) => { x.classList.toggle('active', x === b); x.setAttribute('aria-selected', String(x === b)); }); draw(); };
+  view.querySelector('#wHide').onclick = () => { M.toggleWmu(mu, M.wmuHidden(mu)); showWmu(view, mu, { region, date: view.querySelector('#wDate').value, onBack }); };
   view.querySelector('#wBack').onclick = () => onBack?.();
   view.querySelector('#wJump').onclick = () => outline(mu, true);
-  outline(mu, false);
+  M.selectWmu(mu); outline(mu, false);
   regionClosures(region).then((t) => { const el = view.querySelector('#wMv'); if (el) el.textContent = t || 'Not found — see the synopsis.'; });
 }
 

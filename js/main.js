@@ -3,9 +3,10 @@ import { store } from './db.js';
 import * as M from './map.js';
 import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js';
 import { $, $$, esc, toast, closeModal, todayISO, earthLink } from './util.js';
-import { REGS_URL } from './config.js';
+import { REGS_URL, BASES } from './config.js';
 import { sunInfo } from './views/sun.js';
-import { mvprSummary } from './mvpr.js';
+import { mvprSummary, mvprStatus } from './mvpr.js';
+import { icon, hydrateIcons } from './icons.js';
 
 const views = {};
 const viewModules = {
@@ -14,32 +15,45 @@ const viewModules = {
   import: () => import('./views/import.js'), sun: () => import('./views/sun.js'), more: () => import('./views/more.js'),
 };
 export const app = { tab: 'layers', date: todayISO(), dropMode: false };
+const isPhone = () => innerWidth <= 760;
+const panelOpen = () => !$('#app').classList.contains('panel-closed');
 
 async function showTab(tab) {
   app.tab = tab;
   $$('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+  const tb = $(`#tabs button[data-tab="${tab}"]`), nav = $('#tabs');
+  if (tb) { const l = tb.offsetLeft - nav.offsetLeft, r = l + tb.offsetWidth; if (l < nav.scrollLeft) nav.scrollLeft = l - 8; else if (r > nav.scrollLeft + nav.clientWidth) nav.scrollLeft = r - nav.clientWidth + 24; }
   const mod = views[tab] || (views[tab] = await viewModules[tab]());
   const v = $('#view'); v.innerHTML = ''; v.scrollTop = 0;
   openPanel();
   await mod.render(v);
+  hydrateIcons(v);
   try { localStorage.setItem('hunthq_tab', tab); } catch {}
 }
 export const rerender = () => showTab(app.tab);
-export function openPanel() { $('#app').classList.remove('panel-closed'); setTimeout(() => M.map?.resize(), 50); }
-export function closePanel() { $('#app').classList.add('panel-closed'); $('#panel').classList.remove('full'); M.setSelection?.(null); setTimeout(() => M.map?.resize(), 50); }
+export function openPanel() {
+  if (!panelOpen()) { $('#app').classList.remove('panel-closed'); $('#panel').classList.remove('full'); }
+  if (!isPhone()) M.map?.setPadding({ left: 400, top: 0, right: 0, bottom: 0 });
+}
+export function closePanel() {
+  $('#app').classList.add('panel-closed'); $('#panel').classList.remove('full');
+  M.setSelection?.(null); M.map?.setPadding({ left: 0, top: 0, right: 0, bottom: 0 });
+}
 export async function openWmu(mu, region) {
   const { showWmu } = await import('./views/wmu.js');
   $$('#tabs button').forEach((b) => b.classList.remove('active'));
   openPanel(); const v = $('#view'); v.scrollTop = 0;
   await showWmu(v, mu, { region, date: app.date, onBack: () => showTab(app.tab) });
+  hydrateIcons(v);
 }
 db.onChange((what) => {
   if (['spots', 'tracks', 'all'].includes(what)) M.refreshData();
-  if (what !== 'prefs' && views[app.tab]?.onData) views[app.tab].onData(what);
+  if (what !== 'prefs' && views[app.tab]?.onData && panelOpen()) views[app.tab].onData(what);
 });
 
 // ---- Auth ----
 async function boot() {
+  hydrateIcons();
   $('#authForm').addEventListener('submit', async (e) => {
     e.preventDefault(); const f = e.target; $('#authMsg').textContent = '';
     try { await db.signIn(f.email.value, f.password.value); start(); } catch (err) { $('#authMsg').textContent = err.message; }
@@ -61,10 +75,11 @@ async function start() {
   $('#auth').classList.add('hidden'); $('#app').classList.remove('hidden');
   try { await db.loadAll(); } catch (e) { toast('Could not load data: ' + e.message, 6000); console.error(e); }
   await loadSeasons();
+  const saved = store.prefs.map || {};
   await M.initMap('map', store.prefs);
-  $('#baseSel').value = M.mapState().base;
-  $('#terrainBtn').classList.toggle('on', M.terrainOn());
+  if (saved.pitch && !saved.terrain) M.map.setPitch(0);
   wireUI();
+  syncChrome();
   const t = (() => { try { return localStorage.getItem('hunthq_tab'); } catch { return null; } })();
   if (viewModules[t]) app.tab = t;
 }
@@ -72,35 +87,100 @@ async function start() {
 let saveT;
 export function saveMapPrefs() {
   clearTimeout(saveT);
-  saveT = setTimeout(() => db.savePrefs({ map: M.mapState() }).catch((e) => console.warn(e)), 2500);
+  saveT = setTimeout(() => db.savePrefs({ map: M.mapState() }).catch((e) => console.warn(e)), 2000);
+}
+
+// ---- Map chrome ----
+// Thumbnail tile near Fernie (z10) for each base map.
+const thumb = (b) => b.tiles[0].replace('{z}', 10).replace('{x}', 183).replace('{y}', 345);
+function renderBaseGrid() {
+  const cur = M.getState().base;
+  $('#baseGrid').innerHTML = Object.entries(BASES).map(([id, b]) => `<button class="base-opt" role="radio" aria-checked="${id === cur}" data-base="${id}">
+    <span class="thumb" style="background-image:url('${thumb(b)}')"></span>${esc(b.name)}</button>`).join('');
+}
+function syncChrome() {
+  const s = M.getState();
+  $('#terrainBtn').setAttribute('aria-pressed', String(s.terrain));
+  $('#t3dChk').checked = s.terrain; $('#hillChk').checked = s.hillshade; $('#refChk').checked = M.refOn(); $('#refChk').disabled = !!BASES[s.base]?.ref;
+  $('#exagRng').value = s.exag; $('#exagOut').textContent = (+s.exag).toFixed(1) + '×';
+  $('#exagRow').classList.toggle('hidden', !s.terrain);
+  if (!$('#basePop').classList.contains('hidden')) $$('#baseGrid .base-opt').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.base === s.base)));
+}
+function toggleBasePop(force) {
+  const pop = $('#basePop'); const show = force ?? pop.classList.contains('hidden');
+  if (show) {
+    renderBaseGrid(); syncChrome();
+    const r = $('#baseBtn').getBoundingClientRect();
+    pop.style.top = `${r.top}px`; pop.style.right = `${innerWidth - r.left + 10}px`; pop.style.maxHeight = `${innerHeight - r.top - 16}px`;
+  }
+  pop.classList.toggle('hidden', !show); $('#baseBtn').setAttribute('aria-expanded', String(show));
+}
+
+// Bottom-sheet drag on phones: transform follows the finger, then snaps to full / half / closed.
+function wireSheet() {
+  const panel = $('#panel');
+  let y0 = null, base = 0, dy = 0, t0 = 0;
+  const start = (e) => {
+    if (!isPhone() || e.target.closest('button:not(.sheet-grip)') && !e.target.closest('.sheet-grip')) return;
+    y0 = e.clientY; dy = 0; t0 = performance.now();
+    base = panel.classList.contains('full') ? 0 : panel.getBoundingClientRect().top - (innerHeight - panel.offsetHeight);
+    panel.classList.add('dragging'); panel.setPointerCapture?.(e.pointerId);
+  };
+  const move = (e) => { if (y0 == null) return; dy = e.clientY - y0; panel.style.transform = `translateY(${Math.max(0, base + dy)}px)`; };
+  const end = () => {
+    if (y0 == null) return; y0 = null; panel.classList.remove('dragging'); panel.style.transform = '';
+    const v = dy / Math.max(1, performance.now() - t0); // px/ms
+    const y = base + dy, h = panel.offsetHeight;
+    if (v > 0.6 || y > h * 0.75) closePanel();
+    else if (v < -0.4 || y < h * 0.22) panel.classList.add('full');
+    else panel.classList.remove('full');
+  };
+  for (const el of [$('#sheetGrip'), $('.panel-head')]) {
+    el.addEventListener('pointerdown', (e) => { if (e.target.closest('#tabs button, #panelX')) return; start(e); });
+  }
+  panel.addEventListener('pointermove', move); panel.addEventListener('pointerup', end); panel.addEventListener('pointercancel', end);
+  $('#sheetGrip').addEventListener('click', () => { if (Math.abs(dy) < 4) panel.classList.toggle('full'); });
 }
 
 function wireUI() {
+  // Map-type + 3D buttons live in MapLibre's top-right stack so they line up under zoom/locate.
+  const ctrl = document.createElement('div'); ctrl.className = 'maplibregl-ctrl hq-ctrl';
+  ctrl.append($('#baseBtn'), $('#terrainBtn'));
+  M.map.addControl({ onAdd: () => ctrl, onRemove: () => ctrl.remove() }, 'top-right');
   $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-tab]'); if (b) showTab(b.dataset.tab); });
-  $('#sheetBtn').onclick = () => { $('#panel').classList.toggle('full'); $('#sheetBtn').textContent = $('#panel').classList.contains('full') ? '▾' : '▴'; };
-  $('#menuBtn').onclick = () => ($('#app').classList.contains('panel-closed') ? showTab(app.tab) : closePanel());
-  $('#layersBtn').onclick = () => (app.tab === 'layers' && !$('#app').classList.contains('panel-closed') ? closePanel() : showTab('layers'));
+  $('#menuBtn').onclick = () => (panelOpen() && app.tab !== 'layers' ? closePanel() : showTab(app.tab === 'layers' ? 'log' : app.tab));
+  $('#layersBtn').onclick = () => (app.tab === 'layers' && panelOpen() ? closePanel() : showTab('layers'));
   $('#panelX').onclick = closePanel;
-  $('#baseSel').onchange = (e) => { M.setBase(e.target.value); saveMapPrefs(); };
-  $('#terrainBtn').onclick = (e) => { M.setTerrain(!M.terrainOn()); e.target.classList.toggle('on', M.terrainOn()); saveMapPrefs(); };
-  $('#dropBtn').onclick = () => setDropMode(!app.dropMode);
-  $('#dropCancel').onclick = (e) => { e.preventDefault(); setDropMode(false); };
+  wireSheet();
+
+  $('#baseBtn').onclick = (e) => { e.stopPropagation(); toggleBasePop(); };
+  $('#baseGrid').onclick = (e) => { const b = e.target.closest('[data-base]'); if (!b) return; M.setBase(b.dataset.base); syncChrome(); saveMapPrefs(); };
+  $('#refChk').onchange = (e) => { M.setRef(e.target.checked); saveMapPrefs(); };
+  $('#hillChk').onchange = (e) => { M.setHillshade(e.target.checked); saveMapPrefs(); };
+  $('#t3dChk').onchange = (e) => { M.setTerrain(e.target.checked); syncChrome(); saveMapPrefs(); };
+  $('#exagRng').oninput = (e) => { M.setExaggeration(+e.target.value); $('#exagOut').textContent = (+e.target.value).toFixed(1) + '×'; saveMapPrefs(); };
+  $('#terrainBtn').onclick = () => { M.setTerrain(!M.terrainOn()); syncChrome(); saveMapPrefs(); };
+  document.addEventListener('pointerdown', (e) => { if (!e.target.closest('#basePop, #baseBtn')) toggleBasePop(false); });
+  M.onMapState(syncChrome);
+
+  $('#dropBtn').onclick = () => setDropMode(true);
+  $('#dropCancel').onclick = () => { setDropMode(false); if (app.pickHandler) { app.pickHandler = null; $('#app').classList.remove('pick-mode'); } };
   M.map.on('moveend', saveMapPrefs);
   $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal' || e.target.closest('.modal-x')) closeModal(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeModal(); setDropMode(false); } });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeModal(); setDropMode(false); toggleBasePop(false); } });
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const { act, id } = b.dataset;
     if (act === 'edit-spot') (await import('./views/log.js')).openSpotForm(store.spots.find((s) => s.id === id));
     if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
-    if (act === 'wmu') { popup?.remove(); openWmu(b.dataset.mu, b.dataset.region); }
-    if (act === 'trip-here') { popup?.remove(); (await import('./views/trips.js')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'wmu') { e.preventDefault(); popup?.remove(); M.selectWmu(b.dataset.mu); openWmu(b.dataset.mu, b.dataset.region); }
+    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
   });
-
   document.addEventListener('submit', (e) => {
     if (!e.target.matches('[data-wmuform]')) return; e.preventDefault();
     const mu = normMU(e.target.mu.value); if (mu) { popup?.remove(); openWmu(mu); }
   });
+
   M.onMapClick(async (e) => {
     if (app.dropMode) {
       setDropMode(false);
@@ -110,7 +190,7 @@ function wireUI() {
       const w = M.wmuFromIdentify(res); if (w && form?.wmu && !form.wmu.value) form.wmu.value = w;
       return;
     }
-    if (app.pickHandler) { const h = app.pickHandler; app.pickHandler = null; $('#dropHint').classList.add('hidden'); h(e.lngLat); return; }
+    if (app.pickHandler) { const h = app.pickHandler; app.pickHandler = null; $('#dropHint').classList.add('hidden'); $('#app').classList.remove('pick-mode'); h(e.lngLat); return; }
     const f = M.map.queryRenderedFeatures(e.point, { layers: ['spots-dot', 'tracks-line'] })[0];
     if (f?.layer.id === 'spots-dot') {
       const s = store.spots.find((x) => x.id === f.properties.id);
@@ -118,7 +198,7 @@ function wireUI() {
     }
     if (f?.layer.id === 'tracks-line') {
       const t = store.tracks.find((x) => x.id === f.properties.id);
-      if (t) { showPopup(e.lngLat, `<div class="popup"><h4>${esc(t.name || 'Track')}</h4><div class="muted">${esc(t.hunter || '')} · ${t.distance_km ? (+t.distance_km).toFixed(1) + ' km' : ''}</div></div>`); return; }
+      if (t) { showPopup(e.lngLat, `<div class="popup"><h4>${icon('route', { size: 18 })}${esc(t.name || 'Track')}</h4><div class="muted">${esc(t.hunter || '')}${t.distance_km ? ' · ' + (+t.distance_km).toFixed(1) + ' km' : ''}</div></div>`); return; }
     }
     identifyPopup(e.lngLat);
   });
@@ -126,23 +206,22 @@ function wireUI() {
 
 export function pickOnMap(msg = 'Tap the map to pick a location') {
   return new Promise((res) => {
-    app.pickHandler = res; $('#dropHint').firstChild.textContent = msg + ' · '; $('#dropHint').classList.remove('hidden');
-    if (innerWidth <= 760) closePanel();
+    app.pickHandler = res; $('#dropHint .msg').textContent = msg; $('#dropHint').classList.remove('hidden'); $('#app').classList.add('pick-mode');
+    if (isPhone()) closePanel();
   });
 }
 
 function setDropMode(on) {
   app.dropMode = on; $('#app').classList.toggle('drop-mode', on);
-  $('#dropBtn').classList.toggle('on', on);
-  $('#dropHint').firstChild.textContent = 'Tap the map to place a waypoint · ';
+  $('#dropHint .msg').textContent = 'Tap the map to place a waypoint';
   $('#dropHint').classList.toggle('hidden', !on);
-  if (on && innerWidth <= 760) closePanel();
+  if (on) { popup?.remove(); if (isPhone()) closePanel(); }
 }
 
 let popup;
 function showPopup(lngLat, htmlStr) {
   popup?.remove();
-  popup = new maplibregl.Popup({ maxWidth: '340px' }).setLngLat(lngLat).setHTML(htmlStr).addTo(M.map);
+  popup = new maplibregl.Popup({ maxWidth: '360px', className: 'has-close', focusAfterOpen: false }).setLngLat(lngLat).setHTML(htmlStr).addTo(M.map);
   return popup;
 }
 
@@ -150,8 +229,9 @@ const DIRS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 async function weather(lat, lng) {
   try {
     const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}&current=temperature_2m,wind_speed_10m,wind_direction_10m&wind_speed_unit=kmh`);
+    if (!r.ok) return '';
     const c = (await r.json()).current;
-    return `${Math.round(c.temperature_2m)} °C (${Math.round(c.wind_speed_10m)} km/h from ${DIRS[Math.round(c.wind_direction_10m / 45) % 8]})`;
+    return `${Math.round(c.temperature_2m)} °C · wind ${Math.round(c.wind_speed_10m)} km/h from ${DIRS[Math.round(c.wind_direction_10m / 45) % 8]}`;
   } catch { return ''; }
 }
 
@@ -159,47 +239,51 @@ const BIG_RE = /deer|moose|elk|goat|sheep|caribou|bison/i;
 function fitPopup(p) {
   requestAnimationFrame(() => {
     const r = p.getElement()?.getBoundingClientRect(); if (!r) return;
-    const top = 60, bottom = innerHeight - (innerWidth <= 760 && !$('#app').classList.contains('panel-closed') ? innerHeight * 0.5 : 0) - 10;
+    const top = 64, bottom = innerHeight - (isPhone() && panelOpen() ? innerHeight * 0.5 : 90);
     const dy = r.bottom > bottom ? Math.min(r.bottom - bottom, r.top - top) : r.top < top ? r.top - top : 0;
-    if (dy) M.map.panBy([0, dy], { duration: 300 });
+    if (dy) M.map.panBy([0, dy], { duration: M.reducedMotion() ? 0 : 280 });
   });
 }
 
+const ico = (name, cls = '') => `<span class="pop-ico ${cls}">${icon(name, { size: 17 })}</span>`;
 async function identifyPopup(lngLat) {
   const { lat, lng } = lngLat;
   const head = (wx, wmu = '') => `<div class="pop-head"><div><div class="coords">${lat.toFixed(6)}, ${lng.toFixed(6)}</div><div class="wx">${wx}</div></div>
-    <button data-act="drop-here" data-lat="${lat}" data-lon="${lng}" data-wmu="${esc(wmu)}" title="Drop a waypoint here">＋ Waypoint</button></div>`;
-  const p = showPopup(lngLat, `<div class="popup">${head('…')}<div class="pop-row"><span class="muted">Looking up WMU &amp; layers…</span></div></div>`);
+    <button data-act="drop-here" data-lat="${lat}" data-lon="${lng}" data-wmu="${esc(wmu)}" aria-label="Drop a waypoint here">${icon('pinPlus', { size: 16 })}Waypoint</button></div>`;
+  const p = showPopup(lngLat, `<div class="popup">${head('&nbsp;')}<div class="pop-row">${ico('grid', 'wmu')}<div class="t"><div class="skeleton" style="width:60%"></div><div class="skeleton" style="width:85%;margin-top:6px"></div></div></div></div>`);
   const wxP = weather(lat, lng);
   const res = await M.identify(lngLat);
-  const wx = await wxP;
+  const wx = await Promise.race([wxP, new Promise((r) => setTimeout(() => r(''), 1500))]);
   if (!p.isOpen()) return;
   const date = app.date || todayISO();
   const wmuF = res.results.wmu?.feats?.[0];
   const wmu = normMU(M.wmuFromIdentify(res) || '');
   const region = wmuF?.REGION_RESPONSIBLE_NAME || (wmu && seasonsFor(wmu)[0]?.r) || '';
-  let h = `<div class="popup">${head(esc(wx), wmu)}`;
-  if (!res.ok || !wmu) h += `<div class="pop-row"><div class="t"><span class="muted">${res.ok ? 'No WMU found here.' : `BC map layers didn't answer (${esc(res.error)}).`} Enter a WMU:</span>
-    <form class="row" data-wmuform style="margin-top:4px"><input name="mu" placeholder="e.g. 4-24" style="width:90px"><button class="small">Seasons ›</button></form></div></div>`;
+  let h = `<div class="popup">${head(esc(wx) || '&nbsp;', wmu)}`;
+  if (!res.ok || !wmu) h += `<div class="pop-row">${ico('info')}<div class="t"><span class="muted">${res.ok ? 'No WMU here.' : 'BC map layers didn’t answer.'} Enter a WMU:</span>
+    <form class="row" data-wmuform style="margin-top:6px"><input name="mu" placeholder="e.g. 4-24" style="width:100px" inputmode="text"><button class="small primary">Seasons</button></form></div></div>`;
   if (wmu) {
     const open = seasonsFor(wmu).filter((r) => openRange(r, date));
     const sp = [...new Set(open.filter((r) => BIG_RE.test(r.sp)).map((r) => r.sp.replace(/ \(.*\)/, '')))];
     const when = date === todayISO() ? 'today' : esc(date);
-    h += `<div class="pop-row link" data-act="wmu" data-mu="${esc(wmu)}" data-region="${esc(region)}"><span class="pop-ico">🦌</span>
-      <div class="t"><b>WMU ${esc(wmu)}</b><span class="muted">${esc(region)} · ${open.length ? `${open.length} open ${when}${sp.length ? ': ' + esc(sp.slice(0, 3).join(', ')) + (sp.length > 3 ? '…' : '') : ''}` : 'nothing open (general)'}</span></div><span class="chev">›</span></div>`;
+    h += `<a href="#" class="pop-row link" data-act="wmu" data-mu="${esc(wmu)}" data-region="${esc(region)}" style="color:inherit;text-decoration:none">${ico('deer', 'wmu')}
+      <div class="t"><b>WMU ${esc(wmu)}</b><span class="muted">${esc(region)} · ${open.length ? `${open.length} open ${when}${sp.length ? ': ' + esc(sp.slice(0, 3).join(', ')) + (sp.length > 3 ? '…' : '') : ''}` : 'nothing open (general seasons)'}</span></div>${icon('chevR', { size: 18, cls: 'chev' })}</a>`;
   }
-  const row = (ico, title, sub) => `<div class="pop-row"><span class="pop-ico">${ico}</span><div class="t"><b>${title}</b>${sub ? `<span class="muted">${sub}</span>` : ''}</div></div>`;
+  const row = (i, title, sub, cls = '') => `<div class="pop-row">${ico(i, cls)}<div class="t"><b>${title}</b>${sub ? `<span class="muted">${sub}</span>` : ''}</div></div>`;
   for (const [id, r] of Object.entries(res.results)) {
-    if (id.startsWith('leh')) for (const f of r.feats) h += row('🎯', 'LEH ' + esc(f.LTD_ENTRY_HUNTING_ZONE_LABEL || f.LIMITED_ENTRY_HUNTING_ZONE || 'zone'), esc(f.LTD_ENTRY_HUNTING_ZONE_TYPE || ''));
+    if (id.startsWith('leh')) for (const f of r.feats) h += row('target', 'LEH ' + esc(f.LTD_ENTRY_HUNTING_ZONE_LABEL || f.LIMITED_ENTRY_HUNTING_ZONE || 'zone'), esc(f.LTD_ENTRY_HUNTING_ZONE_TYPE || ''));
+    if (id.startsWith('mv_')) for (const f of r.feats) {
+      const st = mvprStatus(f, date);
+      h += `<div class="pop-row">${ico('ban', st.closed === false ? 'ok' : 'bad')}<div class="t"><b>${esc(f.PROHIBITION_TYPE || r.layer.name)}</b>${mvprSummary(f, date)}</div></div>`;
+    }
   }
-  for (const id of ['mvpr', 'mvpr_routes']) for (const f of res.results[id]?.feats || []) h += `<div class="pop-row"><span class="pop-ico">🚫</span><div class="t"><b>Motor vehicle restriction</b>${mvprSummary(f, date)}</div></div>`;
-  for (const f of res.results.parks?.feats || []) h += row('🌲', esc(f.PROTECTED_LANDS_NAME || f.PARK_NAME || 'Park / protected area'), esc(f.PROTECTED_LANDS_DESIGNATION || 'Check park hunting rules'));
-  for (const f of res.results.reserves?.feats || []) h += row('⛔', esc(f.ENGLISH_NAME || f.NAME || 'First Nations reserve'), 'Reserve land: no hunting without permission');
-  for (const f of res.results.private?.feats || []) h += row('🏠', 'Private land', esc(f.PID_FORMATTED || f.PID || ''));
-  for (const f of res.results.gmz?.feats || []) h += row('▦', 'GMZ ' + esc(f.GAME_MANAGEMENT_ZONE_NAME || f.GAME_MANAGEMENT_ZONE_ID || ''), '');
-  for (const [id, r] of Object.entries(res.results)) if (id.startsWith('custom_')) for (const f of r.feats) h += row('◫', esc(r.layer.name), esc(Object.entries(f).filter(([k]) => !/SHAPE|GEOMETRY|OBJECTID/i.test(k)).slice(0, 4).map(([k, v]) => `${k}: ${v}`).join(' · ')));
+  for (const f of res.results.parks?.feats || []) h += row('tree', esc(f.PROTECTED_LANDS_NAME || 'Park / protected area'), esc(f.PROTECTED_LANDS_DESIGNATION || 'Check park hunting rules'));
+  for (const f of res.results.reserves?.feats || []) h += row('fence', esc(f.ENGLISH_NAME || 'First Nations reserve'), 'Reserve land: no hunting without permission', 'bad');
+  for (const f of res.results.private?.feats || []) h += row('home', 'Private land', esc(f.PID_FORMATTED || f.PID || ''));
+  for (const f of res.results.gmz?.feats || []) h += row('grid', 'GMZ ' + esc(f.GAME_MANAGEMENT_ZONE_NAME || f.GAME_MANAGEMENT_ZONE_ID || ''), '');
+  for (const [id, r] of Object.entries(res.results)) if (id.startsWith('custom_')) for (const f of r.feats) h += row('layers', esc(r.layer.name), esc(Object.entries(f).filter(([k]) => !/SHAPE|GEOMETRY|OBJECTID/i.test(k)).slice(0, 4).map(([k, v]) => `${k}: ${v}`).join(' · ')));
   const s = sunInfo(new Date(date + 'T12:00'), lat, lng);
-  h += row('☀️', `Legal light ${s.legalStart} – ${s.legalEnd}`, `Sunrise ${s.sunrise} · sunset ${s.sunset} · ${s.moonIcon} ${esc(s.moonName)} ${s.moonPct}%`);
+  h += row('sun', `Legal light ${s.legalStart} – ${s.legalEnd}`, `Sunrise ${s.sunrise} · sunset ${s.sunset} · ${esc(s.moonName)} ${s.moonPct}%`);
   h += `<div class="pop-foot"><a href="#" data-act="trip-here" data-lat="${lat}" data-lon="${lng}" data-wmu="${esc(wmu)}">Log a hunt here</a>
     <a href="${earthLink(lat, lng)}" target="_blank" rel="noopener">Google Earth</a>
     <a href="${REGS_URL}" target="_blank" rel="noopener">In-season changes</a></div></div>`;

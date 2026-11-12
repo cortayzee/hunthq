@@ -16,12 +16,23 @@ export const LEH_LAYER = 'WHSE_WILDLIFE_MANAGEMENT.WAA_LTD_HNT_ZONE_CURR_YEAR_SV
 export const LEH_TYPE_FIELD = 'LTD_ENTRY_HUNTING_ZONE_TYPE';
 export const MVPR_LAYER = 'WHSE_WILDLIFE_MANAGEMENT.WAA_MVPR_AREAS_SP';
 
+const ESRI = (s) => [`https://server.arcgisonline.com/ArcGIS/rest/services/${s}/MapServer/tile/{z}/{y}/{x}`];
 export const BASES = {
-  sat: { name: 'Satellite', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], max: 19, attr: 'Imagery © Esri, Maxar, Earthstar Geographics' },
-  topo: { name: 'Topo (Esri)', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'], max: 19, attr: '© Esri, USGS, NRCan' },
-  otm: { name: 'Topo (OpenTopoMap)', tiles: ['https://a.tile.opentopomap.org/{z}/{x}/{y}.png', 'https://b.tile.opentopomap.org/{z}/{x}/{y}.png', 'https://c.tile.opentopomap.org/{z}/{x}/{y}.png'], max: 17, attr: '© OpenTopoMap (CC-BY-SA), © OpenStreetMap contributors' },
-  road: { name: 'Road', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], max: 19, attr: '© OpenStreetMap contributors' },
+  sat: { name: 'Satellite', tiles: ESRI('World_Imagery'), max: 19, attr: 'Imagery © Esri, Maxar, Earthstar Geographics' },
+  hybrid: { name: 'Hybrid', tiles: ESRI('World_Imagery'), max: 19, ref: true, attr: 'Imagery © Esri, Maxar, Earthstar Geographics' },
+  topo: { name: 'Topo', tiles: ESRI('World_Topo_Map'), max: 19, attr: '© Esri, USGS, NRCan' },
+  otm: { name: 'OpenTopoMap', tiles: ['https://a.tile.opentopomap.org/{z}/{x}/{y}.png', 'https://b.tile.opentopomap.org/{z}/{x}/{y}.png', 'https://c.tile.opentopomap.org/{z}/{x}/{y}.png'], max: 17, attr: '© OpenTopoMap (CC-BY-SA), © OpenStreetMap contributors' },
+  natgeo: { name: 'NatGeo', tiles: ESRI('NatGeo_World_Map'), max: 16, attr: '© Esri, National Geographic' },
+  relief: { name: 'Shaded relief', tiles: ESRI('World_Shaded_Relief'), max: 13, attr: '© Esri' },
+  street: { name: 'Streets', tiles: ESRI('World_Street_Map'), max: 19, attr: '© Esri, HERE, OpenStreetMap contributors' },
+  osm: { name: 'OpenStreetMap', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], max: 19, attr: '© OpenStreetMap contributors' },
+  dark: { name: 'Dark', tiles: ESRI('Canvas/World_Dark_Gray_Base'), max: 16, attr: '© Esri' },
 };
+// Roads + place names drawn over any base (always on for Hybrid).
+export const REF_TILES = [...ESRI('Reference/World_Transportation'), ...ESRI('Reference/World_Boundaries_and_Places')];
+export const GLYPHS = 'vendor/fonts/{fontstack}/{range}.pbf';
+export const WMU_GEO_URL = 'hunt-hq-handoff/data/wmu_2026.geojson';
+export const WMU_LABELS_URL = 'hunt-hq-handoff/data/wmu_labels.geojson';
 export const TERRAIN_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 
 // BC government WMS overlays. `cql` filters a layer; `group` is for display only.
@@ -41,8 +52,12 @@ export const BC_LAYERS = [
   leh('Bison', 'BISON', '#5a3825'),
   leh('Turkey', 'TURKEY', '#c0392b'),
   leh('Black bear', 'BLACK BEAR', '#333333'),
-  { id: 'mvpr', name: 'Motor vehicle prohibitions / MVHCA (areas)', layer: MVPR_LAYER, color: '#d62728', group: 'Access', identify: true },
-  { id: 'mvpr_routes', name: 'Motor vehicle prohibitions (routes)', layer: 'WHSE_WILDLIFE_MANAGEMENT.WAA_MVPR_ROUTES_SP', color: '#ff4f4f', group: 'Access', identify: true, geom: 'line' },
+  // Motor-vehicle prohibitions, split by PROHIBITION_TYPE like iHunter. `match` routes identify results to the toggle that shows them.
+  { id: 'mv_hca', name: 'MVHCA – motor vehicle hunting closed', layer: MVPR_LAYER, cql: "PROHIBITION_TYPE = 'Motor Vehicle Hunting Closed Areas'", match: (p) => p.PROHIBITION_TYPE === 'Motor Vehicle Hunting Closed Areas', color: '#ff7a00', group: 'Access', identify: true },
+  { id: 'mv_ca', name: 'Motor vehicle closed areas', layer: MVPR_LAYER, cql: "PROHIBITION_TYPE = 'Motor Vehicle Closed Areas'", match: (p) => p.PROHIBITION_TYPE === 'Motor Vehicle Closed Areas', color: '#e0262b', group: 'Access', identify: true },
+  { id: 'mv_atv', name: 'ATV / e-bike closed areas', layer: MVPR_LAYER, cql: "PROHIBITION_TYPE LIKE 'ATV%'", match: (p) => /^ATV/.test(p.PROHIBITION_TYPE || ''), color: '#c2185b', group: 'Access', identify: true },
+  { id: 'mv_snow', name: 'Snowmobile closed areas', layer: MVPR_LAYER, cql: "PROHIBITION_TYPE LIKE 'Snowmobile%'", match: (p) => /^Snowmobile/.test(p.PROHIBITION_TYPE || ''), color: '#3f8fd8', group: 'Access', identify: true },
+  { id: 'mv_routes', name: 'Motor vehicle route restrictions', layer: 'WHSE_WILDLIFE_MANAGEMENT.WAA_MVPR_ROUTES_SP', color: '#ff4f4f', group: 'Access', identify: true, geom: 'line' },
   { id: 'parks', name: 'Parks & protected areas', layer: 'WHSE_TANTALIS.TA_PARK_ECORES_PA_SVW', color: '#2e8b57', group: 'Land', identify: true },
   { id: 'reserves', name: 'First Nations reserves', layer: 'WHSE_ADMIN_BOUNDARIES.CLAB_INDIAN_RESERVES', color: '#b5651d', group: 'Land', identify: true },
   { id: 'private', name: 'Private land (ParcelMap BC, zoom 12+)', layer: 'WHSE_CADASTRE.PMBC_PARCEL_FABRIC_POLY_SVW', cql: "OWNER_TYPE = 'Private'", color: '#cc3399', group: 'Land', identify: true, minzoom: 12 },

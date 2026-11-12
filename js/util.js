@@ -23,8 +23,8 @@ export const yearOf = (d) => d ? new Date(d).getFullYear() : null;
 export const num = (v) => (v === '' || v == null || isNaN(+v)) ? null : +v;
 
 export function toast(msg, ms = 2600) {
-  const t = $('#toast'); t.textContent = msg; t.classList.remove('hidden');
-  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.add('hidden'), ms);
+  const t = $('#toast'); t.textContent = msg; t.classList.remove('off');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.add('off'), ms);
 }
 
 export function modal(content, { wide = false } = {}) {
@@ -32,6 +32,7 @@ export function modal(content, { wide = false } = {}) {
   body.innerHTML = ''; if (typeof content === 'string') body.innerHTML = content; else body.append(content);
   m.querySelector('.modal-card').classList.toggle('wide', wide);
   m.classList.remove('hidden');
+  import('./icons.js').then((i) => i.hydrateIcons(body));
   return body;
 }
 export const closeModal = () => $('#modal').classList.add('hidden');

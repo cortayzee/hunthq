@@ -3,9 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1f2a1f">
+<meta name="theme-color" content="#141a14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Hunt HQ</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='22' fill='none' stroke='%23d98c2b' stroke-width='6'/%3E%3Cpath d='M32 2v20M32 42v20M2 32h20M42 32h20' stroke='%23d98c2b' stroke-width='6'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23141a14'/%3E%3Ccircle cx='32' cy='32' r='16' fill='none' stroke='%23e0893a' stroke-width='5'/%3E%3Cpath d='M32 8v14M32 42v14M8 32h14M42 32h14' stroke='%23e0893a' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
 <link rel="stylesheet" href="css/app.css">
 <script src="vendor/maplibre-gl.js"></script>
@@ -31,42 +33,55 @@
 
 <div id="app" class="app hidden panel-closed">
   <div id="map"></div>
-  <div id="mapTools" class="map-tools">
-    <button id="menuBtn" title="Tools &amp; logs">☰ Menu</button>
-    <button id="layersBtn" title="Map layers">◫ Layers</button>
-    <button id="dropBtn" title="Drop a waypoint by tapping the map">＋ Waypoint</button>
-    <button id="terrainBtn" title="Toggle 3D terrain">3D</button>
-    <select id="baseSel" title="Base map">
-      <option value="sat">Satellite</option>
-      <option value="topo">Topo (Esri)</option>
-      <option value="otm">Topo (OpenTopoMap)</option>
-      <option value="road">Road</option>
-    </select>
-  </div>
-  <div id="dropHint" class="drop-hint hidden">Tap the map to place a waypoint · <a href="#" id="dropCancel">cancel</a></div>
 
-  <aside id="panel" class="panel">
+  <div class="chrome chrome-tl">
+    <button id="menuBtn" class="fab-btn" aria-label="Open tools" title="Tools &amp; logs"><i data-icon="menu"></i><span>Menu</span></button>
+    <button id="layersBtn" class="fab-btn" aria-label="Map layers" title="Map layers"><i data-icon="layers"></i><span>Layers</span></button>
+  </div>
+
+  <div class="chrome chrome-r">
+    <button id="baseBtn" class="round-btn" aria-label="Map type" aria-haspopup="dialog" aria-expanded="false" title="Map type"><i data-icon="basemap"></i></button>
+    <button id="terrainBtn" class="round-btn" aria-label="3D terrain" aria-pressed="false" title="3D terrain"><span class="txt3d">3D</span></button>
+  </div>
+
+  <div id="basePop" class="popover hidden" role="dialog" aria-label="Map type">
+    <label class="switch"><input type="checkbox" id="t3dChk"><span>3D terrain</span></label>
+    <div id="exagRow" class="exag-row"><span class="muted">Steepness</span><input type="range" id="exagRng" min="1" max="3" step="0.1" aria-label="3D exaggeration"><output id="exagOut"></output></div>
+    <label class="switch"><input type="checkbox" id="hillChk"><span>Hillshade</span></label>
+    <label class="switch"><input type="checkbox" id="refChk"><span>Roads &amp; place names</span></label>
+    <div class="pop-sep"></div>
+    <div class="pop-title">Map type</div>
+    <div id="baseGrid" class="base-grid"></div>
+    <p class="muted hint-3d">Tilt: right-drag or Ctrl-drag · two-finger drag on phone</p>
+  </div>
+
+  <div class="chrome chrome-b">
+    <button id="dropBtn" class="pill-btn primary-pill"><i data-icon="pinPlus"></i><span>Drop waypoint</span></button>
+  </div>
+  <div id="dropHint" class="drop-hint hidden" role="status"><span class="msg">Tap the map to place a waypoint</span><button id="dropCancel" class="link-btn">Cancel</button></div>
+
+  <aside id="panel" class="panel" aria-label="Tools">
+    <div class="sheet-grip" id="sheetGrip" aria-hidden="true"><span></span></div>
     <div class="panel-head">
-      <button id="sheetBtn" class="sheet-btn" aria-label="Expand or collapse panel">▴</button>
-      <nav id="tabs" class="tabs">
-        <button data-tab="layers">Layers</button>
-        <button data-tab="open">Season map</button>
-        <button data-tab="log">Waypoints</button>
-        <button data-tab="trips">Trips</button>
-        <button data-tab="tags">Tags &amp; LEH</button>
-        <button data-tab="insights">Insights</button>
-        <button data-tab="import">Import</button>
-        <button data-tab="sun">Sun &amp; moon</button>
-        <button data-tab="more">More</button>
+      <nav id="tabs" class="tabs" aria-label="Sections">
+        <button data-tab="layers"><i data-icon="layers" data-size="18"></i><span>Layers</span></button>
+        <button data-tab="open"><i data-icon="calendar" data-size="18"></i><span>Seasons</span></button>
+        <button data-tab="log"><i data-icon="pin" data-size="18"></i><span>Waypoints</span></button>
+        <button data-tab="trips"><i data-icon="route" data-size="18"></i><span>Trips</span></button>
+        <button data-tab="tags"><i data-icon="tag" data-size="18"></i><span>Tags &amp; LEH</span></button>
+        <button data-tab="insights"><i data-icon="chart" data-size="18"></i><span>Insights</span></button>
+        <button data-tab="import"><i data-icon="upload" data-size="18"></i><span>Import</span></button>
+        <button data-tab="sun"><i data-icon="sun" data-size="18"></i><span>Sun &amp; moon</span></button>
+        <button data-tab="more"><i data-icon="dots" data-size="18"></i><span>More</span></button>
       </nav>
-      <button id="panelX" class="panel-x" aria-label="Close panel">×</button>
+      <button id="panelX" class="icon-btn" aria-label="Close panel"><i data-icon="x"></i></button>
     </div>
     <div id="view" class="view"></div>
   </aside>
 </div>
 
-<div id="modal" class="modal hidden"><div class="modal-card"><button class="modal-x" aria-label="Close">×</button><div id="modalBody"></div></div></div>
-<div id="toast" class="toast hidden"></div>
+<div id="modal" class="modal hidden"><div class="modal-card" role="dialog" aria-modal="true"><button class="modal-x icon-btn" aria-label="Close"><i data-icon="x"></i></button><div id="modalBody"></div></div></div>
+<div id="toast" class="toast off" role="status" aria-live="polite"></div>
 
 <script type="module" src="js/main.js"></script>
 </body>

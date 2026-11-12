@@ -1,10 +1,13 @@
 // MapLibre map: base styles, 3D terrain, BC WMS overlays, identify, waypoints/tracks, open-WMU shading.
-import { BASES, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js';
+import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js';
 import { store } from './db.js';
 import { esc, earthLink, fmtDT } from './util.js';
 
 export let map;
-const state = { base: 'sat', terrain: false, layers: {}, opacity: {}, shade: null, custom: [] };
+const state = { base: 'sat', terrain: false, exag: 1.5, hillshade: false, ref: false, hiddenWmu: [], layers: {}, opacity: {}, shade: null, custom: [] };
+const listeners = new Set();
+export const onMapState = (fn) => listeners.add(fn);
+const changed = () => listeners.forEach((fn) => fn(state));
 let clickHandler = null;
 
 const wmsTiles = (layer, { cql, sld, styles = '' } = {}) => {
@@ -29,26 +32,32 @@ export function initMap(container, saved = {}) {
   state.custom = (saved.customLayers || []).map((c) => ({ ...c, id: 'custom_' + c.layer, group: 'Custom', identify: true }));
   map = new maplibregl.Map({
     container,
-    style: { version: 8, sources: {}, layers: [] },
+    style: { version: 8, glyphs: new URL(GLYPHS, location.href).href.replace('%7Bfontstack%7D', '{fontstack}').replace('%7Brange%7D', '{range}'), sources: {}, layers: [] },
     center: state.center || [-122.5, 53.5], zoom: state.zoom ?? 5, pitch: 0, maxPitch: 80,
     attributionControl: { compact: true }, hash: false,
   });
-  map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
-  map.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showAccuracyCircle: true }), 'top-right');
+  map.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showZoom: matchMedia('(pointer: fine)').matches }), 'top-right');
+  geolocate = new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showAccuracyCircle: true });
+  map.addControl(geolocate, 'top-right');
   map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
   return new Promise((res) => map.on('load', () => {
+    if (!BASES[state.base]) state.base = 'sat';
     setBase(state.base, true);
     map.addSource('terrain', { type: 'raster-dem', tiles: [TERRAIN_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: 15 });
     map.addSource('hillshade-dem', { type: 'raster-dem', tiles: [TERRAIN_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: 15 });
     for (const l of allLayers()) if (state.layers[l.id] ?? l.on) addWms(l);
     addDataLayers();
-    if (state.terrain) setTerrain(true);
+    addWmuVector();
+    if (state.hillshade) setHillshade(true);
+    if (state.terrain) setTerrain(true, { animate: false });
     map.on('click', (e) => clickHandler && clickHandler(e));
     res(map);
   }));
 }
 
-export const mapState = () => ({ base: state.base, terrain: state.terrain, layers: state.layers, opacity: state.opacity, center: map.getCenter().toArray(), zoom: map.getZoom() });
+export let geolocate;
+export const mapState = () => ({ base: state.base, terrain: state.terrain, exag: state.exag, hillshade: state.hillshade, ref: state.ref, hiddenWmu: state.hiddenWmu, layers: state.layers, opacity: state.opacity, center: map.getCenter().toArray(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing() });
+export const getState = () => state;
 export const onMapClick = (fn) => (clickHandler = fn);
 
 export function setBase(id, first = false) {
@@ -58,28 +67,57 @@ export function setBase(id, first = false) {
   map.addSource('base', { type: 'raster', tiles: b.tiles, tileSize: 256, maxzoom: b.max, attribution: b.attr });
   const before = map.getStyle().layers.find((l) => l.id !== 'base')?.id;
   map.addLayer({ id: 'base', type: 'raster', source: 'base' }, first ? undefined : before);
+  // Dark base: lighten WMU labels' contrast stays (white on dark halo), nothing else to do.
+  applyRef(); changed();
 }
-
-export function setTerrain(on) {
-  state.terrain = on;
-  if (on) {
-    map.setTerrain({ source: 'terrain', exaggeration: 1.4 });
-    if (!map.getLayer('hillshade')) map.addLayer({ id: 'hillshade', type: 'hillshade', source: 'hillshade-dem', paint: { 'hillshade-exaggeration': 0.25 } }, map.getStyle().layers[1]?.id);
-    if (map.getPitch() < 30) map.easeTo({ pitch: 60, duration: 800 });
-  } else {
-    map.setTerrain(null);
-    if (map.getLayer('hillshade')) map.removeLayer('hillshade');
-    map.easeTo({ pitch: 0, duration: 600 });
+// Roads & place names overlay (forced on for Hybrid).
+export function setRef(on) { state.ref = on; applyRef(); changed(); }
+export const refOn = () => !!(state.ref || BASES[state.base]?.ref);
+function applyRef() {
+  const want = refOn();
+  for (let i = 0; i < REF_TILES.length; i++) {
+    const id = 'ref' + i;
+    if (want && !map.getSource(id)) {
+      map.addSource(id, { type: 'raster', tiles: [REF_TILES[i]], tileSize: 256, maxzoom: 19 });
+      map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-opacity': 0.95 } }, map.getStyle().layers.find((l) => l.id !== 'base' && !l.id.startsWith('ref') && l.id !== 'hillshade')?.id);
+    } else if (!want && map.getSource(id)) { map.removeLayer(id); map.removeSource(id); }
   }
 }
+
+export function setHillshade(on) {
+  state.hillshade = on;
+  if (on && !map.getLayer('hillshade')) map.addLayer({ id: 'hillshade', type: 'hillshade', source: 'hillshade-dem', paint: { 'hillshade-exaggeration': 0.35, 'hillshade-shadow-color': '#1d2a1d' } }, map.getStyle().layers.find((l) => l.id !== 'base')?.id);
+  if (!on && map.getLayer('hillshade') && !state.terrain) map.removeLayer('hillshade');
+  changed();
+}
+
+export function setTerrain(on, { animate = true } = {}) {
+  state.terrain = on;
+  const ease = { duration: animate && !reducedMotion() ? 700 : 0 };
+  if (on) {
+    map.setTerrain({ source: 'terrain', exaggeration: state.exag });
+    if (!map.getLayer('hillshade')) map.addLayer({ id: 'hillshade', type: 'hillshade', source: 'hillshade-dem', paint: { 'hillshade-exaggeration': 0.25 } }, map.getStyle().layers.find((l) => l.id !== 'base')?.id);
+    try { map.setSky({ 'sky-color': '#9cc3e6', 'horizon-color': '#dfe9f2', 'fog-color': '#e7edf2', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.5, 'fog-ground-blend': 0.85, 'atmosphere-blend': 0.8 }); } catch {}
+    if (map.getPitch() < 30) map.easeTo({ pitch: 62, ...ease });
+  } else {
+    map.setTerrain(null);
+    if (map.getLayer('hillshade') && !state.hillshade) map.removeLayer('hillshade');
+    map.easeTo({ pitch: 0, bearing: 0, ...ease });
+  }
+  changed();
+}
+export function setExaggeration(v) { state.exag = v; if (state.terrain) map.setTerrain({ source: 'terrain', exaggeration: v }); }
 export const terrainOn = () => state.terrain;
+export const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function firstDataLayer() { return ['shade-open', 'shade-foot', 'hot-fill', 'tracks-line'].find((id) => map.getLayer(id)); }
 
 function addWms(l) {
   const id = 'wms-' + l.id;
   if (map.getSource(id)) return;
-  map.addSource(id, { type: 'raster', tiles: [wmsTiles(l.layer, { cql: l.cql, sld: l.color ? sldStyle(l) : undefined })], tileSize: 256, attribution: 'BC Gov (OGL-BC)' });
+  let cql = l.cql;
+  if (l.id === 'wmu' && state.hiddenWmu.length) cql = `NOT (${WMU_FIELD} IN (${state.hiddenWmu.map((m) => `'${m}'`).join(',')}))`;
+  map.addSource(id, { type: 'raster', tiles: [wmsTiles(l.layer, { cql, sld: l.color ? sldStyle(l) : undefined })], tileSize: 256, attribution: 'BC Gov (OGL-BC)' });
   map.addLayer({ id, type: 'raster', source: id, minzoom: l.minzoom || 0, paint: { 'raster-opacity': state.opacity[l.id] ?? 0.9 } }, firstDataLayer());
 }
 function removeWms(l) { const id = 'wms-' + l.id; if (map.getLayer(id)) map.removeLayer(id); if (map.getSource(id)) map.removeSource(id); }
@@ -87,6 +125,8 @@ function removeWms(l) { const id = 'wms-' + l.id; if (map.getLayer(id)) map.remo
 export function setLayer(id, on) {
   const l = allLayers().find((x) => x.id === id); if (!l) return;
   state.layers[id] = on; on ? addWms(l) : removeWms(l);
+  if (id === 'wmu') applyWmuFilter();
+  changed();
 }
 export const layerOn = (id) => { const l = allLayers().find((x) => x.id === id); return !!(state.layers[id] ?? l?.on); };
 export const layerOpacity = (id) => state.opacity[id] ?? 0.9;
@@ -97,42 +137,81 @@ export function setCustomLayers(list) {
   for (const l of state.custom) if (state.layers[l.id]) addWms(l);
 }
 
-// ---- Open-WMU shading: one short SLD (fill colour only) + CQL_FILTER per class (plain open / footnoted) ----
-const sldFill = (fill) => `<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld"><NamedLayer><Name>pub:${WMU_LAYER}</Name><UserStyle><FeatureTypeStyle><Rule><PolygonSymbolizer><Fill><CssParameter name="fill">${fill}</CssParameter><CssParameter name="fill-opacity">0.45</CssParameter></Fill><Stroke><CssParameter name="stroke">${fill}</CssParameter><CssParameter name="stroke-width">1.2</CssParameter></Stroke></PolygonSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>`;
-export function shadeOpen(rows) {
-  clearShade();
-  if (!rows || !rows.length) return;
-  const plain = new Set(), foot = new Set();
-  for (const r of rows) for (const m of r.mu) (r.n ? foot : plain).add(m);
-  for (const m of plain) foot.delete(m);
-  const add = (id, mus, fill) => {
-    if (!mus.size) return;
-    const cql = `${WMU_FIELD} IN (${[...mus].map((m) => `'${m}'`).join(',')})`;
-    map.addSource(id, { type: 'raster', tiles: [wmsTiles(WMU_LAYER, { sld: sldFill(fill), cql })], tileSize: 256 });
-    map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-opacity': 0.85 } }, 'hot-fill');
-  };
-  add('shade-open', plain, '#2fbf4a'); add('shade-foot', foot, '#f2c200');
-  state.shade = [...plain, ...foot];
+// ---- WMU vector layer: numbers, per-unit hide, season shading (simplified shapes; exact lines stay WMS) ----
+export let WMU_GEO = null;
+async function addWmuVector() {
+  const [geo, lab] = await Promise.all([fetch(WMU_GEO_URL).then((r) => r.json()), fetch(WMU_LABELS_URL).then((r) => r.json())]);
+  WMU_GEO = geo;
+  map.addSource('wmu-geo', { type: 'geojson', data: geo, promoteId: 'id' });
+  map.addSource('wmu-lab', { type: 'geojson', data: lab });
+  const before = map.getLayer('hot-fill') ? 'hot-fill' : undefined;
+  map.addLayer({ id: 'wmu-fill', type: 'fill', source: 'wmu-geo', paint: { 'fill-color': '#000', 'fill-opacity': 0 } }, before);
+  map.addLayer({ id: 'wmu-sel', type: 'fill', source: 'wmu-geo', paint: { 'fill-color': '#ff4d4d', 'fill-opacity': ['case', ['boolean', ['feature-state', 'sel'], false], 0.12, 0] } }, before);
+  // Zoomed in, label every tile-piece of the polygon so a number is always on screen.
+  map.addLayer({ id: 'wmu-label-hi', type: 'symbol', source: 'wmu-geo', minzoom: 9.5,
+    layout: { 'text-field': ['concat', 'WMU ', ['get', 'id']], 'text-font': ['Open Sans Semibold'], 'text-size': 14, 'text-padding': 60, 'symbol-spacing': 600 },
+    paint: { 'text-color': '#fff', 'text-halo-color': 'rgba(12,16,12,.9)', 'text-halo-width': 1.6 } });
+  map.addLayer({ id: 'wmu-label', type: 'symbol', source: 'wmu-lab', minzoom: 5.2, maxzoom: 9.5,
+    layout: { 'text-field': ['step', ['zoom'], ['get', 'id'], 8, ['concat', 'WMU ', ['get', 'id']]], 'text-font': ['Open Sans Semibold'],
+      'text-size': ['interpolate', ['linear'], ['zoom'], 5, 10, 8, 13, 12, 16], 'symbol-sort-key': ['-', 0, ['get', 'a']], 'text-padding': 4, 'text-letter-spacing': 0.02 },
+    paint: { 'text-color': '#fff', 'text-halo-color': 'rgba(12,16,12,.9)', 'text-halo-width': 1.6, 'text-halo-blur': 0.3 } });
+  applyWmuFilter(); applyShade();
 }
-export function clearShade() {
-  for (const id of ['shade-open', 'shade-foot']) { if (map.getLayer(id)) map.removeLayer(id); if (map.getSource(id)) map.removeSource(id); }
-  state.shade = null;
+function applyWmuFilter() {
+  if (!map.getLayer('wmu-label')) return;
+  const hid = ['!', ['in', ['get', 'id'], ['literal', state.hiddenWmu]]];
+  for (const id of ['wmu-label', 'wmu-label-hi', 'wmu-fill']) map.setFilter(id, hid);
+  for (const id of ['wmu-label', 'wmu-label-hi']) map.setLayoutProperty(id, 'visibility', layerOn('wmu') ? 'visible' : 'none');
+}
+export function setWmuHidden(list) {
+  state.hiddenWmu = [...new Set(list)];
+  applyWmuFilter(); applyShade();
+  const l = BC_LAYERS.find((x) => x.id === 'wmu'); if (layerOn('wmu')) { removeWms(l); addWms(l); }
+  changed();
+}
+export const wmuHidden = (mu) => state.hiddenWmu.includes(mu);
+export function toggleWmu(mu, show) { setWmuHidden(show ? state.hiddenWmu.filter((m) => m !== mu) : [...state.hiddenWmu, mu]); }
+
+let selId = null;
+export function selectWmu(mu) {
+  if (!map.getSource('wmu-geo')) return;
+  if (selId) map.setFeatureState({ source: 'wmu-geo', id: selId }, { sel: false });
+  selId = mu || null; if (selId) map.setFeatureState({ source: 'wmu-geo', id: selId }, { sel: true });
+}
+
+// Season shading: green = open, yellow = open with a synopsis footnote.
+export function shadeOpen(rows) {
+  const plain = new Set(), foot = new Set();
+  for (const r of rows || []) for (const m of r.mu) (r.n ? foot : plain).add(m);
+  for (const m of plain) foot.delete(m);
+  state.shade = rows && rows.length ? { plain: [...plain], foot: [...foot] } : null;
+  applyShade();
+}
+export function clearShade() { state.shade = null; applyShade(); }
+function applyShade() {
+  if (!map.getLayer('wmu-fill')) return;
+  const sh = state.shade;
+  if (!sh) { map.setPaintProperty('wmu-fill', 'fill-opacity', 0); return; }
+  const expr = ['match', ['get', 'id']];
+  if (sh.plain.length) expr.push(sh.plain, '#2fbf4a');
+  if (sh.foot.length) expr.push(sh.foot, '#f2c200');
+  expr.push('rgba(0,0,0,0)');
+  map.setPaintProperty('wmu-fill', 'fill-color', expr.length > 3 ? expr : '#000');
+  map.setPaintProperty('wmu-fill', 'fill-opacity', expr.length > 3 ? 0.42 : 0);
 }
 
 // ---- Identify (WMS GetFeatureInfo across queryable layers) ----
 export async function identify(lngLat, layerIds) {
-  const layers = allLayers().filter((l) => l.identify && (layerIds ? layerIds.includes(l.id) : (l.id === 'wmu' || layerOn(l.id))));
-  // Always query WMU and MVPR areas, even if hidden
-  for (const id of ['wmu', 'mvpr', 'parks', 'reserves']) if (!layers.find((l) => l.id === id)) layers.push(BC_LAYERS.find((l) => l.id === id));
-  const uniq = [...new Map(layers.map((l) => [l.layer, l])).values()];
-  const p = map.project(lngLat); const c = map.unproject(p);
-  // small bbox around click (~8 px) in EPSG:4326 to avoid projection maths
+  // Only layers the user has switched on are reported (WMU is always looked up for seasons).
+  const on = allLayers().filter((l) => l.identify && (layerIds ? layerIds.includes(l.id) : (l.id === 'wmu' || layerOn(l.id))));
+  if (!on.find((l) => l.id === 'wmu') && !layerIds) on.push(BC_LAYERS.find((l) => l.id === 'wmu'));
+  const byLayer = new Map(); for (const l of on) { if (!byLayer.has(l.layer)) byLayer.set(l.layer, []); byLayer.get(l.layer).push(l); }
+  const p = map.project(lngLat);
   const a = map.unproject([p.x - 4, p.y + 4]), b = map.unproject([p.x + 4, p.y - 4]);
+  const names = [...byLayer.keys()].map((n) => 'pub:' + n).join(',');
   const params = new URLSearchParams({
-    service: 'WMS', request: 'GetFeatureInfo', version: '1.1.1', layers: uniq.map((l) => 'pub:' + l.layer).join(','),
-    query_layers: uniq.map((l) => 'pub:' + l.layer).join(','), styles: '', srs: 'EPSG:4326',
-    bbox: [a.lng, a.lat, b.lng, b.lat].join(','), width: '9', height: '9', x: '4', y: '4',
-    info_format: 'application/json', feature_count: '20',
+    service: 'WMS', request: 'GetFeatureInfo', version: '1.1.1', layers: names, query_layers: names, styles: '', srs: 'EPSG:4326',
+    bbox: [a.lng, a.lat, b.lng, b.lat].join(','), width: '9', height: '9', x: '4', y: '4', info_format: 'application/json', feature_count: '30',
   });
   try {
     const r = await fetch(`${BC_WMS}?${params}`);
@@ -140,13 +219,15 @@ export async function identify(lngLat, layerIds) {
     const j = await r.json();
     const out = {};
     for (const f of j.features || []) {
-      const fid = (f.id || '').toUpperCase();
-      const l = uniq.find((x) => fid.includes(x.layer.split('.').pop().toUpperCase()))
-        || (f.properties && WMU_FIELD in f.properties ? uniq.find((x) => x.id === 'wmu') : null)
-        || { id: fid.replace(/\.[^.]*$/, '') || 'other', name: fid.replace(/\.[^.]*$/, '') || 'Other' };
-      (out[l.id] ||= { layer: l, feats: [] }).feats.push(f.properties || {});
+      const fid = (f.id || '').toUpperCase(); const props = f.properties || {};
+      const key = [...byLayer.keys()].find((n) => fid.includes(n.split('.').pop().toUpperCase())) || (WMU_FIELD in props ? WMU_LAYER : null);
+      if (!key) continue;
+      const cands = byLayer.get(key) || [];
+      const l = cands.length > 1 ? cands.find((c) => !c.match || c.match(props)) : cands.find((c) => !c.match || c.match(props));
+      if (!l) continue;
+      (out[l.id] ||= { layer: l, feats: [] }).feats.push(props);
     }
-    return { ok: true, at: c, results: out };
+    return { ok: true, results: out };
   } catch (e) {
     console.warn('identify failed', e);
     return { ok: false, error: String(e), results: {} };
@@ -182,7 +263,7 @@ export function refreshData() {
   if (!map?.getSource('spots')) return;
   map.getSource('spots').setData(spotsGeo()); map.getSource('tracks').setData(tracksGeo());
 }
-export function setSelection(fc) { map.getSource('sel')?.setData(fc || { type: 'FeatureCollection', features: [] }); }
+export function setSelection(fc) { map.getSource('sel')?.setData(fc || { type: 'FeatureCollection', features: [] }); if (!fc) selectWmu(null); }
 export function setHotspots(fc) { map.getSource('hot')?.setData(fc || { type: 'FeatureCollection', features: [] }); }
 
 export function spotPopupHTML(s) {
@@ -201,5 +282,5 @@ export function flyTo(lon, lat, zoom = 13) { map.flyTo({ center: [lon, lat], zoo
 export function fitTo(coords) {
   if (!coords.length) return;
   const b = coords.reduce((bb, c) => bb.extend(c), new maplibregl.LngLatBounds(coords[0], coords[0]));
-  map.fitBounds(b, { padding: 60, maxZoom: 14 });
+  map.fitBounds(b, { padding: 60, maxZoom: 14, duration: reducedMotion() ? 0 : 900 });
 }
