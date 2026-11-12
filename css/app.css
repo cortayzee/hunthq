@@ -320,3 +320,16 @@ details.region > summary .name { flex: 1; font-weight: 550; }
 .map-chip button { width: 32px; height: 32px; min-height: 0; padding: 0; border: none; border-radius: 50%; background: var(--chrome-2); color: var(--chrome-ink); }
 .app:not(.panel-closed) .map-chip { left: calc(50% + var(--panel-w) / 2); max-width: calc(100vw - var(--panel-w) - 280px); }
 @media (max-width: 760px) { .map-chip { top: calc(66px + env(safe-area-inset-top)); left: 10px; transform: none; max-width: calc(100vw - 80px); } @starting-style { .map-chip { opacity: 0; transform: translateY(-6px); } } .app:not(.panel-closed) .map-chip { left: 10px; } }
+
+/* ---------- Waypoint badges & pickers ---------- */
+.spot-badge { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; box-shadow: 0 0 0 2px #fff, var(--shadow-sm); flex: 0 0 auto; }
+.pick-label { font-size: .84em; color: var(--muted); margin-bottom: 6px; }
+.kind-pick { display: flex; flex-wrap: wrap; gap: 6px; }
+.kind-pick button { min-height: 38px; padding: 0 12px 0 6px; border-radius: 99px; gap: 7px; font-size: .88em; }
+.kind-pick .kb { width: 24px; height: 24px; border-radius: 50%; background: var(--k); display: grid; place-items: center; box-shadow: 0 0 0 1.5px #fff inset; }
+.kind-pick button[aria-checked=true] { border-color: var(--k); background: color-mix(in srgb, var(--k) 14%, var(--panel)); font-weight: 650; }
+.animal-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; }
+.animal-pick button { flex-direction: column; gap: 2px; padding: 6px 4px 7px; min-height: 70px; font-size: .76em; color: var(--muted); border-color: var(--line); }
+.animal-pick button svg { color: var(--ink); }
+.animal-pick button[aria-checked=true] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); font-weight: 650; }
+.animal-pick button[aria-checked=true] svg { color: var(--accent-strong); }

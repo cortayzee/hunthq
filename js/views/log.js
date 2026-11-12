@@ -6,6 +6,12 @@ import * as M from '../map.js';
 import { normMU } from '../seasons.js';
 import { pickOnMap } from '../main.js';
 import { exportKML, exportGPX, exportCSV } from '../exporters.js';
+import { glyphSVG, animalFor } from '../animals.js';
+
+const PICK = [['Moose', 'moose'], ['Elk', 'elk'], ['Mule Deer', 'deer'], ['White-tailed Deer', 'deer'], ['Black Bear', 'bear'], ['Grizzly Bear', 'bear'],
+  ['Bighorn Sheep', 'sheep'], ['Mountain Goat', 'goat'], ['Caribou', 'caribou'], ['Cougar', 'cougar'], ['Wolf', 'wolf'], ['Coyote', 'wolf'],
+  ['Ruffed Grouse', 'grouse'], ['Turkey', 'turkey'], ['Ducks', 'duck'], ['Geese', 'duck'], ['Snowshoe Hare', 'hare']];
+const KIND_GLYPH = { kill: null, sighting: null, stand: 'stand', camp: 'camp', trailcam: 'trailcam', access: 'access', note: 'note' };
 
 export const hunterDatalist = () => `<datalist id="hunterList">${hunters().map((h) => `<option value="${esc(h)}">`).join('')}</datalist>`;
 export const speciesDatalist = () => `<datalist id="speciesList">${SPECIES.map((s) => `<option value="${esc(s)}">`).join('')}</datalist>`;
@@ -65,16 +71,19 @@ export function openSpotForm(s = {}, lookupWmu = false) {
   const d = isNew ? { ...lastDefaults, observed_at: new Date().toISOString(), ...s } : s;
   const body = modal(`<h3>${isNew ? 'New waypoint' : 'Edit waypoint'}</h3>
   <form id="spotForm" class="grid2">
-    <label>Kind <select name="kind">${opts(KINDS, d.kind)}</select></label>
-    <label>Name <input name="name" value="${esc(d.name || '')}"></label>
-    <label>Species <input name="species" list="speciesList" value="${esc(d.species || '')}"></label>
+    <input type="hidden" name="kind" value="${esc(d.kind || 'sighting')}">
+    <div class="span2"><div class="pick-label">Type</div><div class="kind-pick" role="radiogroup">${KINDS.map((k) => `<button type="button" role="radio" data-kind="${k.id}" aria-checked="${(d.kind || 'sighting') === k.id}" style="--k:${k.color}">
+      <span class="kb">${KIND_GLYPH[k.id] ? glyphSVG(KIND_GLYPH[k.id], { size: 18, color: '#fff', bg: k.color }) : ''}</span>${esc(k.name.replace(' / blind', '').replace(' / parking', ''))}</button>`).join('')}</div></div>
+    <div class="span2"><div class="pick-label">Animal</div><div class="animal-pick" role="radiogroup">${PICK.map(([sp, g]) => `<button type="button" role="radio" data-sp="${esc(sp)}" aria-checked="${(d.species || '') === sp}">${glyphSVG(g, { size: 34 })}<span>${esc(sp.replace(' Deer', ' deer').replace('White-tailed deer', 'Whitetail'))}</span></button>`).join('')}</div></div>
+    <label>Species <input name="species" list="speciesList" value="${esc(d.species || '')}" placeholder="or type one"></label>
+    <label>Name <input name="name" value="${esc(d.name || '')}" placeholder="e.g. 5 pt bull"></label>
     <label>Sex <select name="sex">${opts(SEXES, d.sex)}</select></label>
     <label>Hunter <input name="hunter" list="hunterList" value="${esc(d.hunter || 'Me')}"></label>
     <label>Date/time <input type="datetime-local" name="observed_at" value="${d.observed_at ? localDT(d.observed_at) : ''}"></label>
     <label>WMU <input name="wmu" value="${esc(d.wmu || '')}" placeholder="3-15"></label>
     <label>Weapon <select name="weapon">${opts(WEAPONS, d.weapon, { blank: true })}</select></label>
-    <label>Latitude <input name="lat" type="number" step="any" required value="${d.lat ?? ''}"></label>
-    <label>Longitude <input name="lon" type="number" step="any" required value="${d.lon ?? ''}"></label>
+    <label>Latitude <input name="lat" type="number" step="any" required value="${d.lat != null && d.lat !== '' ? (+d.lat).toFixed(6) : ''}"></label>
+    <label>Longitude <input name="lon" type="number" step="any" required value="${d.lon != null && d.lon !== '' ? (+d.lon).toFixed(6) : ''}"></label>
     <label class="span2">Notes <textarea name="notes">${esc(d.notes || '')}</textarea></label>
     <div class="row span2">
       <button class="primary" type="submit">Save</button>
@@ -84,6 +93,15 @@ export function openSpotForm(s = {}, lookupWmu = false) {
     </div>
   </form>${hunterDatalist()}${speciesDatalist()}`);
   const form = body.querySelector('#spotForm');
+  const syncPick = () => {
+    form.querySelectorAll('[data-kind]').forEach((x) => x.setAttribute('aria-checked', String(x.dataset.kind === form.kind.value)));
+    form.querySelectorAll('[data-sp]').forEach((x) => x.setAttribute('aria-checked', String(x.dataset.sp.toLowerCase() === (form.species.value || '').toLowerCase())));
+  };
+  form.addEventListener('click', (e) => {
+    const k = e.target.closest('[data-kind]'); if (k) { form.kind.value = k.dataset.kind; syncPick(); }
+    const a = e.target.closest('[data-sp]'); if (a) { form.species.value = a.dataset.sp; if (!['kill', 'sighting'].includes(form.kind.value)) form.kind.value = 'sighting'; syncPick(); }
+  });
+  form.species.addEventListener('input', syncPick);
   if (lookupWmu && d.lat != null && !d.wmu) M.identify({ lng: d.lon, lat: d.lat }, ['wmu']).then((r) => { const w = M.wmuFromIdentify(r); if (w && !form.wmu.value) form.wmu.value = w; });
   form.onsubmit = async (e) => {
     e.preventDefault();
