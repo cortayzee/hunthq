@@ -33,6 +33,16 @@ export const ANIMALS = {
   stand: { name: 'Stand / blind', f: ['M14 14 L50 14 L50 24 L14 24 Z'], s: ['M20 24 L14 58', 'M44 24 L50 58', 'M18.5 34 L45.5 34', 'M16.5 46 L47.5 46', 'M14 14 L14 6', 'M50 14 L50 6', 'M14 6 L50 6'], sw: 4 },
   access: { name: 'Access / parking', f: ['M8 30 L14 18 Q15.5 15 19 15 L41 15 Q44.5 15 46 18 L52 30 L56 31 Q58 32 58 35 L58 44 L6 44 L6 35 Q6 32 8 30 Z', 'M18 44 m-6 0 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0', 'M46 44 m-6 0 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0'], cut: ['M15 29 L19 20 L30 20 L30 29 Z', 'M34 29 L34 20 L41 20 L45 29 Z'] },
   service: { name: 'Cell service', f: ['M8 46 h8 v10 h-8 Z', 'M20 38 h8 v18 h-8 Z', 'M32 28 h8 v28 h-8 Z', 'M44 16 h8 v40 h-8 Z'] },
+  feed: { name: 'Feeding area', f: ['M20 56 Q18 36 8 22 Q20 30 24 44 Z', 'M30 56 Q30 30 26 8 Q36 26 35 56 Z', 'M40 56 Q42 34 54 18 Q48 36 45 56 Z', 'M6 54 h52 v4 h-52 Z'] },
+  water: { name: 'Water', f: ['M32 5 C32 5 13 28 13 41 a19 19 0 0 0 38 0 C51 28 32 5 32 5 Z'], cut: ['M22 41 a10 10 0 0 0 10 10 l0 -4 a6 6 0 0 1 -6 -6 Z'] },
+  bedding: { name: 'Bedding area', f: ['M8 40 a24 12 0 1 0 48 0 a24 12 0 1 0 -48 0'], cut: ['M16 40 a16 7 0 1 0 32 0 a16 7 0 1 0 -32 0'], s: ['M38 14 h8 l-8 8 h8', 'M48 6 h6 l-6 6 h6'], sw: 2.8 },
+  sign: { name: 'Rub / scrape / sign', f: ['M24 4 h16 v56 h-16 Z'], cut: ['M24 20 L40 14 L40 18 L24 24 Z', 'M24 30 L40 24 L40 28 L24 34 Z', 'M24 40 L40 34 L40 38 L24 44 Z'] },
+  wallow: { name: 'Wallow', f: ['M6 46 q13 -12 26 0 t26 0 v12 h-52 Z'], s: ['M14 30 q6 -6 12 0 t12 0', 'M30 18 q6 -6 12 0'], sw: 3.2 },
+  glass: { name: 'Glassing spot', f: ['M17 40 m-12 0 a12 12 0 1 0 24 0 a12 12 0 1 0 -24 0', 'M47 40 m-12 0 a12 12 0 1 0 24 0 a12 12 0 1 0 -24 0', 'M10 14 h14 l3 18 h-20 Z', 'M40 14 h14 l3 18 h-20 Z', 'M27 30 h10 v8 h-10 Z'], cut: ['M17 40 m-6 0 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0', 'M47 40 m-6 0 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0'] },
+  trailhead: { name: 'Trailhead / walk-in', f: ['M33 9 m-6 0 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0'], s: ['M31 20 L27 38 L18 56', 'M27 38 L38 46 L40 58', 'M30 24 L20 32 L16 42', 'M31 22 L42 30 L48 28', 'M50 18 L46 58'], sw: 5 },
+  bridge: { name: 'Bridge / crossing', f: ['M2 26 h60 v8 h-60 Z', 'M8 34 h6 v22 h-6 Z', 'M50 34 h6 v22 h-6 Z'], cut: [], s: ['M14 36 Q32 58 50 36', 'M2 26 L2 16', 'M62 26 L62 16', 'M2 16 Q32 4 62 16'], sw: 3.6 },
+  gate: { name: 'Gate', f: ['M6 12 h7 v46 h-7 Z', 'M51 12 h7 v46 h-7 Z', 'M13 18 h38 v6 h-38 Z', 'M13 42 h38 v6 h-38 Z'], s: ['M15 24 L49 42', 'M15 42 L49 24'], sw: 4 },
+  hazard: { name: 'Hazard', f: ['M32 6 L60 56 L4 56 Z'], cut: ['M29 22 h6 l-1 20 h-4 Z', 'M32 49 m-3.5 0 a3.5 3.5 0 1 0 7 0 a3.5 3.5 0 1 0 -7 0'] },
   note: { name: 'Note', f: ['M32 32 m-11 0 a11 11 0 1 0 22 0 a11 11 0 1 0 -22 0'] },
 };
 
@@ -56,7 +66,8 @@ export function animalFor(species = '') {
   return null;
 }
 // Which glyph a waypoint shows: the animal if it has one, else its kind's place symbol.
-export const glyphFor = (spot) => (['camp', 'trailcam', 'stand', 'access', 'service'].includes(spot.kind) ? spot.kind : animalFor(spot.species) || (spot.kind === 'note' ? 'note' : 'note'));
+// Kills & sightings show the animal; every other type shows its own symbol.
+export const glyphFor = (spot) => (spot.kind !== 'kill' && spot.kind !== 'sighting' && ANIMALS[spot.kind] ? spot.kind : animalFor(spot.species) || ANIMALS[spot.kind] && spot.kind || 'note');
 
 function draw(ctx, g, color) {
   ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = g.sw || 2.6;
@@ -97,7 +108,7 @@ function termKey(sp) {
 export const sexTerms = (sp) => TERMS[termKey(sp)] || ['Male', 'Female'];
 export const hasPoints = (sp) => ['deer', 'elk', 'moose', 'caribou'].includes(animalFor(sp));
 const shortSp = (sp) => (sp || '').replace(/^White-?tailed Deer$/i, 'Whitetail').replace(/ \(.*\)$/, '').trim();
-const PLACE = { camp: 'Camp', trailcam: 'Trail Cam', stand: 'Stand', access: 'Access', service: 'Cell Service', note: 'Note' };
+const PLACE = { camp: 'Camp', trailcam: 'Trail Cam', stand: 'Stand', access: 'Parking', service: 'Cell Service', note: 'Note', feed: 'Feeding Area', water: 'Water', bedding: 'Bedding Area', sign: 'Sign', wallow: 'Wallow', glass: 'Glassing Spot', trailhead: 'Trailhead', bridge: 'Bridge', gate: 'Gate', hazard: 'Hazard' };
 export function autoName({ kind, species, sex } = {}) {
   if (PLACE[kind] && !species) return PLACE[kind];
   if (!species) return kind === 'kill' ? 'Kill' : kind === 'sighting' ? 'Sighting' : PLACE[kind] || '';

@@ -1,9 +1,9 @@
 // MapLibre map: base styles, 3D terrain, BC WMS overlays, identify, waypoints/tracks, open-WMU shading.
-import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261112232000-e9fd32d';
-import { store } from './db.js?v=20261112232000-e9fd32d';
-import { MODES, fmtKm } from './elevation.js?v=20261112232000-e9fd32d';
-import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261112232000-e9fd32d';
-import { esc, earthLink, fmtDT } from './util.js?v=20261112232000-e9fd32d';
+import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261112232336-49fa4b1';
+import { store } from './db.js?v=20261112232336-49fa4b1';
+import { MODES, fmtKm } from './elevation.js?v=20261112232336-49fa4b1';
+import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261112232336-49fa4b1';
+import { esc, earthLink, fmtDT } from './util.js?v=20261112232336-49fa4b1';
 
 export let map;
 const state = { base: 'sat', terrain: false, exag: 1.5, hillshade: false, ref: false, hiddenWmu: [], layers: {}, opacity: {}, shade: null, custom: [] };
@@ -215,6 +215,11 @@ export async function identify(lngLat, layerIds) {
     service: 'WMS', request: 'GetFeatureInfo', version: '1.1.1', layers: names, query_layers: names, styles: '', srs: 'EPSG:4326',
     bbox: [a.lng, a.lat, b.lng, b.lat].join(','), width: '9', height: '9', x: '4', y: '4', info_format: 'application/json', feature_count: '30',
   });
+  // GeoServer hit-tests against the rendered style; zoomed in, the default styles are outline-only, so a tap inside a
+  // unit would return nothing. Send a filled style for every queried layer so any tap inside a polygon counts.
+  params.set('SLD_BODY', `<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld">${[...byLayer].map(([n, ls]) => `<NamedLayer><Name>pub:${n}</Name><UserStyle><FeatureTypeStyle><Rule>${
+    ls[0].geom === 'line' ? '<LineSymbolizer><Stroke><CssParameter name="stroke">#000</CssParameter><CssParameter name="stroke-width">9</CssParameter></Stroke></LineSymbolizer>'
+      : '<PolygonSymbolizer><Fill><CssParameter name="fill">#000</CssParameter></Fill></PolygonSymbolizer>'}</Rule></FeatureTypeStyle></UserStyle></NamedLayer>`).join('')}</StyledLayerDescriptor>`);
   try {
     const r = await fetch(`${BC_WMS}?${params}`);
     if (!r.ok) throw new Error('HTTP ' + r.status);

@@ -63,16 +63,28 @@ export const BC_LAYERS = [
   { id: 'private', name: 'Private land (ParcelMap BC, zoom 12+)', layer: 'WHSE_CADASTRE.PMBC_PARCEL_FABRIC_POLY_SVW', cql: "OWNER_TYPE = 'Private'", color: '#cc3399', group: 'Land', identify: true, minzoom: 12 },
 ];
 
+// Waypoint types, grouped for the picker. Colour = badge colour on the map.
 export const KINDS = [
-  { id: 'kill', name: 'Kill', color: '#d62728' },
-  { id: 'sighting', name: 'Sighting', color: '#1f77b4' },
-  { id: 'stand', name: 'Stand / blind', color: '#9467bd' },
-  { id: 'camp', name: 'Camp', color: '#2ca02c' },
-  { id: 'trailcam', name: 'Trail cam', color: '#17becf' },
-  { id: 'access', name: 'Access / parking', color: '#ff7f0e' },
-  { id: 'service', name: 'Cell service', color: '#5b5bd6' },
-  { id: 'note', name: 'Note', color: '#7f7f7f' },
+  { id: 'kill', name: 'Kill', color: '#d62728', group: 'hunt' },
+  { id: 'sighting', name: 'Sighting', color: '#1f77b4', group: 'hunt' },
+  { id: 'feed', name: 'Feeding area', color: '#7cb342', group: 'scout' },
+  { id: 'water', name: 'Water', color: '#0288d1', group: 'scout' },
+  { id: 'bedding', name: 'Bedding area', color: '#8d6e63', group: 'scout' },
+  { id: 'sign', name: 'Rub / scrape / sign', color: '#ef6c00', group: 'scout' },
+  { id: 'wallow', name: 'Wallow', color: '#6d4c41', group: 'scout' },
+  { id: 'glass', name: 'Glassing spot', color: '#546e7a', group: 'scout' },
+  { id: 'trailcam', name: 'Trail cam', color: '#17becf', group: 'scout' },
+  { id: 'stand', name: 'Stand / blind', color: '#9467bd', group: 'scout' },
+  { id: 'camp', name: 'Camp', color: '#2ca02c', group: 'place' },
+  { id: 'access', name: 'Parking / vehicle', color: '#ff7f0e', group: 'place' },
+  { id: 'trailhead', name: 'Trailhead / walk-in', color: '#a1887f', group: 'place' },
+  { id: 'bridge', name: 'Bridge / crossing', color: '#607d8b', group: 'place' },
+  { id: 'gate', name: 'Gate', color: '#ad1457', group: 'place' },
+  { id: 'service', name: 'Cell service', color: '#5b5bd6', group: 'place' },
+  { id: 'hazard', name: 'Hazard', color: '#f9a825', group: 'place' },
+  { id: 'note', name: 'Note', color: '#7f7f7f', group: 'place' },
 ];
+export const KIND_GROUPS = [['hunt', 'Hunt'], ['scout', 'Scouting'], ['place', 'Camp & access']];
 export const kindColor = (k) => (KINDS.find((x) => x.id === k) || KINDS[KINDS.length - 1]).color;
 
 export const SPECIES = ['Mule Deer', 'White-tailed Deer', 'Moose', 'Elk', 'Black Bear', 'Grizzly Bear', 'Mountain Goat',

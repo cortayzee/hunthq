@@ -1,6 +1,6 @@
 // Elevation + route stats from the same free AWS Terrarium DEM tiles the 3D view uses (≈12 m pixels at BC latitudes).
-import { TERRAIN_TILES } from './config.js?v=20261112232000-e9fd32d';
-import { haversineKm } from './util.js?v=20261112232000-e9fd32d';
+import { TERRAIN_TILES } from './config.js?v=20261112232336-49fa4b1';
+import { haversineKm } from './util.js?v=20261112232336-49fa4b1';
 
 const Z = 13, TILE = 256;
 const cache = new Map();

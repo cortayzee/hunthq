@@ -1,21 +1,21 @@
-import * as db from '../db.js?v=20261112232000-e9fd32d';
-import { store, hunters } from '../db.js?v=20261112232000-e9fd32d';
-import { KINDS, SPECIES, WEAPONS, SEXES, kindColor } from '../config.js?v=20261112232000-e9fd32d';
-import { esc, opts, modal, closeModal, requestClose, markDirty, toast, formData, localDT, fmtDT, earthLink, parseLatLon, parseCSV, yearOf } from '../util.js?v=20261112232000-e9fd32d';
-import * as M from '../map.js?v=20261112232000-e9fd32d';
-import { normMU } from '../seasons.js?v=20261112232000-e9fd32d';
-import { pickOnMap, closePanel } from '../main.js?v=20261112232000-e9fd32d';
-import { exportKML, exportGPX, exportCSV } from '../exporters.js?v=20261112232000-e9fd32d';
-import { glyphSVG, glyphFor, animalFor, sexTerms, hasPoints, autoName, spotLabel } from '../animals.js?v=20261112232000-e9fd32d';
-import { MODES, fmtKm, fmtHours } from '../elevation.js?v=20261112232000-e9fd32d';
-import * as V from '../vis.js?v=20261112232000-e9fd32d';
-import { tripOf, groupOf, tripTitle, spotYear } from '../vis.js?v=20261112232000-e9fd32d';
-import { icon } from '../icons.js?v=20261112232000-e9fd32d';
+import * as db from '../db.js?v=20261112232336-49fa4b1';
+import { store, hunters } from '../db.js?v=20261112232336-49fa4b1';
+import { KINDS, KIND_GROUPS, SPECIES, WEAPONS, SEXES, kindColor } from '../config.js?v=20261112232336-49fa4b1';
+import { esc, opts, modal, closeModal, requestClose, markDirty, toast, formData, localDT, fmtDT, earthLink, parseLatLon, parseCSV, yearOf } from '../util.js?v=20261112232336-49fa4b1';
+import * as M from '../map.js?v=20261112232336-49fa4b1';
+import { normMU } from '../seasons.js?v=20261112232336-49fa4b1';
+import { pickOnMap, closePanel } from '../main.js?v=20261112232336-49fa4b1';
+import { exportKML, exportGPX, exportCSV } from '../exporters.js?v=20261112232336-49fa4b1';
+import { glyphSVG, glyphFor, animalFor, sexTerms, hasPoints, autoName, spotLabel } from '../animals.js?v=20261112232336-49fa4b1';
+import { MODES, fmtKm, fmtHours } from '../elevation.js?v=20261112232336-49fa4b1';
+import * as V from '../vis.js?v=20261112232336-49fa4b1';
+import { tripOf, groupOf, tripTitle, spotYear } from '../vis.js?v=20261112232336-49fa4b1';
+import { icon } from '../icons.js?v=20261112232336-49fa4b1';
 
 const PICK = [['Moose', 'moose'], ['Elk', 'elk'], ['Mule Deer', 'deer'], ['White-tailed Deer', 'deer'], ['Black Bear', 'bear'], ['Grizzly Bear', 'bear'],
   ['Bighorn Sheep', 'sheep'], ['Mountain Goat', 'goat'], ['Caribou', 'caribou'], ['Cougar', 'cougar'], ['Wolf', 'wolf'], ['Coyote', 'wolf'],
   ['Ruffed Grouse', 'grouse'], ['Turkey', 'turkey'], ['Ducks', 'duck'], ['Geese', 'duck'], ['Snowshoe Hare', 'hare']];
-const KIND_GLYPH = { kill: null, sighting: null, stand: 'stand', camp: 'camp', trailcam: 'trailcam', access: 'access', service: 'service', note: 'note' };
+const KIND_GLYPH = Object.fromEntries(KINDS.map((k) => [k.id, ['kill', 'sighting'].includes(k.id) ? null : k.id]));
 
 export const hunterDatalist = () => `<datalist id="hunterList">${hunters().map((h) => `<option value="${esc(h)}">`).join('')}</datalist>`;
 export const speciesDatalist = () => `<datalist id="speciesList">${SPECIES.map((s) => `<option value="${esc(s)}">`).join('')}</datalist>`;
@@ -32,7 +32,7 @@ export const spotBadge = (s, size = 30) => `<span class="spot-badge" style="widt
 export function spotRow(s, { showTrip = false } = {}) {
   const t = tripOf(s);
   const when = s.observed_at ? fmtShort(s.observed_at) : s.extra?.date_range ? 'During hunt' : '';
-  const sub = [when, s.hunter && s.hunter !== 'Me' ? s.hunter : '', showTrip && t ? tripTitle(t) : '', s.wmu ? 'WMU ' + s.wmu : ''].filter(Boolean).join(' · ');
+  const sub = [s.extra?.placeholder ? 'Placeholder spot' : '', when, s.hunter && s.hunter !== 'Me' ? s.hunter : '', showTrip && t ? tripTitle(t) : '', s.wmu ? 'WMU ' + s.wmu : ''].filter(Boolean).join(' · ');
   return `<div class="wp-row ${V.isVisible(s) ? '' : 'off'}" data-fly="${s.id}">${spotBadge(s)}<div class="t"><b>${esc(spotLabel(s))}</b><span class="muted">${esc(sub)}</span></div>
     <button class="icon-btn" data-act="edit-spot" data-id="${s.id}" aria-label="Edit ${esc(spotLabel(s))}">${icon('chevR', { size: 18 })}</button></div>`;
 }
@@ -114,10 +114,10 @@ export function render(v) {
       if (a === 'DELETE') await V.deleteGroup(gm); else if (a?.trim() && a !== g.name) await V.renameGroup(gm, a.trim());
       render(v); return;
     }
-    const ot = e.target.closest('[data-open-trip]')?.dataset.openTrip; if (ot) { (await import('./trips.js?v=20261112232000-e9fd32d')).openTrip(ot); return; }
+    const ot = e.target.closest('[data-open-trip]')?.dataset.openTrip; if (ot) { (await import('./trips.js?v=20261112232336-49fa4b1')).openTrip(ot); return; }
     if (e.target.closest('[data-act]')) return;
     const tr = e.target.closest('[data-track]');
-    if (tr && !e.target.closest('.switch')) { const t = store.tracks.find((x) => x.id === tr.dataset.track); if (t) (await import('../route.js?v=20261112232000-e9fd32d')).openRoute(t); return; }
+    if (tr && !e.target.closest('.switch')) { const t = store.tracks.find((x) => x.id === tr.dataset.track); if (t) (await import('../route.js?v=20261112232336-49fa4b1')).openRoute(t); return; }
     const row = e.target.closest('[data-fly]');
     if (row) { const s = store.spots.find((x) => x.id === row.dataset.fly); if (s) { if (!V.isVisible(s)) toast('That waypoint is hidden by a filter above'); M.flyTo(s.lon, s.lat, 14); if (innerWidth <= 760) closePanel(); } }
   };
@@ -140,8 +140,8 @@ export function openSpotForm(s = {}, lookupWmu = false) {
   const body = modal(`<h3>${isNew ? 'New waypoint' : 'Edit waypoint'}</h3>
   <form id="spotForm" class="grid2">
     <input type="hidden" name="kind" value="${esc(d.kind || 'sighting')}">
-    <div class="span2"><div class="pick-label">Type</div><div class="kind-pick" role="radiogroup">${KINDS.map((k) => `<button type="button" role="radio" data-kind="${k.id}" aria-checked="${(d.kind || 'sighting') === k.id}" style="--k:${k.color}">
-      <span class="kb">${KIND_GLYPH[k.id] ? glyphSVG(KIND_GLYPH[k.id], { size: 18, color: '#fff', bg: k.color }) : ''}</span>${esc(k.name.replace(' / blind', '').replace(' / parking', ''))}</button>`).join('')}</div></div>
+    <div class="span2">${KIND_GROUPS.map(([gid, gname]) => `<div class="pick-label">${gname}</div><div class="kind-pick" role="radiogroup" aria-label="${gname}">${KINDS.filter((k) => k.group === gid).map((k) => `<button type="button" role="radio" data-kind="${k.id}" aria-checked="${(d.kind || 'sighting') === k.id}" style="--k:${k.color}">
+      <span class="kb">${KIND_GLYPH[k.id] ? glyphSVG(KIND_GLYPH[k.id], { size: 18, color: '#fff', bg: k.color }) : ''}</span>${esc(k.name)}</button>`).join('')}</div>`).join('')}</div>
     <div class="span2"><div class="pick-label">Animal</div><div class="animal-pick" role="radiogroup">${PICK.map(([sp, g]) => `<button type="button" role="radio" data-sp="${esc(sp)}" aria-checked="${(d.species || '') === sp}">${glyphSVG(g, { size: 34 })}<span>${esc(sp.replace(' Deer', ' deer').replace('White-tailed deer', 'Whitetail'))}</span></button>`).join('')}</div></div>
     <label>Species <input name="species" list="speciesList" value="${esc(d.species || '')}" placeholder="or type one"></label>
     <label>Sex <select name="sex"></select></label>
@@ -183,7 +183,7 @@ export function openSpotForm(s = {}, lookupWmu = false) {
   form.name.addEventListener('input', () => { auto = !form.name.value; });
   form.addEventListener('click', (e) => {
     const k = e.target.closest('[data-kind]'); if (k) { form.kind.value = k.dataset.kind; syncPick(); refresh(); markDirty(); }
-    const a = e.target.closest('[data-sp]'); if (a) { form.species.value = a.dataset.sp; if (!['kill', 'sighting'].includes(form.kind.value)) form.kind.value = 'sighting'; syncPick(); refresh(); markDirty(); }
+    const a = e.target.closest('[data-sp]'); if (a) { form.species.value = a.dataset.sp; if (KINDS.find((k) => k.id === form.kind.value)?.group === 'place') form.kind.value = 'sighting'; syncPick(); refresh(); markDirty(); }
   });
   form.species.addEventListener('input', () => { syncPick(); refresh(); });
   form.sex.addEventListener('change', refresh);
