@@ -551,3 +551,38 @@ details.lyr-sec[open] > summary { border-bottom: 1px solid var(--line); backgrou
 .leh-pop button { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; text-align: left; padding: 8px 10px; min-height: 44px; }
 .leh-pop button b { grid-row: span 2; align-self: center; color: var(--accent, #e0893a); }
 .leh-pop button .muted { font-size: 12px; }
+
+/* Rut & moon */
+.rut-loc { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; font-size: 13.5px; margin-bottom: 10px; }
+.rut-sps { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; }
+.rut-sp { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 7px 10px; min-height: 44px; border-radius: 10px; text-align: left; }
+.rut-sp b { font-size: 13px; } .rut-sp span { font-size: 11.5px; color: var(--muted); }
+.rut-sp.on span { color: #f2b45a; } .rut-sp.peak span { color: #ff6b5a; font-weight: 600; }
+.rut-sp[aria-pressed="true"] { border-color: var(--accent, #e0893a); box-shadow: inset 0 0 0 1px var(--accent, #e0893a); }
+.rut-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 14px; }
+.rut-head b { font-size: 17px; } .rut-head span { font-size: 15px; }
+.rut-bar { display: flex; gap: 4px; height: 12px; }
+.rut-bar button { position: relative; padding: 0; min-height: 0; height: 12px; border-radius: 6px; border: 0; background: var(--panel-2); transition: transform .15s ease-out; }
+.rut-bar button.seg-peak { background: linear-gradient(90deg, #e9a23b, #d8402e); }
+.rut-bar button.cur:not(.seg-peak) { background: #c98a3a; }
+.rut-bar button.sel { outline: 2px solid var(--text); outline-offset: 2px; }
+.rut-bar button:active { transform: scaleY(1.25); }
+.rut-now { position: absolute; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: #fff; border: 3px solid #e9a23b; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+.rut-labels { display: flex; gap: 4px; margin-top: 8px; }
+.rut-labels span { min-width: 0; font-size: 11.5px; line-height: 1.25; color: var(--muted); overflow-wrap: anywhere; }
+.rut-labels span.sel { color: var(--text); font-weight: 600; }
+.rut-labels em { display: block; font-style: normal; font-weight: 400; font-size: 10.5px; }
+.rut-stage { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 12px; }
+.rut-stage-h { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; margin-bottom: 6px; } .rut-stage-h b { font-size: 15px; }
+.rut-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 480px) { .rut-cols { grid-template-columns: 1fr; gap: 4px; } }
+.rut-cols h4 { margin: 4px 0; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.rut-cols ul, .moon-tips { margin: 0; padding-left: 18px; font-size: 14px; } .rut-cols li, .moon-tips li { margin: 3px 0; }
+.moon-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.moon-day { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 2px; border-radius: 10px; min-height: 0; }
+.moon-day.sel { border-color: var(--accent, #e0893a); box-shadow: inset 0 0 0 1px var(--accent, #e0893a); }
+.moon-day .dn { font-size: 11.5px; font-weight: 600; } .moon-day b { font-size: 12px; }
+.moon-day .stars { font-size: 7px; letter-spacing: 1px; color: #e9a23b; } .moon-day .stars i { font-style: normal; color: var(--line); }
+.moon-day .bw { font-size: 10.5px; color: var(--muted); }
+.moon-detail { margin-top: 12px; }
+svg.moon { flex: none; display: block; }

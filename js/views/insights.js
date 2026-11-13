@@ -1,7 +1,8 @@
-import { store, hunters, localNote } from '../db.js?v=20261113060050-30af831';
-import { esc, opts, yearOf, groupBy } from '../util.js?v=20261113060050-30af831';
-import * as M from '../map.js?v=20261113060050-30af831';
-import { harvested } from '../vis.js?v=20261113060050-30af831';
+import { store, hunters, localNote } from '../db.js?v=20261113062851-c4a0a29';
+import { esc, opts, yearOf, groupBy, fmtTime } from '../util.js?v=20261113062851-c4a0a29';
+import * as M from '../map.js?v=20261113062851-c4a0a29';
+import { RUT, RUT_SPECIES, rutStatus, fmtMD, moonSVG, moonDay, MOON_TIPS } from '../rut.js?v=20261113062851-c4a0a29';
+import { harvested } from '../vis.js?v=20261113062851-c4a0a29';
 
 const f = { hunter: '', species: '', from: '', to: '' };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -10,18 +11,92 @@ export const phaseIdx = (d) => Math.round(SunCalc.getMoonIllumination(d).phase *
 const hourBucket = (h) => (h < 5 ? 'Night (0–5)' : h < 8 ? 'Dawn (5–8)' : h < 11 ? 'Morning (8–11)' : h < 14 ? 'Midday (11–14)' : h < 17 ? 'Afternoon (14–17)' : h < 21 ? 'Dusk (17–21)' : 'Night (21–24)');
 const BUCKETS = ['Dawn (5–8)', 'Morning (8–11)', 'Midday (11–14)', 'Afternoon (14–17)', 'Dusk (17–21)', 'Night (21–24)', 'Night (0–5)'];
 
+const ui = (() => { try { return { sub: 'rut', ...JSON.parse(localStorage.getItem('hunthq_ins') || '{}'), stage: null, day: 0 }; } catch { return { sub: 'rut', stage: null, day: 0 }; } })();
+const saveUi = () => { try { localStorage.setItem('hunthq_ins', JSON.stringify({ sub: ui.sub, sp: ui.sp })); } catch {} };
+let pos = null;
+
 export function render(v) {
+  render.v = v;
+  v.innerHTML = `<h2>Insights</h2>${localNote()}
+  <div class="seg" role="tablist" style="margin-bottom:12px"><button data-sub="rut" class="${ui.sub === 'rut' ? 'on' : ''}">Rut &amp; moon</button><button data-sub="mine" class="${ui.sub === 'mine' ? 'on' : ''}">My hunts</button></div><div id="iBody"></div>`;
+  v.querySelector('.seg').onclick = (e) => { const b = e.target.closest('[data-sub]'); if (b) { ui.sub = b.dataset.sub; saveUi(); render(v); } };
+  const body = v.querySelector('#iBody');
+  if (ui.sub === 'rut') return renderRut(body);
   const sp = [...new Set([...store.trips, ...store.spots].map((x) => x.species).filter(Boolean))].sort();
   const years = [...new Set([...store.trips.map((t) => yearOf(t.date_start)), ...store.spots.map((s) => yearOf(s.observed_at))].filter(Boolean))].sort();
-  v.innerHTML = `<h2>Insights</h2>${localNote()}
-  <div class="grid2"><select id="ih"><option value="">All hunters</option>${opts(hunters(), f.hunter)}</select>
+  body.innerHTML = `<div class="grid2"><select id="ih"><option value="">All hunters</option>${opts(hunters(), f.hunter)}</select>
   <select id="is"><option value="">All species</option>${opts(sp, f.species)}</select>
   <select id="if"><option value="">From year</option>${opts(years.map(String), f.from)}</select>
   <select id="it"><option value="">To year</option>${opts(years.map(String), f.to)}</select></div><div id="iOut"></div>`;
-  v.querySelectorAll('select').forEach((s) => (s.onchange = () => { Object.assign(f, { hunter: v.querySelector('#ih').value, species: v.querySelector('#is').value, from: v.querySelector('#if').value, to: v.querySelector('#it').value }); draw(v); }));
-  draw(v); render.v = v;
+  body.querySelectorAll('select').forEach((s) => (s.onchange = () => { Object.assign(f, { hunter: v.querySelector('#ih').value, species: v.querySelector('#is').value, from: v.querySelector('#if').value, to: v.querySelector('#it').value }); draw(v); }));
+  draw(v);
 }
-export function onData() { if (render.v?.isConnected) render(render.v); }
+
+// ---- Rut & moon ----
+function wmuAt(lon, lat) {
+  const inRing = (r) => { let o = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const [xi, yi] = r[i], [xj, yj] = r[j]; if ((yi > lat) !== (yj > lat) && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) o = !o; } return o; };
+  for (const f of M.WMU_GEO?.features || []) {
+    const g = f.geometry; const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
+    if (polys.some((p) => inRing(p[0]) && !p.slice(1).some(inRing))) return f.properties.id;
+  }
+  return null;
+}
+function defaultSp() {
+  const n = new Map(); for (const t of store.trips) if (RUT[t.species]) n.set(t.species, (n.get(t.species) || 0) + 1);
+  return [...n].sort((a, b) => b[1] - a[1])[0]?.[0] || 'Mule Deer';
+}
+const short = (sp) => sp.replace('White-tailed', 'Whitetail').replace('Black-tailed', 'Blacktail').replace('Mountain ', '');
+function renderRut(body) {
+  if (!RUT[ui.sp]) ui.sp = defaultSp();
+  const c = pos || M.map.getCenter(); const mu = wmuAt(c.lng, c.lat); const now = new Date();
+  const r = rutStatus(ui.sp, now);
+  const sel = r.stages[ui.stage ?? -1] || r.cur || r.peak;
+  const span = r.stages.reduce((a, s) => a + (s.e - s.s + 1), 0);
+  const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() + i); return { d, m: moonDay(d, c.lat, c.lng) }; });
+  const md = days[ui.day] || days[0];
+  const tm = (d) => fmtTime(d).replace(/^0/, ''); const tmS = (d) => tm(d).replace(/\s?([ap])\.?m\.?/i, '$1');
+  const win = (w) => `${tm(w.s)}–${tm(w.e)}`;
+  body.innerHTML = `
+  <div class="rut-loc"><span>For <b class="tnum">${c.lat.toFixed(3)}, ${c.lng.toFixed(3)}</b>${mu ? ` · WMU ${esc(mu)}` : ''}</span>
+    <span class="row" style="gap:6px"><button class="small" data-loc="center">Map centre</button><button class="small" data-loc="gps">GPS</button></span></div>
+  <div class="rut-sps">${RUT_SPECIES.map((s) => { const st = rutStatus(s, now); const on = !!st.cur; const pk = st.cur === st.peak;
+    return `<button class="rut-sp ${pk ? 'peak' : on ? 'on' : ''}" data-rsp="${esc(s)}" aria-pressed="${s === ui.sp}"><b>${esc(short(s))}</b><span>${on ? esc(st.cur.name) : 'Off season'}</span></button>`; }).join('')}</div>
+  <div class="card rut-card">
+    <div class="rut-head"><b>${esc(short(ui.sp))}</b><span>${esc(r.headline)}</span></div>
+    <div class="rut-bar" role="list">${r.stages.map((s) => `<button role="listitem" class="seg-${s === r.peak ? 'peak' : 'x'} ${s === r.cur ? 'cur' : ''} ${s === sel ? 'sel' : ''}" data-stage="${s.i}" style="flex:${s.e - s.s + 1}" aria-label="${esc(s.name)}, ${fmtMD(s.a)} to ${fmtMD(s.b)}">
+      ${s === r.cur ? `<i class="rut-now" style="left:${(((r.t - s.s) + 0.5) / (s.e - s.s + 1)) * 100}%"></i>` : ''}</button>`).join('')}</div>
+    <div class="rut-labels">${r.stages.map((s) => `<span style="flex:${s.e - s.s + 1}" class="${s === sel ? 'sel' : ''}">${esc(s.name)}<em class="tnum">${fmtMD(s.a)}–${fmtMD(s.b)}</em></span>`).join('')}</div>
+    <div class="rut-stage">
+      <div class="rut-stage-h"><b>${esc(sel.name)}</b><span class="muted tnum">${fmtMD(sel.a)} – ${fmtMD(sel.b)}${sel === r.cur ? ' · now' : ''}</span></div>
+      <div class="rut-cols"><div><h4>What they're doing</h4><ul>${sel.does.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
+      <div><h4>How to hunt it</h4><ul>${sel.tips.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div></div>
+      <p class="muted fine">Tap a stage on the bar to read it. ${esc(r.note)} Dates are typical and move with elevation, latitude and the year.</p>
+    </div>
+  </div>
+  <div class="card">
+    <h3 style="margin:0 0 2px">Moon &amp; solunar</h3><p class="muted fine" style="margin:0 0 10px">Next 7 days. Best window = a solunar period during legal light, favouring dawn and dusk.</p>
+    <div class="moon-days">${days.map(({ d, m }, i) => `<button class="moon-day ${i === ui.day ? 'sel' : ''}" data-day="${i}">
+      <span class="dn">${i === 0 ? 'Today' : d.toLocaleDateString('en-CA', { weekday: 'short' })}</span>${moonSVG(m.phase, 34)}<b class="tnum">${m.pct}%</b>
+      <span class="stars" aria-label="Rating ${m.score} of 4">${'●'.repeat(m.score)}<i>${'●'.repeat(4 - m.score)}</i></span>
+      <span class="bw tnum">${m.best ? tmS(m.best.s) : '—'}</span></button>`).join('')}</div>
+    <div class="moon-detail">
+      <div class="row" style="gap:10px;align-items:center">${moonSVG(md.m.phase, 52)}<div><b>${esc(md.m.name)}</b> · <span class="tnum">${md.m.pct}% lit</span><div class="muted fine" style="margin:2px 0 0">${md.d.toLocaleDateString('en-CA', { weekday: 'long', month: 'short', day: 'numeric' })} · sunrise ${tm(md.m.sunrise)} · sunset ${tm(md.m.sunset)}</div></div></div>
+      ${md.m.best ? `<p style="margin:10px 0 6px"><b>Best window ${win(md.m.best)}</b> <span class="muted">(${md.m.best.what})</span></p>` : '<p style="margin:10px 0 6px"><b>No solunar period in legal light.</b> <span class="muted">Hunt first and last light as usual.</span></p>'}
+      ${md.m.wins.length > 1 ? `<p class="muted fine" style="margin:0 0 8px">Also: ${md.m.wins.filter((w) => w !== md.m.best).map((w) => `${win(w)} ${w.what}`).join(' · ')}</p>` : ''}
+      <ul class="moon-tips">${MOON_TIPS[md.m.name].map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+      <p class="muted fine">Solunar theory says animals move more when the moon is overhead, underfoot, rising or setting, and most around new and full moons. Evidence is mixed, so use it as a tiebreaker. The rut, weather and hunting pressure matter more.</p>
+    </div>
+  </div>`;
+  body.onclick = (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.rsp) { ui.sp = b.dataset.rsp; ui.stage = null; saveUi(); renderRut(body); }
+    else if (b.dataset.stage != null) { ui.stage = +b.dataset.stage; renderRut(body); }
+    else if (b.dataset.day != null) { ui.day = +b.dataset.day; renderRut(body); }
+    else if (b.dataset.loc === 'center') { pos = null; renderRut(body); }
+    else if (b.dataset.loc === 'gps') navigator.geolocation?.getCurrentPosition((p) => { pos = { lat: p.coords.latitude, lng: p.coords.longitude }; renderRut(body); }, (er) => alert(er.message));
+  };
+}
+export function onData() { if (render.v?.isConnected && ui.sub === 'mine') render(render.v); }
 
 const okY = (y) => (!f.from || y >= +f.from) && (!f.to || y <= +f.to);
 function draw(v) {
