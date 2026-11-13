@@ -1,10 +1,10 @@
-import * as db from '../db.js?v=20261113053301-16ced9b';
-import { store, hunters } from '../db.js?v=20261113053301-16ced9b';
-import { esc, opts, modal, closeModal, toast, formData, num } from '../util.js?v=20261113053301-16ced9b';
-import { hunterDatalist, speciesDatalist } from './log.js?v=20261113053301-16ced9b';
-import { icon } from '../icons.js?v=20261113053301-16ced9b';
-import * as M from '../map.js?v=20261113053301-16ced9b';
-import { muSort } from '../seasons.js?v=20261113053301-16ced9b';
+import * as db from '../db.js?v=20261113054105-48b1474';
+import { store, hunters } from '../db.js?v=20261113054105-48b1474';
+import { esc, opts, modal, closeModal, toast, formData, num } from '../util.js?v=20261113054105-48b1474';
+import { hunterDatalist, speciesDatalist } from './log.js?v=20261113054105-48b1474';
+import { icon } from '../icons.js?v=20261113054105-48b1474';
+import * as M from '../map.js?v=20261113054105-48b1474';
+import { muSort } from '../seasons.js?v=20261113054105-48b1474';
 
 // Tags & LEH. LEH hunts come from the 2026-2027 LEH synopsis (hunt-hq-handoff/data/leh_2026.json, scripts/parse_leh.py).
 const yr = new Date().getFullYear();
@@ -12,7 +12,29 @@ const yr = new Date().getFullYear();
 const DRAW_YEAR = Date.now() > Date.parse('2026-06-24T07:00:00Z') ? 2027 : 2026;
 let LEH = null;
 export const loadLeh = () => LEH || (LEH = fetch('hunt-hq-handoff/data/leh_2026.json').then((r) => r.json()).catch(() => ({ hunts: [] })));
-const ui = { tab: 'leh', sp: '', region: '', mine: false, sort: 'odds', q: '', limit: 40 };
+const ui = { tab: 'leh', sp: '', region: '', mine: false, sort: 'odds', q: '', limit: 40, when: '', day: '' };
+// "Oct 16-Oct 24 & Oct 27-Oct 31" -> [['10-16','10-24'], ['10-27','10-31']] (ranges may wrap past Dec 31)
+const MONTH_N = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+const p2 = (n) => String(n).padStart(2, '0');
+function huntRanges(h) {
+  if (h._r) return h._r;
+  const out = [];
+  for (const part of h.dates.split('&')) {
+    const m = part.trim().match(/^([A-Za-z]{3,5})\.?\s*(\d{1,2})\s*-\s*(?:([A-Za-z]{3,5})\.?\s*)?(\d{1,2})$/); if (!m) continue;
+    const a = MONTH_N[m[1].slice(0, 3).toLowerCase()], b = m[3] ? MONTH_N[m[3].slice(0, 3).toLowerCase()] : a;
+    out.push([`${p2(a)}-${p2(+m[2])}`, `${p2(b)}-${p2(+m[4])}`]);
+  }
+  return (h._r = out);
+}
+const inR = (md, [a, b]) => (a <= b ? md >= a && md <= b : md >= a || md <= b);
+function whenOk(h) {
+  if (!ui.when) return true;
+  const rs = huntRanges(h); if (!rs.length) return true;
+  if (ui.when === 'day') return !ui.day || rs.some((r) => inR(ui.day.slice(5), r));
+  const mm = ui.when; // '09' = any overlap with September
+  return rs.some(([a, b]) => { for (let d = 1; d <= 31; d++) if (inR(`${mm}-${p2(d)}`, [a, b])) return true; return false; });
+}
+const WHEN_OPTS = [['', 'All dates'], ['08', 'August'], ['09', 'September'], ['10', 'October'], ['11', 'November'], ['12', 'December'], ['01', 'January'], ['02', 'February'], ['03', 'March'], ['04', 'April'], ['05', 'May'], ['06', 'June'], ['day', 'Open on a date…']];
 const REGIONS = [['1', 'Vancouver Island'], ['2', 'Lower Mainland'], ['3', 'Thompson'], ['4', 'Kootenay'], ['5', 'Cariboo'], ['6', 'Skeena'], ['7A', 'Omineca'], ['7B', 'Peace'], ['8', 'Okanagan']];
 
 // Synopsis "2025 First Choice Odds" = first-choice applicants : authorizations, so 12.0:1 is roughly a 1-in-12 chance.
@@ -78,18 +100,21 @@ export async function render(v) {
   <div class="sp-filter">${['', ...species].map((s) => `<button class="f-chip" aria-pressed="${ui.sp === s}" data-sp="${esc(s)}">${esc(s || 'All')}</button>`).join('')}</div>
   <div class="grid2" style="margin:8px 0">
     <label>Region <select id="lReg"><option value="">All regions</option>${REGIONS.map(([id, n]) => `<option value="${id}" ${ui.region === id ? 'selected' : ''}>${id} · ${n}</option>`).join('')}</select></label>
-    <label>Sort <select id="lSort">${opts([{ id: 'odds', name: 'Best odds' }, { id: 'tags', name: 'Most tags' }, { id: 'code', name: 'Hunt code' }], ui.sort)}</select></label>
+    <label>When <select id="lWhen">${WHEN_OPTS.map(([v, n]) => `<option value="${v}" ${ui.when === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+    <label id="lDayWrap" class="${ui.when === 'day' ? '' : 'hidden'}">Date <input type="date" id="lDay" value="${ui.day}"></label>
+    <label>Sort <select id="lSort">${opts([{ id: 'odds', name: 'Best odds' }, { id: 'tags', name: 'Most tags' }, { id: 'code', name: 'Hunt code' }, { id: 'date', name: 'Season start' }], ui.sort)}</select></label>
     <input id="lQ" class="span2" type="search" placeholder="Search area, MU or class (e.g. 4-24, bull, archery)" value="${esc(ui.q)}">
   </div>
   <label class="switch"><input type="checkbox" id="lMine" ${ui.mine ? 'checked' : ''}><span>Only units I've hunted (${myMus().size})</span></label>
   <div id="lList"></div>`;
   const draw = () => {
     const q = ui.q.toLowerCase(); const mine = myMus();
-    let list = hunts.filter((h) => (!ui.sp || h.sp === ui.sp) && (!ui.region || h.rn === ui.region) && (!ui.mine || h.mus.some((m) => mine.has(m)))
+    let list = hunts.filter((h) => whenOk(h) && (!ui.sp || h.sp === ui.sp) && (!ui.region || h.rn === ui.region) && (!ui.mine || h.mus.some((m) => mine.has(m)))
       && (!q || [h.code, h.area, h.mu, h.mus.join(' '), h.class, h.tag, h.sp].join(' ').toLowerCase().includes(q)));
-    list.sort(ui.sort === 'odds' ? (a, b) => (a.odds ?? 1e9) - (b.odds ?? 1e9) : ui.sort === 'tags' ? (a, b) => b.auth - a.auth : (a, b) => a.code.localeCompare(b.code));
+    const startKey = (h) => { const r = huntRanges(h)[0]; if (!r) return '99'; const m = +r[0].slice(0, 2); return (m < 7 ? m + 12 : m) + r[0].slice(2); }; // season year runs Aug -> spring
+    list.sort(ui.sort === 'date' ? (a, b) => startKey(a).localeCompare(startKey(b)) : ui.sort === 'odds' ? (a, b) => (a.odds ?? 1e9) - (b.odds ?? 1e9) : ui.sort === 'tags' ? (a, b) => b.auth - a.auth : (a, b) => a.code.localeCompare(b.code));
     const shown = list.slice(0, ui.limit);
-    body.querySelector('#lList').innerHTML = `<p class="muted fine">${list.length} hunts${list.length > shown.length ? ` · showing ${shown.length}` : ''}</p>${shown.map((h) => huntCard(h)).join('')}
+    body.querySelector('#lList').innerHTML = `<p class="muted fine">${list.length} hunts${ui.when ? ` ${ui.when === 'day' ? 'open on ' + (ui.day || 'that date') : 'with days in ' + WHEN_OPTS.find((w) => w[0] === ui.when)[1]}` : ''}${list.length > shown.length ? ` · showing ${shown.length}` : ''}</p>${shown.map((h) => huntCard(h)).join('')}
       ${list.length > shown.length ? '<button id="lMore" class="small" style="width:100%">Show more</button>' : ''}${!list.length ? '<div class="empty"><b>No hunts match</b><span class="muted">Try another species or region.</span></div>' : ''}`;
   };
   draw();
@@ -97,6 +122,8 @@ export async function render(v) {
   body.querySelector('.sp-filter').onclick = (e) => { const b = e.target.closest('[data-sp]'); if (!b) return; ui.sp = b.dataset.sp; ui.limit = 40; body.querySelectorAll('.sp-filter .f-chip').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); draw(); };
   body.querySelector('#lReg').onchange = (e) => { ui.region = e.target.value; ui.limit = 40; draw(); };
   body.querySelector('#lSort').onchange = (e) => { ui.sort = e.target.value; draw(); };
+  body.querySelector('#lWhen').onchange = (e) => { ui.when = e.target.value; ui.limit = 40; body.querySelector('#lDayWrap').classList.toggle('hidden', ui.when !== 'day'); if (ui.when === 'day' && !ui.day) { ui.day = new Date().toISOString().slice(0, 10); body.querySelector('#lDay').value = ui.day; } draw(); };
+  body.querySelector('#lDay').onchange = (e) => { ui.day = e.target.value; ui.limit = 40; draw(); };
   body.querySelector('#lMine').onchange = (e) => { ui.mine = e.target.checked; draw(); };
   body.querySelector('#lQ').oninput = (e) => { ui.q = e.target.value; ui.limit = 40; draw(); };
   body.onclick = (e) => {
@@ -143,7 +170,7 @@ async function lehArea(h) {
   return areaCache.get(key);
 }
 export async function highlightHunt(h) {
-  const { selChip } = await import('../main.js?v=20261113053301-16ced9b');
+  const { selChip } = await import('../main.js?v=20261113054105-48b1474');
   let fc = await lehArea(h); let exact = !!fc;
   if (!fc) fc = { type: 'FeatureCollection', features: (M.WMU_GEO?.features || []).filter((f) => h.mus.includes(f.properties.id)) };
   fc = { type: 'FeatureCollection', features: fc.features.map((f) => ({ ...f, properties: { stroke: '#ff8a00', fill: '#ff8a00', fillOpacity: 0.22 } })) };
