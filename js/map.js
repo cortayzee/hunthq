@@ -1,9 +1,9 @@
 // MapLibre map: base styles, 3D terrain, BC WMS overlays, identify, waypoints/tracks, open-WMU shading.
-import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261113015624-fdc5097';
-import { store } from './db.js?v=20261113015624-fdc5097';
-import { MODES, fmtKm } from './elevation.js?v=20261113015624-fdc5097';
-import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261113015624-fdc5097';
-import { esc, earthLink, fmtDT } from './util.js?v=20261113015624-fdc5097';
+import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261113024956-be64250';
+import { store } from './db.js?v=20261113024956-be64250';
+import { MODES, fmtKm } from './elevation.js?v=20261113024956-be64250';
+import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261113024956-be64250';
+import { esc, earthLink, fmtDT } from './util.js?v=20261113024956-be64250';
 
 export let map;
 const state = { base: 'sat', terrain: false, exag: 1.5, hillshade: false, ref: false, hiddenWmu: [], layers: {}, opacity: {}, shade: null, custom: [] };
@@ -35,7 +35,7 @@ export function initMap(container, saved = {}) {
   map = new maplibregl.Map({
     container,
     style: { version: 8, glyphs: new URL(GLYPHS, location.href).href.replace('%7Bfontstack%7D', '{fontstack}').replace('%7Brange%7D', '{range}'), sources: {}, layers: [] },
-    center: state.center || [-122.5, 53.5], zoom: state.zoom ?? 5, pitch: 0, maxPitch: 80,
+    center: state.center || [-122.5, 53.5], zoom: state.zoom ?? 5, pitch: 0, maxPitch: 80, maxZoom: 20,
     attributionControl: { compact: true }, hash: false, fadeDuration: 0, dragRotate: true, touchPitch: true,
   });
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showZoom: matchMedia('(pointer: fine)').matches }), 'top-right');

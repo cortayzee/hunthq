@@ -17,14 +17,16 @@ export const LEH_TYPE_FIELD = 'LTD_ENTRY_HUNTING_ZONE_TYPE';
 export const MVPR_LAYER = 'WHSE_WILDLIFE_MANAGEMENT.WAA_MVPR_AREAS_SP';
 
 const ESRI = (s) => [`https://server.arcgisonline.com/ArcGIS/rest/services/${s}/MapServer/tile/{z}/{y}/{x}`];
+// max = deepest zoom Esri actually has imagery for in rural BC; beyond it MapLibre enlarges the last real tile
+// instead of fetching Esri's 'Map data not yet available' placeholder.
 export const BASES = {
-  sat: { name: 'Satellite', tiles: ESRI('World_Imagery'), max: 19, attr: 'Imagery © Esri, Maxar, Earthstar Geographics' },
-  hybrid: { name: 'Hybrid', tiles: ESRI('World_Imagery'), max: 19, ref: true, attr: 'Imagery © Esri, Maxar, Earthstar Geographics' },
-  topo: { name: 'Topo', tiles: ESRI('World_Topo_Map'), max: 19, attr: '© Esri, USGS, NRCan' },
+  sat: { name: 'Satellite', tiles: ESRI('World_Imagery'), max: 17, attr: 'Imagery © Esri, Maxar, Earthstar Geographics' },
+  hybrid: { name: 'Hybrid', tiles: ESRI('World_Imagery'), max: 17, ref: true, attr: 'Imagery © Esri, Maxar, Earthstar Geographics' },
+  topo: { name: 'Topo', tiles: ESRI('World_Topo_Map'), max: 16, attr: '© Esri, USGS, NRCan' },
   otm: { name: 'OpenTopoMap', tiles: ['https://a.tile.opentopomap.org/{z}/{x}/{y}.png', 'https://b.tile.opentopomap.org/{z}/{x}/{y}.png', 'https://c.tile.opentopomap.org/{z}/{x}/{y}.png'], max: 17, attr: '© OpenTopoMap (CC-BY-SA), © OpenStreetMap contributors' },
   natgeo: { name: 'NatGeo', tiles: ESRI('NatGeo_World_Map'), max: 16, attr: '© Esri, National Geographic' },
   relief: { name: 'Shaded relief', tiles: ESRI('World_Shaded_Relief'), max: 13, attr: '© Esri' },
-  street: { name: 'Streets', tiles: ESRI('World_Street_Map'), max: 19, attr: '© Esri, HERE, OpenStreetMap contributors' },
+  street: { name: 'Streets', tiles: ESRI('World_Street_Map'), max: 17, attr: '© Esri, HERE, OpenStreetMap contributors' },
   osm: { name: 'OpenStreetMap', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], max: 19, attr: '© OpenStreetMap contributors' },
   dark: { name: 'Dark', tiles: ESRI('Canvas/World_Dark_Gray_Base'), max: 16, attr: '© Esri' },
 };

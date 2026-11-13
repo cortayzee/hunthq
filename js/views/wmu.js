@@ -1,9 +1,9 @@
 // iHunter-style WMU detail: every general season in the WMU, Open/Closed for the chosen date, grouped by category.
-import { seasonsFor, openRange, fmtMD } from '../seasons.js?v=20261113015624-fdc5097';
-import { REGS_URL, BC_WFS, WMU_LAYER, WMU_FIELD } from '../config.js?v=20261113015624-fdc5097';
-import { esc, todayISO } from '../util.js?v=20261113015624-fdc5097';
-import * as M from '../map.js?v=20261113015624-fdc5097';
-import { icon } from '../icons.js?v=20261113015624-fdc5097';
+import { seasonsFor, openRange, fmtMD } from '../seasons.js?v=20261113024956-be64250';
+import { REGS_URL, BC_WFS, WMU_LAYER, WMU_FIELD } from '../config.js?v=20261113024956-be64250';
+import { esc, todayISO } from '../util.js?v=20261113024956-be64250';
+import * as M from '../map.js?v=20261113024956-be64250';
+import { icon } from '../icons.js?v=20261113024956-be64250';
 
 const BIG = /deer|moose|elk|goat|sheep|caribou|bison/i;
 const PRED = /bear|cougar|wolf|coyote|lynx|bobcat|wolverine|raccoon|skunk|fox|marten|fisher/i;
