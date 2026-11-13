@@ -1,20 +1,20 @@
-import * as db from './db.js?v=20261113155253-d748ce5';
-import { store } from './db.js?v=20261113155253-d748ce5';
-import * as M from './map.js?v=20261113155253-d748ce5';
-import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261113155253-d748ce5';
-import { $, $$, esc, initTips, toast, closeModal, requestClose, todayISO } from './util.js?v=20261113155253-d748ce5';
-import { REGS_URL, BASES } from './config.js?v=20261113155253-d748ce5';
-import { sunInfo } from './views/sun.js?v=20261113155253-d748ce5';
-import { mvprSummary, mvprStatus } from './mvpr.js?v=20261113155253-d748ce5';
-import { icon, hydrateIcons } from './icons.js?v=20261113155253-d748ce5';
-import * as R from './route.js?v=20261113155253-d748ce5';
-import * as V from './vis.js?v=20261113155253-d748ce5';
+import * as db from './db.js?v=20261113155634-0665be7';
+import { store } from './db.js?v=20261113155634-0665be7';
+import * as M from './map.js?v=20261113155634-0665be7';
+import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261113155634-0665be7';
+import { $, $$, esc, initTips, toast, closeModal, requestClose, todayISO } from './util.js?v=20261113155634-0665be7';
+import { REGS_URL, BASES } from './config.js?v=20261113155634-0665be7';
+import { sunInfo } from './views/sun.js?v=20261113155634-0665be7';
+import { mvprSummary, mvprStatus } from './mvpr.js?v=20261113155634-0665be7';
+import { icon, hydrateIcons } from './icons.js?v=20261113155634-0665be7';
+import * as R from './route.js?v=20261113155634-0665be7';
+import * as V from './vis.js?v=20261113155634-0665be7';
 
 const views = {};
 const viewModules = {
-  layers: () => import('./views/layers.js?v=20261113155253-d748ce5'), open: () => import('./views/open.js?v=20261113155253-d748ce5'), log: () => import('./views/log.js?v=20261113155253-d748ce5'),
-  trips: () => import('./views/trips.js?v=20261113155253-d748ce5'), tags: () => import('./views/tags.js?v=20261113155253-d748ce5'), insights: () => import('./views/insights.js?v=20261113155253-d748ce5'),
-  import: () => import('./views/import.js?v=20261113155253-d748ce5'), sun: () => import('./views/sun.js?v=20261113155253-d748ce5'), more: () => import('./views/more.js?v=20261113155253-d748ce5'),
+  layers: () => import('./views/layers.js?v=20261113155634-0665be7'), open: () => import('./views/open.js?v=20261113155634-0665be7'), log: () => import('./views/log.js?v=20261113155634-0665be7'),
+  trips: () => import('./views/trips.js?v=20261113155634-0665be7'), tags: () => import('./views/tags.js?v=20261113155634-0665be7'), insights: () => import('./views/insights.js?v=20261113155634-0665be7'),
+  import: () => import('./views/import.js?v=20261113155634-0665be7'), sun: () => import('./views/sun.js?v=20261113155634-0665be7'), more: () => import('./views/more.js?v=20261113155634-0665be7'),
 };
 export const app = { tab: 'layers', date: todayISO(), dropMode: false };
 const isPhone = () => innerWidth <= 760;
@@ -45,10 +45,12 @@ const loadFail = (e) => `<div class="empty" style="margin-top:24px"><b>This sect
 export function openPanel() {
   if (!panelOpen()) { $('#app').classList.remove('panel-closed'); $('#panel').classList.remove('full'); }
   if (!isPhone()) M.map?.setPadding({ left: 400, top: 0, right: 0, bottom: 0 });
+  $('#menuBtn')?.setAttribute('aria-expanded', 'true');
 }
 export function closePanel() {
   $('#app').classList.add('panel-closed'); $('#panel').classList.remove('full');
   M.map?.setPadding({ left: 0, top: 0, right: 0, bottom: 0 });
+  $('#menuBtn')?.setAttribute('aria-expanded', 'false');
 }
 // Selected-WMU indicator on the map: shows which unit is highlighted red; X clears it.
 let selEl = null;
@@ -64,7 +66,7 @@ export function selChip(label) {
 }
 export function clearSelection() { M.setSelection?.(null); selChip(null); }
 export async function openWmu(mu, region) {
-  const { showWmu } = await import('./views/wmu.js?v=20261113155253-d748ce5');
+  const { showWmu } = await import('./views/wmu.js?v=20261113155634-0665be7');
   $$('#tabs button').forEach((b) => b.classList.remove('active'));
   openPanel(); const v = $('#view'); v.scrollTop = 0; v.onclick = v.onchange = v.oninput = v.onkeydown = null;
   await showWmu(v, mu, { region, date: app.date, onBack: () => showTab(app.tab) });
@@ -131,7 +133,7 @@ async function start() {
   await loadSeasons();
   const saved = store.prefs.map || {};
   await M.initMap('map', store.prefs);
-  import('./wildlife.js?v=20261113155253-d748ce5').then((W) => { const go = () => (M.map.getLayer('wmu-fill') ? W.restore() : setTimeout(go, 300)); go(); });
+  import('./wildlife.js?v=20261113155634-0665be7').then((W) => { const go = () => (M.map.getLayer('wmu-fill') ? W.restore() : setTimeout(go, 300)); go(); });
   if (saved.pitch && !saved.terrain) M.map.setPitch(0);
   V.apply();
   wireUI();
@@ -204,8 +206,8 @@ function wireUI() {
   ctrl.append($('#baseBtn'), $('#terrainBtn'));
   M.map.addControl({ onAdd: () => ctrl, onRemove: () => ctrl.remove() }, 'top-right');
   $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-tab]'); if (b) showTab(b.dataset.tab); });
-  $('#menuBtn').onclick = () => (panelOpen() && app.tab !== 'layers' ? closePanel() : showTab(app.tab === 'layers' ? 'log' : app.tab));
-  $('#layersBtn').onclick = () => (app.tab === 'layers' && panelOpen() ? closePanel() : showTab('layers'));
+  // One button: opens the panel on the last section used, or closes it.
+  $('#menuBtn').onclick = () => (panelOpen() ? closePanel() : showTab(app.tab));
   $('#panelX').onclick = closePanel;
   wireSheet();
 
@@ -228,12 +230,12 @@ function wireUI() {
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const { act, id } = b.dataset;
-    if (act === 'edit-spot') (await import('./views/log.js?v=20261113155253-d748ce5')).openSpotForm(store.spots.find((s) => s.id === id));
-    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261113155253-d748ce5')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'edit-spot') (await import('./views/log.js?v=20261113155634-0665be7')).openSpotForm(store.spots.find((s) => s.id === id));
+    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261113155634-0665be7')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
     if (act === 'wmu') { e.preventDefault(); popup?.remove(); M.selectWmu(b.dataset.mu); openWmu(b.dataset.mu, b.dataset.region); }
     if (act === 'fc-here') { e.preventDefault(); popup?.remove(); popup = null; const I = views.insights || (views.insights = await viewModules.insights());
       I.openForecast({ lat: +b.dataset.lat, lng: +b.dataset.lon, label: b.dataset.label || '' }); await showTab('insights'); }
-    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261113155253-d748ce5')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261113155634-0665be7')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
   });
   document.addEventListener('submit', (e) => {
     if (!e.target.matches('[data-wmuform]')) return; e.preventDefault();
@@ -251,7 +253,7 @@ function wireUI() {
     }
     if (app.dropMode) {
       setDropMode(false);
-      const { openSpotForm } = await import('./views/log.js?v=20261113155253-d748ce5');
+      const { openSpotForm } = await import('./views/log.js?v=20261113155634-0665be7');
       const form = openSpotForm({ lat: e.lngLat.lat, lon: e.lngLat.lng });
       const res = await M.identify(e.lngLat, ['wmu']);
       const w = M.wmuFromIdentify(res); if (w && form?.wmu && !form.wmu.value) form.wmu.value = w;
