@@ -1,20 +1,20 @@
-import * as db from './db.js?v=20261113024956-be64250';
-import { store } from './db.js?v=20261113024956-be64250';
-import * as M from './map.js?v=20261113024956-be64250';
-import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261113024956-be64250';
-import { $, $$, esc, toast, closeModal, requestClose, todayISO, earthLink } from './util.js?v=20261113024956-be64250';
-import { REGS_URL, BASES } from './config.js?v=20261113024956-be64250';
-import { sunInfo } from './views/sun.js?v=20261113024956-be64250';
-import { mvprSummary, mvprStatus } from './mvpr.js?v=20261113024956-be64250';
-import { icon, hydrateIcons } from './icons.js?v=20261113024956-be64250';
-import * as R from './route.js?v=20261113024956-be64250';
-import * as V from './vis.js?v=20261113024956-be64250';
+import * as db from './db.js?v=20261113043853-c859292';
+import { store } from './db.js?v=20261113043853-c859292';
+import * as M from './map.js?v=20261113043853-c859292';
+import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261113043853-c859292';
+import { $, $$, esc, toast, closeModal, requestClose, todayISO, earthLink } from './util.js?v=20261113043853-c859292';
+import { REGS_URL, BASES } from './config.js?v=20261113043853-c859292';
+import { sunInfo } from './views/sun.js?v=20261113043853-c859292';
+import { mvprSummary, mvprStatus } from './mvpr.js?v=20261113043853-c859292';
+import { icon, hydrateIcons } from './icons.js?v=20261113043853-c859292';
+import * as R from './route.js?v=20261113043853-c859292';
+import * as V from './vis.js?v=20261113043853-c859292';
 
 const views = {};
 const viewModules = {
-  layers: () => import('./views/layers.js?v=20261113024956-be64250'), open: () => import('./views/open.js?v=20261113024956-be64250'), log: () => import('./views/log.js?v=20261113024956-be64250'),
-  trips: () => import('./views/trips.js?v=20261113024956-be64250'), tags: () => import('./views/tags.js?v=20261113024956-be64250'), insights: () => import('./views/insights.js?v=20261113024956-be64250'),
-  import: () => import('./views/import.js?v=20261113024956-be64250'), sun: () => import('./views/sun.js?v=20261113024956-be64250'), more: () => import('./views/more.js?v=20261113024956-be64250'),
+  layers: () => import('./views/layers.js?v=20261113043853-c859292'), open: () => import('./views/open.js?v=20261113043853-c859292'), log: () => import('./views/log.js?v=20261113043853-c859292'),
+  trips: () => import('./views/trips.js?v=20261113043853-c859292'), tags: () => import('./views/tags.js?v=20261113043853-c859292'), insights: () => import('./views/insights.js?v=20261113043853-c859292'),
+  import: () => import('./views/import.js?v=20261113043853-c859292'), sun: () => import('./views/sun.js?v=20261113043853-c859292'), more: () => import('./views/more.js?v=20261113043853-c859292'),
 };
 export const app = { tab: 'layers', date: todayISO(), dropMode: false };
 const isPhone = () => innerWidth <= 760;
@@ -22,6 +22,7 @@ const panelOpen = () => !$('#app').classList.contains('panel-closed');
 
 async function showTab(tab) {
   if (app.tab !== tab) views[app.tab]?.onLeave?.();
+  clearSelection();
   app.tab = tab;
   $$('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
   const tb = $(`#tabs button[data-tab="${tab}"]`), nav = $('#tabs');
@@ -47,14 +48,27 @@ export function openPanel() {
 }
 export function closePanel() {
   $('#app').classList.add('panel-closed'); $('#panel').classList.remove('full');
-  M.setSelection?.(null); M.map?.setPadding({ left: 0, top: 0, right: 0, bottom: 0 });
+  M.map?.setPadding({ left: 0, top: 0, right: 0, bottom: 0 });
 }
+// Selected-WMU indicator on the map: shows which unit is highlighted red; X clears it.
+let selEl = null;
+function selChip(mu) {
+  if (!selEl) {
+    selEl = document.createElement('div'); selEl.className = 'map-chip sel-chip hidden';
+    selEl.innerHTML = `<span class="dot" style="background:#ff4d4d"></span><span class="t"></span><button aria-label="Clear selected unit">${icon('x', { size: 16 })}</button>`;
+    selEl.querySelector('button').onclick = () => { clearSelection(); if (!$$('#tabs button.active').length && !$('#app').classList.contains('panel-closed')) showTab(app.tab); };
+    $('#app').append(selEl);
+  }
+  selEl.querySelector('.t').textContent = mu ? `WMU ${mu} selected` : '';
+  selEl.classList.toggle('hidden', !mu);
+}
+export function clearSelection() { M.setSelection?.(null); selChip(null); }
 export async function openWmu(mu, region) {
-  const { showWmu } = await import('./views/wmu.js?v=20261113024956-be64250');
-  if (app.tab === 'open') views.open?.onLeave?.();
+  const { showWmu } = await import('./views/wmu.js?v=20261113043853-c859292');
   $$('#tabs button').forEach((b) => b.classList.remove('active'));
   openPanel(); const v = $('#view'); v.scrollTop = 0;
   await showWmu(v, mu, { region, date: app.date, onBack: () => showTab(app.tab) });
+  selChip(mu);
   hydrateIcons(v);
 }
 db.onChange((what) => {
@@ -199,10 +213,10 @@ function wireUI() {
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const { act, id } = b.dataset;
-    if (act === 'edit-spot') (await import('./views/log.js?v=20261113024956-be64250')).openSpotForm(store.spots.find((s) => s.id === id));
-    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261113024956-be64250')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'edit-spot') (await import('./views/log.js?v=20261113043853-c859292')).openSpotForm(store.spots.find((s) => s.id === id));
+    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261113043853-c859292')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
     if (act === 'wmu') { e.preventDefault(); popup?.remove(); M.selectWmu(b.dataset.mu); openWmu(b.dataset.mu, b.dataset.region); }
-    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261113024956-be64250')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261113043853-c859292')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
   });
   document.addEventListener('submit', (e) => {
     if (!e.target.matches('[data-wmuform]')) return; e.preventDefault();
@@ -213,9 +227,14 @@ function wireUI() {
     if (R.drawing()) { R.add(e.lngLat); return; }
     // A tap while a popup is open just closes it (like iHunter) instead of opening another one.
     if (popup?.isOpen() && !app.dropMode && !app.pickHandler) { popup.remove(); popup = null; return; }
+    // Tapping outside the highlighted unit clears the highlight.
+    if (selEl && !selEl.classList.contains('hidden')) {
+      const inSel = M.map.queryRenderedFeatures(e.point, { layers: ['wmu-sel'] }).some((f) => f.state?.sel);
+      if (!inSel) clearSelection();
+    }
     if (app.dropMode) {
       setDropMode(false);
-      const { openSpotForm } = await import('./views/log.js?v=20261113024956-be64250');
+      const { openSpotForm } = await import('./views/log.js?v=20261113043853-c859292');
       const form = openSpotForm({ lat: e.lngLat.lat, lon: e.lngLat.lng });
       const res = await M.identify(e.lngLat, ['wmu']);
       const w = M.wmuFromIdentify(res); if (w && form?.wmu && !form.wmu.value) form.wmu.value = w;

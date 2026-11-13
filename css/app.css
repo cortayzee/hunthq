@@ -502,3 +502,6 @@ details.lyr-sec[open] > summary { border-bottom: 1px solid var(--line); backgrou
 .lyr-op { display: flex; align-items: center; gap: 12px; padding: 0 0 10px 26px; font-size: .8em; }
 .lyr-op input { flex: 1; }
 .lyr-sec details.region > summary { min-height: 44px; }
+
+.map-chip.sel-chip { top: calc(60px + env(safe-area-inset-top)); }
+@media (max-width: 760px) { .map-chip.sel-chip { top: calc(118px + env(safe-area-inset-top)); } }
