@@ -1,9 +1,10 @@
-import * as M from '../map.js?v=20261113051435-cd982ac';
-import { esc } from '../util.js?v=20261113051435-cd982ac';
-import { icon } from '../icons.js?v=20261113051435-cd982ac';
-import { saveMapPrefs, showTabPublic } from '../main.js?v=20261113051435-cd982ac';
-import { muSort } from '../seasons.js?v=20261113051435-cd982ac';
-import { store } from '../db.js?v=20261113051435-cd982ac';
+import * as M from '../map.js?v=20261113052704-0aa16a3';
+import { esc } from '../util.js?v=20261113052704-0aa16a3';
+import { icon } from '../icons.js?v=20261113052704-0aa16a3';
+import { saveMapPrefs, showTabPublic } from '../main.js?v=20261113052704-0aa16a3';
+import { muSort } from '../seasons.js?v=20261113052704-0aa16a3';
+import { store } from '../db.js?v=20261113052704-0aa16a3';
+import * as W from '../wildlife.js?v=20261113052704-0aa16a3';
 
 // Layers panel: "On now" chips, then collapsible sections. A row is swatch + name + switch; opacity only for layers that are on.
 const SECTIONS = [
@@ -33,7 +34,7 @@ export function render(v) {
   <div id="onNow" class="on-now"></div>
   <div id="lyrSecs"></div>
   <p class="muted fine" style="margin-top:14px">Map type, roads &amp; 3D: the map button on the right. BC layers © Province of BC (OGL-BC).</p>`;
-  const q = () => v.querySelector('#lyrSearch').value.trim().toLowerCase();
+  const q = () => (v.querySelector('#lyrSearch')?.value || '').trim().toLowerCase();
 
   const drawOnNow = () => {
     const on = M.allLayers().filter((l) => M.layerOn(l.id));
@@ -53,6 +54,21 @@ export function render(v) {
       const items = ls.filter((l) => (l.group || 'Custom') === g).sort((a, b) => (a.id === 'wmu' ? -1 : b.id === 'wmu' ? 1 : shortName(a).localeCompare(shortName(b))));
       return items.length ? sec(g, title, sub, items.map(row).join(''), items.filter((l) => M.layerOn(l.id)).length) : '';
     }).join('');
+    // Wildlife & harvest
+    if (!s || /wild|harvest|grizz|density|success|survey/.test(s)) {
+      const st = W.state; const on = (st.sp && st.metric ? 1 : 0) + (st.griz ? 1 : 0) + (st.surv ? 1 : 0);
+      html += sec('Wildlife', 'Wildlife & harvest', 'Where animals are taken, success rates, grizzly density', `
+        <div class="grid2" style="margin:8px 0 4px">
+          <label>Species <select id="wSp"><option value="">Off</option>${['Moose', 'Elk', 'Mule Deer', 'White-tailed Deer', 'Black Bear', 'Mountain Goat', 'Mountain Sheep', 'Caribou', 'Cougar', 'Wolf', 'Turkey'].map((x) => `<option ${st.sp === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+          <label>Show <select id="wMet">${Object.entries(W.METRICS).map(([k, m]) => `<option value="${k}" ${(st.metric || 'kpa') === k ? 'selected' : ''}>${m.name}</option>`).join('')}</select></label>
+        </div>
+        <div id="wLegend" class="w-legend"></div>
+        <div class="lyr-row"><label class="lyr-main"><span class="swatch" style="background:#a0612f"></span><span class="t"><b>Grizzly density (2018)</b><span class="muted">Bears per 1,000 km², by population unit</span></span>
+          <span class="switch"><input type="checkbox" id="wGriz" ${st.griz ? 'checked' : ''}></span></label></div>
+        <div class="lyr-row"><label class="lyr-main"><span class="swatch" style="background:#7b3fb5"></span><span class="t"><b>Aerial survey densities</b><span class="muted">Moose, goat, mule deer counts per km² (22 areas)</span></span>
+          <span class="switch"><input type="checkbox" id="wSurv" ${st.surv ? 'checked' : ''}></span></label></div>
+        <p class="muted fine">Harvest data: BC resident Hunter Sample survey, 5-year average. It measures hunting results, not a census: a high number means animals AND hunters. Tap a unit to see its numbers.</p>`, on);
+    }
     // Unit visibility
     const groups = wmuByRegion(); const hiddenN = M.getState().hiddenWmu.length;
     const regions = groups.map(([r, mus]) => {
@@ -74,12 +90,31 @@ export function render(v) {
 
   draw();
   v.querySelector('#lyrSearch').oninput = draw;
-  v.addEventListener('toggle', (e) => {
+  // one listener per panel element (renders reuse #view); ignore toggles when another view is showing
+  if (!v._lyrToggle) v._lyrToggle = true, v.addEventListener('toggle', (e) => {
+    if (!v.querySelector('#lyrSearch')) return;
     const t = e.target; if (q()) return;
     if (t.dataset?.sec) { t.open ? open.add(t.dataset.sec) : open.delete(t.dataset.sec); saveOpen(); }
     if (t.dataset?.r) t.open ? drawOpenR.add(t.dataset.r) : drawOpenR.delete(t.dataset.r);
   }, true);
-  v.onchange = (e) => { const id = e.target.dataset.l; if (id) { M.setLayer(id, e.target.checked); saveMapPrefs(); draw(); } };
+  const legend = async () => {
+    const el = v.querySelector('#wLegend'); if (!el) return;
+    const sp = v.querySelector('#wSp').value, mt = v.querySelector('#wMet').value;
+    const r = await W.setChoropleth(sp, mt);
+    if (!r || !r.breaks.length) { el.innerHTML = ''; return; }
+    const m = W.METRICS[mt]; const lab = ['Lowest', ...r.breaks.map((b) => (b >= 10 ? Math.round(b) : b))];
+    el.innerHTML = `<div class="w-ramp">${r.ramp.map((c, i) => `<span style="background:${c}"></span>`).join('')}</div>
+      <div class="w-ticks">${lab.map((x, i) => `<span>${i ? (m.invert ? '≤' : '≥') + x : ''}</span>`).join('')}</div>
+      <p class="muted fine" style="margin:4px 0 0">${esc(sp)}: ${esc(m.name.toLowerCase())} (${esc(m.unit)}), ${r.years[0]}–${r.years[1]} average. ${esc(m.help)}</p>`;
+  };
+  v.onchange = (e) => {
+    const t = e.target;
+    if (t.id === 'wSp' || t.id === 'wMet') { legend(); return; }
+    if (t.id === 'wGriz') { W.setGrizzly(t.checked); return; }
+    if (t.id === 'wSurv') { W.setSurveys(t.checked); return; }
+    const id = t.dataset.l; if (id) { M.setLayer(id, t.checked); saveMapPrefs(); draw(); }
+  };
+  legend();
   v.oninput = (e) => { if (e.target.dataset.o) { M.setOpacity(e.target.dataset.o, +e.target.value); saveMapPrefs(); } };
   v.onclick = (e) => {
     const off = e.target.closest('[data-off]'); if (off) { M.setLayer(off.dataset.off, false); saveMapPrefs(); draw(); return; }

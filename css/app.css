@@ -532,3 +532,8 @@ details.lyr-sec[open] > summary { border-bottom: 1px solid var(--line); backgrou
 @media (hover: hover) and (pointer: fine) { .leh-card:hover { border-color: var(--line-2); } }
 
 .map-chip { width: max-content; } .map-chip .t { flex: 1 1 auto; min-width: 0; white-space: nowrap; }
+
+.w-legend { margin: 4px 0 8px; } .w-ramp { display: grid; grid-template-columns: repeat(5, 1fr); height: 10px; border-radius: 99px; overflow: hidden; }
+.w-ticks { display: grid; grid-template-columns: repeat(5, 1fr); font-size: .72em; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
+.hv-table td, .hv-table th { padding: 6px 4px; } .hv-table td:not(:first-child), .hv-table th:not(:first-child) { text-align: right; }
+.trend-up { color: var(--ok); } .trend-down { color: var(--bad); }

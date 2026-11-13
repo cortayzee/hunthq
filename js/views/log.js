@@ -1,16 +1,16 @@
-import * as db from '../db.js?v=20261113051435-cd982ac';
-import { store, hunters } from '../db.js?v=20261113051435-cd982ac';
-import { KINDS, KIND_GROUPS, SIGN_TYPES, SPECIES, WEAPONS, SEXES, kindColor } from '../config.js?v=20261113051435-cd982ac';
-import { esc, opts, modal, closeModal, requestClose, markDirty, toast, formData, localDT, fmtDT, earthLink, parseLatLon, parseCSV, yearOf } from '../util.js?v=20261113051435-cd982ac';
-import * as M from '../map.js?v=20261113051435-cd982ac';
-import { normMU } from '../seasons.js?v=20261113051435-cd982ac';
-import { pickOnMap, closePanel } from '../main.js?v=20261113051435-cd982ac';
-import { exportKML, exportGPX, exportCSV } from '../exporters.js?v=20261113051435-cd982ac';
-import { glyphSVG, glyphFor, animalFor, sexTerms, hasPoints, autoName, spotLabel } from '../animals.js?v=20261113051435-cd982ac';
-import { MODES, fmtKm, fmtHours } from '../elevation.js?v=20261113051435-cd982ac';
-import * as V from '../vis.js?v=20261113051435-cd982ac';
-import { tripOf, groupOf, tripTitle, spotYear } from '../vis.js?v=20261113051435-cd982ac';
-import { icon } from '../icons.js?v=20261113051435-cd982ac';
+import * as db from '../db.js?v=20261113052704-0aa16a3';
+import { store, hunters } from '../db.js?v=20261113052704-0aa16a3';
+import { KINDS, KIND_GROUPS, SIGN_TYPES, SPECIES, WEAPONS, SEXES, kindColor } from '../config.js?v=20261113052704-0aa16a3';
+import { esc, opts, modal, closeModal, requestClose, markDirty, toast, formData, localDT, fmtDT, earthLink, parseLatLon, parseCSV, yearOf } from '../util.js?v=20261113052704-0aa16a3';
+import * as M from '../map.js?v=20261113052704-0aa16a3';
+import { normMU } from '../seasons.js?v=20261113052704-0aa16a3';
+import { pickOnMap, closePanel } from '../main.js?v=20261113052704-0aa16a3';
+import { exportKML, exportGPX, exportCSV } from '../exporters.js?v=20261113052704-0aa16a3';
+import { glyphSVG, glyphFor, animalFor, sexTerms, hasPoints, autoName, spotLabel } from '../animals.js?v=20261113052704-0aa16a3';
+import { MODES, fmtKm, fmtHours } from '../elevation.js?v=20261113052704-0aa16a3';
+import * as V from '../vis.js?v=20261113052704-0aa16a3';
+import { tripOf, groupOf, tripTitle, spotYear } from '../vis.js?v=20261113052704-0aa16a3';
+import { icon } from '../icons.js?v=20261113052704-0aa16a3';
 
 const PICK = [['Moose', 'moose'], ['Elk', 'elk'], ['Mule Deer', 'deer'], ['White-tailed Deer', 'deer'], ['Black Bear', 'bear'], ['Grizzly Bear', 'bear'],
   ['Bighorn Sheep', 'sheep'], ['Mountain Goat', 'goat'], ['Caribou', 'caribou'], ['Cougar', 'cougar'], ['Wolf', 'wolf'], ['Coyote', 'wolf'],
@@ -87,7 +87,7 @@ export function render(v) {
   ${loose.length ? sec('loose', 'Not grouped', loose.sort((a, b) => String(b.observed_at || b.created_at).localeCompare(String(a.observed_at || a.created_at))).map((s) => spotRow(s, { showTrip: true })).join(''), loose.length) : ''}`;
 
   v.querySelector('#fq').oninput = (e) => { ui.q = e.target.value; const pos = e.target.selectionStart; render(v); const i = v.querySelector('#fq'); i.focus(); i.setSelectionRange(pos, pos); };
-  v.addEventListener('toggle', (e) => { const id = e.target.dataset?.sec; if (id && !ui.q) e.target.open ? ui.open.add(id) : ui.open.delete(id); }, true);
+  if (!v._wpToggle) v._wpToggle = true, v.addEventListener('toggle', (e) => { if (!v.querySelector('#fq')) return; const id = e.target.dataset?.sec; if (id && !ui.q) e.target.open ? ui.open.add(id) : ui.open.delete(id); }, true);
   v.onchange = (e) => { const el = e.target; if (el.dataset.vk) { V.setShown(el.dataset.vk, el.dataset.vkey, el.checked); render(v); } };
   v.onclick = async (e) => {
     const c = e.target.closest('button.f-chip'); if (c) { V.setShown(c.dataset.vk, c.dataset.vkey, c.getAttribute('aria-pressed') !== 'true'); render(v); return; }
@@ -114,10 +114,10 @@ export function render(v) {
       if (a === 'DELETE') await V.deleteGroup(gm); else if (a?.trim() && a !== g.name) await V.renameGroup(gm, a.trim());
       render(v); return;
     }
-    const ot = e.target.closest('[data-open-trip]')?.dataset.openTrip; if (ot) { (await import('./trips.js?v=20261113051435-cd982ac')).openTrip(ot); return; }
+    const ot = e.target.closest('[data-open-trip]')?.dataset.openTrip; if (ot) { (await import('./trips.js?v=20261113052704-0aa16a3')).openTrip(ot); return; }
     if (e.target.closest('[data-act]')) return;
     const tr = e.target.closest('[data-track]');
-    if (tr && !e.target.closest('.switch')) { const t = store.tracks.find((x) => x.id === tr.dataset.track); if (t) (await import('../route.js?v=20261113051435-cd982ac')).openRoute(t); return; }
+    if (tr && !e.target.closest('.switch')) { const t = store.tracks.find((x) => x.id === tr.dataset.track); if (t) (await import('../route.js?v=20261113052704-0aa16a3')).openRoute(t); return; }
     const row = e.target.closest('[data-fly]');
     if (row) { const s = store.spots.find((x) => x.id === row.dataset.fly); if (s) { if (!V.isVisible(s)) toast('That waypoint is hidden by a filter above'); M.flyTo(s.lon, s.lat, 14); if (innerWidth <= 760) closePanel(); } }
   };
