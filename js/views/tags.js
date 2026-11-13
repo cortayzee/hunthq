@@ -1,10 +1,11 @@
-import * as db from '../db.js?v=20261113080841-f7d0de8';
-import { store, hunters } from '../db.js?v=20261113080841-f7d0de8';
-import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261113080841-f7d0de8';
-import { hunterDatalist, speciesDatalist } from './log.js?v=20261113080841-f7d0de8';
-import { icon } from '../icons.js?v=20261113080841-f7d0de8';
-import * as M from '../map.js?v=20261113080841-f7d0de8';
-import { muSort } from '../seasons.js?v=20261113080841-f7d0de8';
+import * as db from '../db.js?v=20261113155253-d748ce5';
+import { store, hunters } from '../db.js?v=20261113155253-d748ce5';
+import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261113155253-d748ce5';
+import { hunterDatalist, speciesDatalist } from './log.js?v=20261113155253-d748ce5';
+import { icon } from '../icons.js?v=20261113155253-d748ce5';
+import * as M from '../map.js?v=20261113155253-d748ce5';
+import * as L from '../limits.js?v=20261113155253-d748ce5';
+import { muSort } from '../seasons.js?v=20261113155253-d748ce5';
 
 // Tags & LEH. LEH hunts come from the 2026-2027 LEH synopsis (hunt-hq-handoff/data/leh_2026.json, scripts/parse_leh.py).
 const yr = new Date().getFullYear();
@@ -215,7 +216,7 @@ async function lehArea(h) {
   return areaCache.get(key);
 }
 export async function highlightHunt(h) {
-  const { selChip } = await import('../main.js?v=20261113080841-f7d0de8');
+  const { selChip } = await import('../main.js?v=20261113155253-d748ce5');
   let fc = await lehArea(h); let exact = !!fc;
   if (!fc) fc = { type: 'FeatureCollection', features: (M.WMU_GEO?.features || []).filter((f) => h.mus.includes(f.properties.id)) };
   fc = { type: 'FeatureCollection', features: fc.features.map((f) => ({ ...f, properties: { stroke: '#ff8a00', fill: '#ff8a00', fillOpacity: 0.22 } })) };
@@ -224,19 +225,71 @@ export async function highlightHunt(h) {
   if (cs.length) M.fitTo(cs, { maxZoom: 11 });
   selChip(`${h.code} · ${h.sp} ${h.class}${exact ? '' : ' (unit outline)'}`);
 }
-export function onData(w) { if (['tags', 'leh', 'all'].includes(w) && render.v?.isConnected) render(render.v); }
+export function onData(w) { if (['tags', 'leh', 'all', 'spots', 'prefs'].includes(w) && render.v?.isConnected) render(render.v); }
 
+// ---- My tags: limits for the licence year + tags that fill themselves from logged kills ----
+const tui = { year: L.licenceYear(new Date()) };
+const sentence = (x) => x.charAt(0).toUpperCase() + x.slice(1).toLowerCase();
+const dots = (n, of) => `<span class="lim-dots" aria-hidden="true">${Array.from({ length: of }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
+const fmtD = (d) => d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
 function renderTags(body) {
-  const tags = store.tags.slice().sort((a, b) => b.year - a.year);
-  const cost = tags.filter((t) => t.year === yr).reduce((a, t) => a + (+t.cost || 0), 0);
-  body.innerHTML = `<div class="row" style="justify-content:space-between"><span class="muted">${tags.filter((t) => t.year === yr).length} tags this year · $${cost.toFixed(2)}</span><button class="small primary" id="addTag">${icon('plus', { size: 15 })}Tag</button></div>
-  ${tags.length ? tags.map((t) => `<div class="wp-row" data-tag="${t.id}"><input type="checkbox" data-fill="${t.id}" ${t.filled ? 'checked' : ''} aria-label="Filled">
-    <div class="t"><b>${esc(t.species)} ${t.tag_type ? '· ' + esc(t.tag_type) : ''}</b><span class="muted">${t.year}${t.wmu ? ' · ' + esc(t.wmu) : ''}${t.hunter && t.hunter !== 'Me' ? ' · ' + esc(t.hunter) : ''}${t.cost ? ' · $' + t.cost : ''}${t.filled ? ' · filled' : ''}</span></div>${icon('chevR', { size: 18 })}</div>`).join('')
-    : '<div class="empty"><b>No tags yet</b><span class="muted">Log the species licences you buy each year, and tick them when filled.</span></div>'}`;
-  body.querySelector('#addTag').onclick = () => tagForm({ year: yr });
-  body.onclick = (e) => { if (e.target.dataset.fill) return; const r = e.target.closest('[data-tag]'); if (r) tagForm(store.tags.find((x) => x.id === r.dataset.tag)); };
-  body.onchange = async (e) => { const id = e.target.dataset.fill; if (id) await db.update('tags', id, { filled: e.target.checked }); };
+  const cur = L.licenceYear(new Date());
+  const years = [...new Set([cur, cur - 1, ...store.tags.map((t) => +t.year)])].filter((y) => y <= cur + 1).sort((a, b) => b - a).slice(0, 4);
+  const y = tui.year; const T = L.tally(y); const S = L.tagStatus(y);
+  const myRegions = [...new Set([...store.trips.map((t) => L.regionOf(t.wmu)), ...T.kills.map((k) => L.regionOf(k.s.wmu))].filter(Boolean))];
+  const regRows = Object.keys(L.DEER).map((r) => { const d = L.deerLeftIn(r, T); return { r, d, mine: myRegions.includes(String(r)) }; })
+    .sort((a, b) => (b.mine - a.mine) || Object.keys(L.DEER).indexOf(a.r) - Object.keys(L.DEER).indexOf(b.r));
+  const others = [...new Set([...S.tags.map((x) => x.t.species), ...Object.keys(T.other)].filter((sp) => !/deer/i.test(sp)))];
+  const open = S.tags.filter((x) => !x.filled).length, cost = S.tags.reduce((a, x) => a + (+x.t.cost || 0), 0);
+  body.innerHTML = `
+  <div class="seg seg-full" role="tablist" aria-label="Licence year">${years.map((v) => `<button data-ly="${v}" class="${v === y ? 'on' : ''}">${L.yearLabel(v)}</button>`).join('')}</div>
+  <div class="card lim-card">
+    <div class="lim-h"><b class="tip-h">Deer${tip('BC allows 3 deer per licence year (not Haida Gwaii), and only 1 of them can be a mule deer buck from Regions 3 to 8 combined. Each region also caps mule deer and whitetail. Counts come from kills you logged as yours this licence year (April 1 to March 31).', 'About deer limits')}</b>
+      <span class="lim-n tnum">${T.deer.total} of ${L.PROVINCIAL.Deer}</span></div>
+    ${dots(T.deer.total, L.PROVINCIAL.Deer)}
+    <div class="lim-rows">
+      <div><span>White-tailed deer</span><b class="tnum">${T.deer.wt} taken</b></div>
+      <div><span>Mule deer</span><b class="tnum">${T.deer.mule} taken</b></div>
+      <div><span>Mule deer buck, Regions 3–8</span><b class="tnum">${T.deer.muleBuck38} of ${L.MULE_BUCK_3_8}</b></div>
+    </div>
+    <details class="lim-reg"><summary>Still allowed by region ${icon('chevR', { size: 16 })}</summary>
+      <table class="lim-table"><thead><tr><th>Region</th><th>Mule</th><th>Whitetail</th><th>Any deer</th></tr></thead><tbody>
+      ${regRows.map(({ r, d, mine }) => `<tr class="${mine ? 'mine' : ''}"><td>${r} <span class="muted">${esc(L.REGION_NAMES[r])}</span>${d.L.note ? tip(d.L.note) : ''}</td>
+        <td class="tnum">${d.mule}${d.mule && d.muleBuck < d.mule ? ` <span class="muted">(${d.muleBuck ? d.muleBuck + ' buck' : 'antlerless only'})</span>` : ''}</td><td class="tnum">${d.wt}</td><td class="tnum">${d.all}</td></tr>`).join('')}
+      </tbody></table><p class="list-note">Bold rows are regions you've hunted. Numbers are what you can still take this licence year.</p></details>
+  </div>
+  ${others.length ? `<div class="lim-grid">${others.map((sp) => { const lim = L.PROVINCIAL[sp]; const n = T.other[sp] || 0; return `<div class="lim-mini"><span>${esc(sp)}</span><b class="tnum">${n}${lim ? ` of ${lim}` : ' taken'}</b>${lim ? dots(n, lim) : ''}</div>`; }).join('')}</div>` : ''}
+  <div class="list-h-row"><h3 class="list-h">Tags ${L.yearLabel(y)}</h3><button class="small primary" id="addTags">${icon('plus', { size: 16 })}Add tags</button></div>
+  ${S.tags.length ? `<div class="list-group">${S.tags.map(({ t, kill, filled }) => `<button class="list-row" data-tag="${t.id}">
+      <span class="tag-st ${filled ? 'on' : ''}">${icon(filled ? 'check' : 'tag', { size: 16 })}</span>
+      <span class="lr-t"><b>${esc(t.species)}</b><span>${esc([t.tag_type && t.tag_type !== 'General' ? t.tag_type : 'General', t.wmu, t.cost ? '$' + (+t.cost).toFixed(2) : ''].filter(Boolean).join(' · '))}</span></span>
+      <span class="tag-r">${filled ? `<b class="ok">Filled</b>${kill ? `<span class="muted">${fmtD(kill.d)}${kill.s.wmu ? ', WMU ' + esc(kill.s.wmu) : ''}</span>` : ''}` : '<b class="muted">Open</b>'}</span></button>`).join('')}</div>
+    <p class="list-note">${S.tags.length} tag${S.tags.length === 1 ? '' : 's'}, ${open} open${cost ? `, $${cost.toFixed(2)} spent` : ''}. Logged kills fill the matching tag on their own.</p>`
+    : `<div class="empty"><b>No tags for ${L.yearLabel(y)} yet</b><span class="muted">Add the species licences you bought.</span></div>`}
+  ${S.untagged.length ? `<div class="notice tip-h">${S.untagged.length} kill${S.untagged.length === 1 ? '' : 's'} without a tag: ${S.untagged.map((k) => esc(`${k.s.species} ${fmtD(k.d)}`)).join(', ')}.&nbsp;<button class="link" id="tagKills">Add tag${S.untagged.length === 1 ? '' : 's'}</button></div>` : ''}`;
+  body.onclick = async (e) => {
+    const yb = e.target.closest('[data-ly]'); if (yb) { tui.year = +yb.dataset.ly; renderTags(body); return; }
+    if (e.target.closest('#addTags')) { addTagsSheet(y); return; }
+    if (e.target.closest('#tagKills')) { for (const k of S.untagged) await db.insert('tags', { year: y, species: k.s.species, tag_type: 'General', hunter: 'Me' }); toast('Tags added'); return; }
+    const r = e.target.closest('[data-tag]'); if (r) tagForm(store.tags.find((x) => x.id === r.dataset.tag));
+  };
 }
+// Pick every licence you bought at once.
+function addTagsSheet(year) {
+  const cnt = {};
+  const b = modal(`<h3>Add tags</h3><p class="muted" style="margin-top:0">Tap each species licence you bought for ${L.yearLabel(year)}. Tap again for a second deer tag.</p>
+    <div class="tag-pick">${L.TAG_SPECIES.map((sp) => `<button type="button" data-sp="${esc(sp)}"><span>${esc(sp)}</span><b class="n"></b></button>`).join('')}</div>
+    <div class="row" style="margin-top:14px"><button class="primary" id="tpAdd" disabled>Add tags</button><button type="button" id="tpCancel">Cancel</button></div>`);
+  const sync = () => { b.querySelectorAll('[data-sp]').forEach((x) => { const n = cnt[x.dataset.sp] || 0; x.classList.toggle('on', n > 0); x.querySelector('.n').textContent = n > 1 ? '×' + n : ''; });
+    const total = Object.values(cnt).reduce((a, n) => a + n, 0); const add = b.querySelector('#tpAdd'); add.disabled = !total; add.textContent = total ? `Add ${total} tag${total === 1 ? '' : 's'}` : 'Add tags'; };
+  b.querySelector('.tag-pick').onclick = (e) => { const x = e.target.closest('[data-sp]'); if (!x) return; const sp = x.dataset.sp; const max = /deer/i.test(sp) ? 3 : 1; cnt[sp] = ((cnt[sp] || 0) + 1) % (max + 1); sync(); };
+  b.querySelector('#tpCancel').onclick = closeModal;
+  b.querySelector('#tpAdd').onclick = async () => {
+    const rows = Object.entries(cnt).flatMap(([sp, n]) => Array.from({ length: n }, () => ({ year, species: sp, tag_type: 'General', hunter: 'Me' })));
+    try { await db.insert('tags', rows); closeModal(); toast(`Added ${rows.length} tag${rows.length === 1 ? '' : 's'}`); } catch (err) { toast(err.message, 5000); }
+  };
+}
+
 function renderHist(body) {
   const rows = store.leh.slice().sort((a, b) => b.year - a.year || (a.choice || 1) - (b.choice || 1));
   body.innerHTML = `<div class="row" style="justify-content:space-between"><span class="muted tip-h">Past draws${tip('A win lowers your odds for that species in later draws.')}</span><button class="small primary" id="addLeh">${icon('plus', { size: 15 })}Add</button></div>
@@ -248,22 +301,23 @@ function renderHist(body) {
 export const lehForMu = async (mu) => ((await loadLeh()).hunts || []).filter((h) => h.mus.includes(mu)).sort((a, b) => (a.sp || '').localeCompare(b.sp || '') || (a.odds ?? 1e9) - (b.odds ?? 1e9));
 
 function tagForm(t) {
-  const isNew = !t.id;
-  const b = modal(`<h3>${isNew ? 'New tag' : 'Edit tag'}</h3><form class="grid2">
-  <label>Year <input type="number" name="year" required value="${t.year ?? yr}"></label>
-  <label>Species <input name="species" list="speciesList" required value="${esc(t.species || '')}"></label>
-  <label>Type <input name="tag_type" list="tagTypes" value="${esc(t.tag_type || '')}"></label>
-  <label>Cost $ <input type="number" step="0.01" name="cost" value="${t.cost ?? ''}"></label>
-  <label>WMU / zone <input name="wmu" value="${esc(t.wmu || '')}"></label>
+  const isNew = !t.id; const cur = L.licenceYear(new Date());
+  const ys = [...new Set([cur + 1, cur, cur - 1, cur - 2, +t.year || cur])].sort((a, b) => b - a);
+  const sps = [...new Set([...L.TAG_SPECIES, t.species].filter(Boolean))];
+  const b = modal(`<h3>${isNew ? 'New tag' : esc(t.species)}</h3><form class="grid2">
+  <label>Species <select name="species" required>${sps.map((x) => `<option ${x === t.species ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
+  <label>Licence year <select name="year">${ys.map((v) => `<option value="${v}" ${v === (+t.year || cur) ? 'selected' : ''}>${L.yearLabel(v)}</option>`).join('')}</select></label>
+  <label>Type <select name="tag_type">${['General', 'LEH', 'Youth'].map((x) => `<option ${x === (t.tag_type || 'General') ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+  <label>LEH code or area <input name="wmu" value="${esc(t.wmu || '')}" placeholder="e.g. 4175 or 4-24"></label>
+  <label>Cost $ <input type="number" step="0.01" name="cost" value="${t.cost ?? ''}" inputmode="decimal"></label>
   <label>Hunter <input name="hunter" list="hunterList" value="${esc(t.hunter || 'Me')}"></label>
-  <label style="color:var(--ink)"><input type="checkbox" name="filled" ${t.filled ? 'checked' : ''}> Filled</label>
+  <label class="switch span2"><input type="checkbox" name="filled" ${t.filled ? 'checked' : ''}><span>Filled, but the kill isn't logged</span></label>
   <label class="span2">Notes <textarea name="notes">${esc(t.notes || '')}</textarea></label>
-  <div class="row span2"><button class="primary">Save</button>${isNew ? '' : '<button type="button" class="danger" id="del">Delete</button>'}</div></form>
-  <datalist id="tagTypes"><option value="General"><option value="LEH"><option value="Resident"><option value="Youth"></datalist>${hunterDatalist()}${speciesDatalist()}`);
+  <div class="row span2"><button class="primary">Save</button>${isNew ? '' : '<button type="button" class="danger" id="del">Delete</button>'}</div></form>${hunterDatalist()}`);
   const f = b.querySelector('form');
-  f.onsubmit = async (e) => { e.preventDefault(); const o = formData(f); o.year = +o.year; o.cost = num(o.cost);
+  f.onsubmit = async (e) => { e.preventDefault(); const o = formData(f); o.year = +o.year; o.cost = num(o.cost); o.filled = f.filled.checked;
     try { isNew ? await db.insert('tags', o) : await db.update('tags', t.id, o); closeModal(); } catch (err) { toast(err.message, 5000); } };
-  b.querySelector('#del')?.addEventListener('click', async () => { if (confirm('Delete tag?')) { await db.remove('tags', t.id); closeModal(); } });
+  b.querySelector('#del')?.addEventListener('click', async () => { if (confirm('Delete this tag?')) { await db.remove('tags', t.id); closeModal(); } });
 }
 
 function lehForm(l) {

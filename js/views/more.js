@@ -1,10 +1,10 @@
-import * as db from '../db.js?v=20261113080841-f7d0de8';
-import { store } from '../db.js?v=20261113080841-f7d0de8';
-import { esc, download, toast, todayISO, fmtDate, tip } from '../util.js?v=20261113080841-f7d0de8';
-import { exportKML } from '../exporters.js?v=20261113080841-f7d0de8';
-import { BC_WMS, BC_WFS, LEH_LAYER, LEH_TYPE_FIELD, MVPR_LAYER, WMU_LAYER } from '../config.js?v=20261113080841-f7d0de8';
-import { icon } from '../icons.js?v=20261113080841-f7d0de8';
-import * as M from '../map.js?v=20261113080841-f7d0de8';
+import * as db from '../db.js?v=20261113155253-d748ce5';
+import { store } from '../db.js?v=20261113155253-d748ce5';
+import { esc, download, toast, todayISO, fmtDate, tip } from '../util.js?v=20261113155253-d748ce5';
+import { exportKML } from '../exporters.js?v=20261113155253-d748ce5';
+import { BC_WMS, BC_WFS, LEH_LAYER, LEH_TYPE_FIELD, MVPR_LAYER, WMU_LAYER } from '../config.js?v=20261113155253-d748ce5';
+import { icon } from '../icons.js?v=20261113155253-d748ce5';
+import * as M from '../map.js?v=20261113155253-d748ce5';
 
 const theme = () => { try { return localStorage.getItem('hunthq_theme') || 'system'; } catch { return 'system'; } };
 function setTheme(t) {
@@ -19,6 +19,7 @@ export function render(v) {
   <div class="list-group">
     <div class="list-row static"><span class="lr-ic">${icon('user', { size: 20 })}</span><span class="lr-t"><b>${mode === 'local' ? 'Local mode' : esc(u?.email || 'Signed in')}</b><span>${mode === 'local' ? 'Saved in this browser only' : 'Synced to your account'}</span></span><button class="small" id="signOut">${mode === 'local' ? 'Sign in' : 'Sign out'}</button></div>
   </div>
+  <div class="list-group" style="margin-top:8px"><label class="list-row static"><span class="lr-ic">${icon('tag', { size: 20 })}</span><span class="lr-t"><b class="tip-h">Your name in logs${tip('Kills logged under Me or this name count against your tags and bag limits. Separate several names with commas.')}</b><input id="myName" value="${esc(store.prefs.myName || '')}" placeholder="e.g. Andrew" style="margin-top:6px"></span></label></div>
   <h3 class="list-h">Appearance</h3>
   <div class="seg seg-full" role="radiogroup" aria-label="Appearance">${[['system', 'System'], ['light', 'Light'], ['dark', 'Dark']].map(([k, n]) => `<button role="radio" data-theme="${k}" aria-checked="${theme() === k}" class="${theme() === k ? 'on' : ''}">${n}</button>`).join('')}</div>
   <h3 class="list-h tip-h">Your data${tip('The free database plan has no automatic backups, so download one now and then.')}</h3>
@@ -39,7 +40,8 @@ export function render(v) {
   <p class="muted">Checks that BC map services respond and lists the closure and LEH layers they return.</p>
   <button id="diag">Run check</button><pre id="diagOut" style="white-space:pre-wrap;font-size:12px"></pre></div></details>
   <p class="list-note tip-h">Data sources${tip('Seasons: 2026–2028 BC Hunting & Trapping Regulations Synopsis (general open seasons). Always confirm in the synopsis and in-season changes at gov.bc.ca/hunting. Map data © Province of BC, Esri, OpenTopoMap, OpenStreetMap contributors. Terrain © Mapzen / AWS. Weather © Open-Meteo.', 'Data sources')}</p>`;
-  v.querySelector('#goImport').onclick = () => import('../main.js?v=20261113080841-f7d0de8').then((m) => m.showTabPublic('import'));
+  v.querySelector('#goImport').onclick = () => import('../main.js?v=20261113155253-d748ce5').then((m) => m.showTabPublic('import'));
+  v.querySelector('#myName').onchange = async (e) => { await db.savePrefs({ myName: e.target.value.trim() }); toast('Saved'); };
   v.querySelector('#signOut').onclick = async () => { await db.signOut(); location.reload(); };
   v.querySelector('#bExp').onclick = async () => { download(`ridgeline_backup_${todayISO()}.json`, db.backupJSON(), 'application/json'); await db.savePrefs({ lastBackup: new Date().toISOString() }).catch(() => {}); };
   v.querySelector('#bImp').onchange = async (e) => {
