@@ -8,7 +8,7 @@ P = '/home/user/hunthq/hunt-hq-handoff/data/leh_2026.json'
 D = json.load(open(P)); H = {h['code']: h for h in D['hunts']}
 CODE = re.compile(r'(?:(?<=^)|(?<=\s\s)|(?<=^\s))(\d{4})\s+(?=[A-Z])')
 ROW = re.compile(r'^(\d{4})\s+.+?\s{2,}(\d-\d{2})(\**)(?:[^\n]*?)\s+(?:([A-Z0-9]{1,3})(\**)\s+)?(?:Jan|Feb|Mar|Apr|May|June?|July?|Aug|Sept?|Oct|Nov|Dec)')
-FOOT = re.compile(r'(?:^|\s{2,})(\*{1,3})(?!\*)\s*([A-Z][^*]*)')
+FOOT = re.compile(r'(?:^|\s)(\*{1,3})(?!\*)\s*([A-Z][^*]*)')
 
 def columns(lines):
     starts = [m.start(1) for ln in lines for m in CODE.finditer(ln)]
@@ -19,7 +19,8 @@ def columns(lines):
 hits = 0
 for pg in pages[:18]:
     lines = pg.split('\n')
-    for col in columns(lines):
+    cols = columns(lines); page_notes = []
+    for col in cols:
         # footnotes in this column: star count -> text (continuation lines until blank / next footnote / next table)
         notes = {}; cur = None; gap = 0; n = 0
         for ln in col:
@@ -35,12 +36,21 @@ for pg in pages[:18]:
             else:
                 gap += 1
                 if gap > 3: cur = None
+        page_notes.append(notes)
+    for ci, col in enumerate(cols):
+        notes = page_notes[ci]; other = page_notes[1 - ci] if len(page_notes) > 1 else {}
         for ln in col:
             m = ROW.match(ln.strip())
             if not m or m.group(1) not in H: continue
             h = H[m.group(1)]; stars = max(len(m.group(3) or ''), len(m.group(5) or ''))
-            if not stars or stars not in notes: continue
-            note = re.sub(r'\s+', ' ', notes[stars]).strip()
+            # Footnotes usually sit in the hunt's own column; some are printed in the other column of the page.
+            # When both columns carry a note with the same stars, take the one that names this hunt's MU.
+            cands = [n[stars] for n in (notes, other) if stars and stars in n]
+            if not cands: continue
+            mu = m.group(2)
+            pick = next((c for c in cands if mu in c), None) or (cands[0] if stars in notes or len(cands) == 1 else None)
+            if not pick: continue
+            note = re.sub(r'\s+', ' ', pick).strip()
             up = note.upper(); flags = []
             # Only explicit restriction wording counts (so "there is no bow only season" or "illegal to hunt on
             # private land without permission" don't flag a hunt).
