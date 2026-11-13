@@ -1,9 +1,9 @@
 // MapLibre map: base styles, 3D terrain, BC WMS overlays, identify, waypoints/tracks, open-WMU shading.
-import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261113063751-a12a521';
-import { store } from './db.js?v=20261113063751-a12a521';
-import { MODES, fmtKm } from './elevation.js?v=20261113063751-a12a521';
-import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261113063751-a12a521';
-import { esc, earthLink, fmtDT } from './util.js?v=20261113063751-a12a521';
+import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261113064556-c25363b';
+import { store } from './db.js?v=20261113064556-c25363b';
+import { MODES, fmtKm } from './elevation.js?v=20261113064556-c25363b';
+import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261113064556-c25363b';
+import { esc, earthLink, fmtDT } from './util.js?v=20261113064556-c25363b';
 
 export let map;
 const state = { base: 'sat', terrain: false, exag: 1.5, hillshade: false, ref: false, hiddenWmu: [], layers: {}, opacity: {}, shade: null, custom: [] };
@@ -354,6 +354,18 @@ export async function setLehFilter(keys, mus) {
   map.setFilter('lehf-mu-line', ['in', ['get', 'id'], ['literal', on ? mus : []]]);
 }
 export async function lehZonesFC() { return lehZones ? lehZones : null; }
+// Forecast spot marker (Insights > Forecast).
+export function setForecastPin(c) {
+  if (!map?.getSource('spots')) return;
+  if (!map.getSource('fpin')) {
+    map.addSource('fpin', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    map.addLayer({ id: 'fpin-halo', type: 'circle', source: 'fpin', paint: { 'circle-radius': 20, 'circle-color': 'rgba(233,162,59,.18)', 'circle-stroke-color': '#e9a23b', 'circle-stroke-width': 2 } });
+    map.addLayer({ id: 'fpin-dot', type: 'circle', source: 'fpin', paint: { 'circle-radius': 6, 'circle-color': '#e9a23b', 'circle-stroke-color': '#fff', 'circle-stroke-width': 2.5 } });
+    map.addLayer({ id: 'fpin-label', type: 'symbol', source: 'fpin', layout: { 'text-field': ['get', 'label'], 'text-font': ['Open Sans Semibold'], 'text-size': 12, 'text-offset': [0, 2.3], 'text-anchor': 'top', 'text-allow-overlap': true },
+      paint: { 'text-color': '#fff', 'text-halo-color': 'rgba(12,16,12,.9)', 'text-halo-width': 1.5 } });
+  }
+  map.getSource('fpin').setData(c ? { type: 'Feature', properties: { label: 'Forecast' + (c.label ? ': ' + c.label : '') }, geometry: { type: 'Point', coordinates: [c.lng, c.lat] } } : { type: 'FeatureCollection', features: [] });
+}
 export function setHotspots(fc) { map.getSource('hot')?.setData(fc || { type: 'FeatureCollection', features: [] }); }
 
 export function spotPopupHTML(s) {
@@ -364,7 +376,7 @@ export function spotPopupHTML(s) {
   ${s.wmu ? `<dt>WMU</dt><dd>${esc(s.wmu)}</dd>` : ''}${s.weapon ? `<dt>Weapon</dt><dd>${esc(s.weapon)}</dd>` : ''}
   <dt>Lat/Lon</dt><dd>${(+s.lat).toFixed(5)}, ${(+s.lon).toFixed(5)}</dd></dl>
   ${s.notes ? `<div class="muted">${esc(s.notes)}</div>` : ''}
-  <div class="row" style="margin-top:6px"><button class="small" data-act="edit-spot" data-id="${s.id}">Edit</button>
+  <div class="row" style="margin-top:6px"><button class="small" data-act="edit-spot" data-id="${s.id}">Edit</button><button class="small" data-act="fc-here" data-lat="${s.lat}" data-lon="${s.lon}" data-label="${esc(spotLabel(s))}">Forecast</button>
   <a class="small" href="${earthLink(s.lat, s.lon)}" target="_blank" rel="noopener">Open in Google Earth</a></div></div>`;
 }
 

@@ -629,3 +629,10 @@ svg.moon { flex: none; display: block; }
 .wx-tip { font-size: 13.5px; line-height: 1.45; margin: 0 0 6px; }
 .wind-arrow { flex: none; }
 .wx-how { margin-top: 10px; } .wx-how summary { cursor: pointer; }
+
+/* Forecast spot */
+.fc-loc { display: grid; gap: 8px; margin-bottom: 12px; }
+.fc-where { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 8px 12px; border-radius: 12px; min-height: 52px; }
+.fc-where .t { flex: 1; display: flex; flex-direction: column; min-width: 0; } .fc-where .t .muted { font-size: 12px; }
+.fc-dot { flex: none; width: 14px; height: 14px; border-radius: 50%; background: #e9a23b; border: 2.5px solid #fff; box-shadow: 0 0 0 4px rgba(233,162,59,.25); }
+.fc-acts { display: flex; flex-wrap: wrap; gap: 6px; } .fc-acts select { flex: 1 1 100%; min-height: 40px; }

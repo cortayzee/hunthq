@@ -1,10 +1,10 @@
-import { store, hunters, localNote } from '../db.js?v=20261113063751-a12a521';
-import { icon } from '../icons.js?v=20261113063751-a12a521';
-import { esc, opts, yearOf, groupBy, fmtTime } from '../util.js?v=20261113063751-a12a521';
-import * as M from '../map.js?v=20261113063751-a12a521';
-import { RUT, RUT_SPECIES, rutStatus, fmtMD, moonSVG, moonDay, MOON_TIPS } from '../rut.js?v=20261113063751-a12a521';
-import * as W from '../weather.js?v=20261113063751-a12a521';
-import { harvested } from '../vis.js?v=20261113063751-a12a521';
+import { store, hunters, localNote } from '../db.js?v=20261113064556-c25363b';
+import { icon } from '../icons.js?v=20261113064556-c25363b';
+import { esc, opts, yearOf, groupBy, fmtTime } from '../util.js?v=20261113064556-c25363b';
+import * as M from '../map.js?v=20261113064556-c25363b';
+import { RUT, RUT_SPECIES, rutStatus, fmtMD, moonSVG, moonDay, MOON_TIPS } from '../rut.js?v=20261113064556-c25363b';
+import * as W from '../weather.js?v=20261113064556-c25363b';
+import { harvested } from '../vis.js?v=20261113064556-c25363b';
 
 const f = { hunter: '', species: '', from: '', to: '' };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -15,7 +15,19 @@ const BUCKETS = ['Dawn (5–8)', 'Morning (8–11)', 'Midday (11–14)', 'Aftern
 
 const ui = (() => { try { return { sub: 'rut', ...JSON.parse(localStorage.getItem('hunthq_ins') || '{}'), stage: null, day: 0 }; } catch { return { sub: 'rut', stage: null, day: 0 }; } })();
 const saveUi = () => { try { localStorage.setItem('hunthq_ins', JSON.stringify({ sub: ui.sub, sp: ui.sp })); } catch {} };
-let pos = null;
+// The forecast spot stays put (saved per browser) until you change it.
+const FKEY = 'hunthq_fpos';
+let pos = (() => { try { const p = JSON.parse(localStorage.getItem(FKEY)); return p && isFinite(p.lat) && isFinite(p.lng) ? p : null; } catch { return null; } })();
+export function setForecastPos(p) { pos = p; try { localStorage.setItem(FKEY, JSON.stringify(p)); } catch {} }
+export function openForecast(p) { if (p) setForecastPos(p); ui.sub = 'rut'; saveUi(); }
+export function onLeave() { M.setForecastPin(null); }
+const FC_KINDS = ['camp', 'stand', 'trailcam', 'glass', 'feed', 'water', 'bedding', 'wallow', 'trailhead', 'access'];
+function mySpots() {
+  const out = [];
+  for (const t of store.trips) if (t.lat != null && t.lon != null) out.push({ v: 't:' + t.id, label: t.name || t.area || 'Hunt', lat: +t.lat, lng: +t.lon, grp: 'Hunts' });
+  for (const s of store.spots) if (FC_KINDS.includes(s.kind)) out.push({ v: 's:' + s.id, label: s.name || s.kind, lat: +s.lat, lng: +s.lon, grp: 'Waypoints', sub: (store.prefs.groups || []).find((g) => g.id === s.extra?.group_id)?.name });
+  return out;
+}
 
 export function render(v) {
   render.v = v;
@@ -24,6 +36,7 @@ export function render(v) {
   v.querySelector('.seg').onclick = (e) => { const b = e.target.closest('[data-sub]'); if (b) { ui.sub = b.dataset.sub; saveUi(); render(v); } };
   const body = v.querySelector('#iBody');
   if (ui.sub === 'rut') return renderRut(body);
+  M.setForecastPin(null);
   const sp = [...new Set([...store.trips, ...store.spots].map((x) => x.species).filter(Boolean))].sort();
   const years = [...new Set([...store.trips.map((t) => yearOf(t.date_start)), ...store.spots.map((s) => yearOf(s.observed_at))].filter(Boolean))].sort();
   body.innerHTML = `<div class="grid2"><select id="ih"><option value="">All hunters</option>${opts(hunters(), f.hunter)}</select>
@@ -50,7 +63,10 @@ function defaultSp() {
 const short = (sp) => sp.replace('White-tailed', 'Whitetail').replace('Black-tailed', 'Blacktail').replace('Mountain ', '');
 function renderRut(body) {
   if (!RUT[ui.sp]) ui.sp = defaultSp();
-  const c = pos || M.map.getCenter(); const mu = wmuAt(c.lng, c.lat); const now = new Date();
+  if (!pos) { const m = M.map.getCenter(); setForecastPos({ lat: +m.lat.toFixed(5), lng: +m.lng.toFixed(5), label: '' }); }
+  const c = pos; const mu = wmuAt(c.lng, c.lat); const now = new Date();
+  M.setForecastPin(c);
+  const spots = mySpots();
   const r = rutStatus(ui.sp, now);
   const sel = r.stages[ui.stage ?? -1] || r.cur || r.peak;
   const span = r.stages.reduce((a, s) => a + (s.e - s.s + 1), 0);
@@ -59,8 +75,13 @@ function renderRut(body) {
   const tm = (d) => fmtTime(d).replace(/^0/, ''); const tmS = (d) => tm(d).replace(/\s?([ap])\.?m\.?/i, '$1');
   const win = (w) => `${tm(w.s)}–${tm(w.e)}`;
   body.innerHTML = `
-  <div class="rut-loc"><span>For <b class="tnum">${c.lat.toFixed(3)}, ${c.lng.toFixed(3)}</b>${mu ? ` · WMU ${esc(mu)}` : ''}</span>
-    <span class="row" style="gap:6px"><button class="small" data-loc="center">Map centre</button><button class="small" data-loc="gps">GPS</button></span></div>
+  <div class="fc-loc">
+    <button class="fc-where" data-loc="show" title="Show on map"><span class="fc-dot"></span><span class="t"><b>${esc(c.label || (mu ? `Pin in WMU ${mu}` : 'Dropped pin'))}</b><span class="muted tnum">${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}${mu && c.label ? ` · WMU ${esc(mu)}` : ''}</span></span><span class="muted fine" style="margin:0">Show</span></button>
+    <div class="fc-acts">
+      ${spots.length ? `<select id="fcSpot" aria-label="Forecast for one of my spots"><option value="">My spots…</option>${['Hunts', 'Waypoints'].map((g) => { const xs = spots.filter((x) => x.grp === g); return xs.length ? `<optgroup label="${g}">${xs.map((x) => `<option value="${x.v}">${esc(x.label)}${x.sub ? ' · ' + esc(x.sub) : ''}</option>`).join('')}</optgroup>` : ''; }).join('')}</select>` : ''}
+      <button class="small" data-loc="pick">${icon('pin', { size: 15 })}Pick on map</button><button class="small" data-loc="center">Map centre</button><button class="small" data-loc="gps">GPS</button>
+    </div>
+  </div>
   <div class="rut-sps">${RUT_SPECIES.map((s) => { const st = rutStatus(s, now); const on = !!st.cur; const pk = st.cur === st.peak;
     return `<button class="rut-sp ${pk ? 'peak' : on ? 'on' : ''}" data-rsp="${esc(s)}" aria-pressed="${s === ui.sp}"><b>${esc(short(s))}</b><span>${on ? esc(st.cur.name) : 'Off season'}</span></button>`; }).join('')}</div>
   <div class="card wx-card" id="wxCard"><div class="wx-load muted">Loading weather…</div></div>
@@ -91,6 +112,8 @@ function renderRut(body) {
     </div>
   </div>`;
   fillWx(body.querySelector('#wxCard'), c);
+  const sel2 = body.querySelector('#fcSpot');
+  if (sel2) sel2.onchange = () => { const x = spots.find((y) => y.v === sel2.value); if (x) { setForecastPos({ lat: x.lat, lng: x.lng, label: x.label }); M.flyTo(x.lng, x.lat, 11); renderRut(body); } };
   body.onclick = (e) => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.wx) { ui.wx = b.dataset.wx; fillWx(body.querySelector('#wxCard'), c); return; }
@@ -99,8 +122,12 @@ function renderRut(body) {
     if (b.dataset.rsp) { ui.sp = b.dataset.rsp; ui.stage = null; saveUi(); renderRut(body); }
     else if (b.dataset.stage != null) { ui.stage = +b.dataset.stage; renderRut(body); }
     else if (b.dataset.day != null) { ui.day = +b.dataset.day; renderRut(body); }
-    else if (b.dataset.loc === 'center') { pos = null; renderRut(body); }
-    else if (b.dataset.loc === 'gps') navigator.geolocation?.getCurrentPosition((p) => { pos = { lat: p.coords.latitude, lng: p.coords.longitude }; renderRut(body); }, (er) => alert(er.message));
+    else if (b.dataset.loc === 'center') { const m = M.map.getCenter(); setForecastPos({ lat: m.lat, lng: m.lng, label: '' }); renderRut(body); }
+    else if (b.dataset.loc === 'show') M.flyTo(c.lng, c.lat, 11);
+    else if (b.dataset.loc === 'pick') {
+      import('../main.js?v=20261113064556-c25363b').then(async (mm) => { const ll = await mm.pickOnMap('Tap the map where you want the forecast'); setForecastPos({ lat: ll.lat, lng: ll.lng, label: '' }); mm.openPanel(); if (render.v?.isConnected) render(render.v); });
+    }
+    else if (b.dataset.loc === 'gps') navigator.geolocation?.getCurrentPosition((p) => { setForecastPos({ lat: p.coords.latitude, lng: p.coords.longitude, label: 'My location' }); renderRut(body); }, (er) => alert(er.message));
   };
 }
 export function onData() { if (render.v?.isConnected && ui.sub === 'mine') render(render.v); }
