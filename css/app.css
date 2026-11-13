@@ -93,7 +93,7 @@ td input, td select { min-height: 34px; padding: 4px 6px; width: 100%; min-width
 .maplibregl-map, .maplibregl-canvas-container { overflow: clip !important; }
 .app.drop-mode #map canvas, .app.pick-mode #map canvas { cursor: crosshair; }
 .chrome { position: absolute; z-index: 4; display: flex; gap: 8px; }
-.chrome-tl { top: calc(12px + env(safe-area-inset-top)); left: 12px; transition: transform 260ms var(--ease-drawer); }
+.chrome-tl { top: calc(12px + env(safe-area-inset-top)); left: calc(12px + env(safe-area-inset-left)); transition: transform 260ms var(--ease-drawer); }
 .chrome-r { display: none; }
 .maplibregl-ctrl.hq-ctrl { display: flex; flex-direction: column; gap: 10px; background: none; border: none; box-shadow: none; overflow: visible; }
 .hq-ctrl .round-btn { transform-origin: center; }
@@ -123,7 +123,9 @@ td input, td select { min-height: 34px; padding: 4px 6px; width: 100%; min-width
 .maplibregl-ctrl-group button:active { transform: none; }
 @media (hover: hover) and (pointer: fine) { .maplibregl-ctrl-group button:not(:disabled):hover { background: var(--chrome-2); } }
 .maplibregl-ctrl-scale { background: rgba(21,26,21,.7); color: #eef; border-color: #eef; font-size: 11px; }
-.maplibregl-ctrl-bottom-left { bottom: env(safe-area-inset-bottom); }
+.maplibregl-ctrl-bottom-left { bottom: env(safe-area-inset-bottom); left: env(safe-area-inset-left); }
+.maplibregl-ctrl-top-right { right: env(safe-area-inset-right); }
+html, body { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
 
 .drop-hint { position: absolute; z-index: 6; left: 50%; bottom: calc(26px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; align-items: center; gap: 14px;
   background: var(--chrome); color: var(--chrome-ink); padding: 8px 8px 8px 18px; border-radius: 99px; box-shadow: var(--shadow); white-space: nowrap;
@@ -166,7 +168,7 @@ td input, td select { min-height: 34px; padding: 4px 6px; width: 100%; min-width
 
 @media (max-width: 760px) {
   :root { --sheet-h: calc(100dvh - 56px - env(safe-area-inset-top)); --sheet-half: calc(var(--sheet-h) - 56dvh); }
-  .chrome-tl { left: 10px; } .app:not(.panel-closed) .chrome-tl { transform: none; }
+  .chrome-tl { left: calc(10px + env(safe-area-inset-left)); } .app:not(.panel-closed) .chrome-tl { transform: none; }
   .fab-btn span { display: none; } .fab-btn { width: var(--tap); padding: 0; }
   .panel { top: auto; width: 100%; height: var(--sheet-h); border-right: none; border-radius: 18px 18px 0 0; border-top: 1px solid var(--line);
     transform: translateY(var(--sheet-half)); transition: transform 320ms var(--ease-drawer), visibility 0s; touch-action: pan-y; }

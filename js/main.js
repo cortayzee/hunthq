@@ -1,20 +1,20 @@
-import * as db from './db.js?v=20261113015250-f350ee7';
-import { store } from './db.js?v=20261113015250-f350ee7';
-import * as M from './map.js?v=20261113015250-f350ee7';
-import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261113015250-f350ee7';
-import { $, $$, esc, toast, closeModal, requestClose, todayISO, earthLink } from './util.js?v=20261113015250-f350ee7';
-import { REGS_URL, BASES } from './config.js?v=20261113015250-f350ee7';
-import { sunInfo } from './views/sun.js?v=20261113015250-f350ee7';
-import { mvprSummary, mvprStatus } from './mvpr.js?v=20261113015250-f350ee7';
-import { icon, hydrateIcons } from './icons.js?v=20261113015250-f350ee7';
-import * as R from './route.js?v=20261113015250-f350ee7';
-import * as V from './vis.js?v=20261113015250-f350ee7';
+import * as db from './db.js?v=20261113015624-fdc5097';
+import { store } from './db.js?v=20261113015624-fdc5097';
+import * as M from './map.js?v=20261113015624-fdc5097';
+import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261113015624-fdc5097';
+import { $, $$, esc, toast, closeModal, requestClose, todayISO, earthLink } from './util.js?v=20261113015624-fdc5097';
+import { REGS_URL, BASES } from './config.js?v=20261113015624-fdc5097';
+import { sunInfo } from './views/sun.js?v=20261113015624-fdc5097';
+import { mvprSummary, mvprStatus } from './mvpr.js?v=20261113015624-fdc5097';
+import { icon, hydrateIcons } from './icons.js?v=20261113015624-fdc5097';
+import * as R from './route.js?v=20261113015624-fdc5097';
+import * as V from './vis.js?v=20261113015624-fdc5097';
 
 const views = {};
 const viewModules = {
-  layers: () => import('./views/layers.js?v=20261113015250-f350ee7'), open: () => import('./views/open.js?v=20261113015250-f350ee7'), log: () => import('./views/log.js?v=20261113015250-f350ee7'),
-  trips: () => import('./views/trips.js?v=20261113015250-f350ee7'), tags: () => import('./views/tags.js?v=20261113015250-f350ee7'), insights: () => import('./views/insights.js?v=20261113015250-f350ee7'),
-  import: () => import('./views/import.js?v=20261113015250-f350ee7'), sun: () => import('./views/sun.js?v=20261113015250-f350ee7'), more: () => import('./views/more.js?v=20261113015250-f350ee7'),
+  layers: () => import('./views/layers.js?v=20261113015624-fdc5097'), open: () => import('./views/open.js?v=20261113015624-fdc5097'), log: () => import('./views/log.js?v=20261113015624-fdc5097'),
+  trips: () => import('./views/trips.js?v=20261113015624-fdc5097'), tags: () => import('./views/tags.js?v=20261113015624-fdc5097'), insights: () => import('./views/insights.js?v=20261113015624-fdc5097'),
+  import: () => import('./views/import.js?v=20261113015624-fdc5097'), sun: () => import('./views/sun.js?v=20261113015624-fdc5097'), more: () => import('./views/more.js?v=20261113015624-fdc5097'),
 };
 export const app = { tab: 'layers', date: todayISO(), dropMode: false };
 const isPhone = () => innerWidth <= 760;
@@ -50,7 +50,7 @@ export function closePanel() {
   M.setSelection?.(null); M.map?.setPadding({ left: 0, top: 0, right: 0, bottom: 0 });
 }
 export async function openWmu(mu, region) {
-  const { showWmu } = await import('./views/wmu.js?v=20261113015250-f350ee7');
+  const { showWmu } = await import('./views/wmu.js?v=20261113015624-fdc5097');
   if (app.tab === 'open') views.open?.onLeave?.();
   $$('#tabs button').forEach((b) => b.classList.remove('active'));
   openPanel(); const v = $('#view'); v.scrollTop = 0;
@@ -199,10 +199,10 @@ function wireUI() {
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const { act, id } = b.dataset;
-    if (act === 'edit-spot') (await import('./views/log.js?v=20261113015250-f350ee7')).openSpotForm(store.spots.find((s) => s.id === id));
-    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261113015250-f350ee7')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'edit-spot') (await import('./views/log.js?v=20261113015624-fdc5097')).openSpotForm(store.spots.find((s) => s.id === id));
+    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261113015624-fdc5097')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
     if (act === 'wmu') { e.preventDefault(); popup?.remove(); M.selectWmu(b.dataset.mu); openWmu(b.dataset.mu, b.dataset.region); }
-    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261113015250-f350ee7')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261113015624-fdc5097')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
   });
   document.addEventListener('submit', (e) => {
     if (!e.target.matches('[data-wmuform]')) return; e.preventDefault();
@@ -215,7 +215,7 @@ function wireUI() {
     if (popup?.isOpen() && !app.dropMode && !app.pickHandler) { popup.remove(); popup = null; return; }
     if (app.dropMode) {
       setDropMode(false);
-      const { openSpotForm } = await import('./views/log.js?v=20261113015250-f350ee7');
+      const { openSpotForm } = await import('./views/log.js?v=20261113015624-fdc5097');
       const form = openSpotForm({ lat: e.lngLat.lat, lon: e.lngLat.lng });
       const res = await M.identify(e.lngLat, ['wmu']);
       const w = M.wmuFromIdentify(res); if (w && form?.wmu && !form.wmu.value) form.wmu.value = w;
@@ -333,4 +333,12 @@ addEventListener('scroll', (e) => {
   if (scrollY || scrollX) scrollTo(0, 0);
   for (const el of [document.getElementById('app'), document.getElementById('map'), document.querySelector('.maplibregl-canvas-container')]) if (el && (el.scrollTop || el.scrollLeft)) { el.scrollTop = 0; el.scrollLeft = 0; }
 }, { passive: true, capture: true });
+// iOS browsers ignore user-scalable=no, so a pinch that misses the map zooms the whole page and pushes the
+// buttons off the edges. Block page-level pinch/double-tap zoom (the map handles its own gestures).
+for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+document.addEventListener('touchmove', (e) => { if (e.touches.length > 1 && !e.target.closest('#map')) e.preventDefault(); }, { passive: false });
+let lastTouch = 0;
+document.addEventListener('touchend', (e) => { const now = Date.now(); if (now - lastTouch < 300 && !e.target.closest('#map, input, textarea, select')) e.preventDefault(); lastTouch = now; }, { passive: false });
+// If the page did get zoomed or shifted (visual viewport offset), snap it back.
+window.visualViewport?.addEventListener('resize', () => { if (visualViewport.scale > 1.01) { const m = document.querySelector('meta[name=viewport]'); const c = m.content; m.content = c + ',x=1'; requestAnimationFrame(() => (m.content = c)); } });
 boot();
