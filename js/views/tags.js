@@ -1,12 +1,13 @@
-import * as db from '../db.js?v=20261113160653-ee55c68';
-import { store, hunters } from '../db.js?v=20261113160653-ee55c68';
-import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261113160653-ee55c68';
-import { hunterDatalist, speciesDatalist } from './log.js?v=20261113160653-ee55c68';
-import { icon } from '../icons.js?v=20261113160653-ee55c68';
-import * as M from '../map.js?v=20261113160653-ee55c68';
-import * as L from '../limits.js?v=20261113160653-ee55c68';
-import { SEASONS, openRange } from '../seasons.js?v=20261113160653-ee55c68';
-import { muSort } from '../seasons.js?v=20261113160653-ee55c68';
+import * as db from '../db.js?v=20261113160952-836c863';
+import { store, hunters } from '../db.js?v=20261113160952-836c863';
+import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261113160952-836c863';
+import { hunterDatalist, speciesDatalist } from './log.js?v=20261113160952-836c863';
+import { icon } from '../icons.js?v=20261113160952-836c863';
+import * as M from '../map.js?v=20261113160952-836c863';
+import * as LIC from '../licences.js?v=20261113160952-836c863';
+import * as L from '../limits.js?v=20261113160952-836c863';
+import { SEASONS, openRange } from '../seasons.js?v=20261113160952-836c863';
+import { muSort } from '../seasons.js?v=20261113160952-836c863';
 
 // Tags & LEH. LEH hunts come from the 2026-2027 LEH synopsis (hunt-hq-handoff/data/leh_2026.json, scripts/parse_leh.py).
 const yr = new Date().getFullYear();
@@ -217,7 +218,7 @@ async function lehArea(h) {
   return areaCache.get(key);
 }
 export async function highlightHunt(h) {
-  const { selChip } = await import('../main.js?v=20261113160653-ee55c68');
+  const { selChip } = await import('../main.js?v=20261113160952-836c863');
   let fc = await lehArea(h); let exact = !!fc;
   if (!fc) fc = { type: 'FeatureCollection', features: (M.WMU_GEO?.features || []).filter((f) => h.mus.includes(f.properties.id)) };
   fc = { type: 'FeatureCollection', features: fc.features.map((f) => ({ ...f, properties: { stroke: '#ff8a00', fill: '#ff8a00', fillOpacity: 0.22 } })) };
@@ -261,7 +262,8 @@ function renderTags(body) {
     .sort((a, b) => (b.mine - a.mine) || Object.keys(L.DEER).indexOf(a.r) - Object.keys(L.DEER).indexOf(b.r));
   const others = [...new Set([...S.tags.map((x) => x.t.species), ...Object.keys(T.other)].filter((sp) => !/deer/i.test(sp)))];
   const open = S.tags.filter((x) => !x.filled).length, cost = S.tags.reduce((a, x) => a + (+x.t.cost || 0), 0);
-  body.innerHTML = `
+  const licDue = LIC.due();
+  body.innerHTML = `${licDue.length ? `<button class="lic-due" id="goLic">${icon('alert', { size: 18 })}<span>${licDue.map((l) => esc((l.name || LIC.TYPES[l.type]?.name) + ': ' + LIC.status(l).label.toLowerCase())).join(' · ')}</span>${icon('chevR', { size: 16 })}</button>` : ''}
   <div class="seg seg-full" role="tablist" aria-label="Licence year">${years.map((v) => `<button data-ly="${v}" class="${v === y ? 'on' : ''}">${L.yearLabel(v)}</button>`).join('')}</div>
   <div class="card lim-card">
     <div class="lim-h"><b class="tip-h">Deer${tip('BC allows 3 deer per licence year (not Haida Gwaii), and only 1 of them can be a mule deer buck from Regions 3 to 8 combined. Each region also caps mule deer and whitetail. Counts come from kills you logged as yours this licence year (April 1 to March 31).', 'About deer limits')}</b>
@@ -292,6 +294,7 @@ function renderTags(body) {
   ${S.untagged.length ? `<div class="notice tip-h">${S.untagged.length} kill${S.untagged.length === 1 ? '' : 's'} without a tag: ${S.untagged.map((k) => esc(`${k.s.species} ${fmtD(k.d)}`)).join(', ')}.&nbsp;<button class="link" id="tagKills">Add tag${S.untagged.length === 1 ? '' : 's'}</button></div>` : ''}`;
   body.onclick = async (e) => {
     const yb = e.target.closest('[data-ly]'); if (yb) { tui.year = +yb.dataset.ly; renderTags(body); return; }
+    if (e.target.closest('#goLic')) { import('../main.js?v=20261113160952-836c863').then((m) => m.showTabPublic('more')); return; }
     if (e.target.closest('#addTags')) { addTagsSheet(y); return; }
     if (e.target.closest('#allRegs')) { tui.allRegs = !tui.allRegs; renderTags(body); return; }
     if (e.target.closest('#tagKills')) { for (const k of S.untagged) await db.insert('tags', { year: y, species: k.s.species, tag_type: 'General', hunter: 'Me' }); toast('Tags added'); return; }
