@@ -1,11 +1,11 @@
 // iHunter-style WMU detail: every general season in the WMU, Open/Closed for the chosen date, grouped by category.
-import * as L from '../limits.js?v=20261113160120-5c3f45d';
-import { store } from '../db.js?v=20261113160120-5c3f45d';
-import { seasonsFor, openRange, fmtMD } from '../seasons.js?v=20261113160120-5c3f45d';
-import { REGS_URL, BC_WFS, WMU_LAYER, WMU_FIELD } from '../config.js?v=20261113160120-5c3f45d';
-import { esc, todayISO, tip } from '../util.js?v=20261113160120-5c3f45d';
-import * as M from '../map.js?v=20261113160120-5c3f45d';
-import { icon } from '../icons.js?v=20261113160120-5c3f45d';
+import * as L from '../limits.js?v=20261113160307-dfd309d';
+import { store } from '../db.js?v=20261113160307-dfd309d';
+import { seasonsFor, openRange, fmtMD } from '../seasons.js?v=20261113160307-dfd309d';
+import { REGS_URL, BC_WFS, WMU_LAYER, WMU_FIELD } from '../config.js?v=20261113160307-dfd309d';
+import { esc, todayISO, tip } from '../util.js?v=20261113160307-dfd309d';
+import * as M from '../map.js?v=20261113160307-dfd309d';
+import { icon } from '../icons.js?v=20261113160307-dfd309d';
 
 const BIG = /deer|moose|elk|goat|sheep|caribou|bison/i;
 const PRED = /bear|cougar|wolf|coyote|lynx|bobcat|wolverine|raccoon|skunk|fox|marten|fisher/i;
@@ -68,10 +68,16 @@ function limitsLine(mu) {
   const y = L.licenceYear(new Date()); const T = L.tally(y); const r = L.regionOf(mu); const d = r && L.deerLeftIn(r, T);
   const tagged = new Set(store.tags.filter((t) => +t.year === y).map((t) => L.speciesGroup(t.species)));
   if (!d || (!tagged.size && !T.kills.length)) return '';
-  const parts = [];
-  if (tagged.has('Deer') || T.deer.total) parts.push(`whitetail <b>${d.wt}</b>${d.wt && d.wtBuck < d.wt ? ` (${d.wtBuck ? d.wtBuck + ' buck' : 'antlerless'})` : ''}`, `mule deer <b>${d.mule}</b>${d.mule && d.muleBuck < d.mule ? ` (${d.muleBuck ? d.muleBuck + ' buck' : 'antlerless'})` : ''}`);
-  for (const sp of tagged) if (sp !== 'Deer' && L.PROVINCIAL[sp]) parts.push(`${sp.toLowerCase()} <b>${Math.max(0, L.PROVINCIAL[sp] - (T.other[sp] || 0))}</b>`);
-  return parts.length ? `<div class="wmu-left tip-h">You can still take ${parts.join(', ')}${tip(`Based on your tags and logged kills for ${L.yearLabel(y)} and the Region ${r} bag limits. See LEH & tags > My tags for the full picture.`)}</div>` : '';
+  const chip = (n, sp, sub = '') => `<span class="wl-chip ${n ? '' : 'none'}"><b class="tnum">${n}</b>${esc(sp)}${sub ? `<em>${esc(sub)}</em>` : ''}</span>`;
+  const split = (n, b) => (n && b < n ? (b ? `${b} buck` : 'antlerless') : '');
+  const chips = [];
+  if (tagged.has('Deer') || T.deer.total) {
+    chips.push(chip(d.wt, 'whitetail', split(d.wt, d.wtBuck)), chip(d.mule, 'mule deer', split(d.mule, d.muleBuck)));
+    if (d.wt + d.mule > d.all) chips.push(`<span class="wl-chip total"><b class="tnum">${d.all}</b>deer in total</span>`);
+  }
+  for (const sp of tagged) if (sp !== 'Deer' && L.PROVINCIAL[sp]) chips.push(chip(Math.max(0, L.PROVINCIAL[sp] - (T.other[sp] || 0)), sp.toLowerCase()));
+  if (!chips.length) return '';
+  return `<div class="wmu-left"><div class="wl-lbl tip-h">Left to take here${tip(`From your ${L.yearLabel(y)} tags and logged kills, using the Region ${r} bag limits. LEH & tags > My tags has the full table.`)}</div><div class="wl-chips">${chips.join('')}</div></div>`;
 }
 export async function showWmu(view, mu, { region, date = todayISO(), onBack } = {}) {
   const rows = seasonsFor(mu);
@@ -121,7 +127,7 @@ export async function showWmu(view, mu, { region, date = todayISO(), onBack } = 
   view.querySelector('#wBack').onclick = () => onBack?.();
   view.querySelector('#wJump').onclick = () => outline(mu, true);
   M.selectWmu(mu); outline(mu, false);
-  import('../wildlife.js?v=20261113160120-5c3f45d').then(async (W) => {
+  import('../wildlife.js?v=20261113160307-dfd309d').then(async (W) => {
     const { years, rows } = await W.statsFor(mu); const el = view.querySelector('#wHv'); if (!el) return;
     view.querySelector('#wHvY').textContent = `· ${years[0]}–${years[1]} avg / year`;
     el.innerHTML = rows.length ? `<table class="hv-table"><thead><tr><th>Species</th><th>Hunters</th><th>Kills</th><th>Success</th><th>Days/kill</th><th>vs 2010–14</th></tr></thead><tbody>
@@ -129,7 +135,7 @@ export async function showWmu(view, mu, { region, date = todayISO(), onBack } = 
         <td class="tnum ${r.trend > 10 ? 'trend-up' : r.trend < -10 ? 'trend-down' : ''}">${r.trend == null ? '–' : (r.trend > 0 ? '▲' : r.trend < 0 ? '▼' : '') + Math.abs(r.trend) + '%'}</td></tr>`).join('')}</tbody></table>`
       : '<p class="muted">No hunter survey results recorded for this unit.</p>';
   });
-  import('./tags.js?v=20261113160120-5c3f45d').then(async (T) => {
+  import('./tags.js?v=20261113160307-dfd309d').then(async (T) => {
     const hs = await T.lehForMu(mu); const el = view.querySelector('#wLeh'); if (!el) return;
     view.querySelector('#wLehN').textContent = `· ${hs.length}`;
     el.innerHTML = hs.length ? hs.map((h) => T.huntCard(h)).join('') : '<p class="muted">No LEH hunts list this unit.</p>';

@@ -1,12 +1,12 @@
-import * as db from '../db.js?v=20261113160120-5c3f45d';
-import { store, hunters } from '../db.js?v=20261113160120-5c3f45d';
-import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261113160120-5c3f45d';
-import { hunterDatalist, speciesDatalist } from './log.js?v=20261113160120-5c3f45d';
-import { icon } from '../icons.js?v=20261113160120-5c3f45d';
-import * as M from '../map.js?v=20261113160120-5c3f45d';
-import * as L from '../limits.js?v=20261113160120-5c3f45d';
-import { SEASONS, openRange } from '../seasons.js?v=20261113160120-5c3f45d';
-import { muSort } from '../seasons.js?v=20261113160120-5c3f45d';
+import * as db from '../db.js?v=20261113160307-dfd309d';
+import { store, hunters } from '../db.js?v=20261113160307-dfd309d';
+import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261113160307-dfd309d';
+import { hunterDatalist, speciesDatalist } from './log.js?v=20261113160307-dfd309d';
+import { icon } from '../icons.js?v=20261113160307-dfd309d';
+import * as M from '../map.js?v=20261113160307-dfd309d';
+import * as L from '../limits.js?v=20261113160307-dfd309d';
+import { SEASONS, openRange } from '../seasons.js?v=20261113160307-dfd309d';
+import { muSort } from '../seasons.js?v=20261113160307-dfd309d';
 
 // Tags & LEH. LEH hunts come from the 2026-2027 LEH synopsis (hunt-hq-handoff/data/leh_2026.json, scripts/parse_leh.py).
 const yr = new Date().getFullYear();
@@ -217,7 +217,7 @@ async function lehArea(h) {
   return areaCache.get(key);
 }
 export async function highlightHunt(h) {
-  const { selChip } = await import('../main.js?v=20261113160120-5c3f45d');
+  const { selChip } = await import('../main.js?v=20261113160307-dfd309d');
   let fc = await lehArea(h); let exact = !!fc;
   if (!fc) fc = { type: 'FeatureCollection', features: (M.WMU_GEO?.features || []).filter((f) => h.mus.includes(f.properties.id)) };
   fc = { type: 'FeatureCollection', features: fc.features.map((f) => ({ ...f, properties: { stroke: '#ff8a00', fill: '#ff8a00', fillOpacity: 0.22 } })) };
