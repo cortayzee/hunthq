@@ -1,7 +1,7 @@
 // Weather (Open-Meteo, no key) + an hour-by-hour movement index for big game.
 // The movement index is a transparent rule-based estimate from known drivers (light, rut, temperature change,
 // pressure, wind, precipitation, moon). It is NOT trained on trail-cam data; the UI says so.
-import { rutStatus, solunar } from './rut.js?v=20261113155634-0665be7';
+import { rutStatus, solunar } from './rut.js?v=20261113155857-f37cc7b';
 
 const H = 'temperature_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation_probability,precipitation,snowfall,pressure_msl,cloud_cover,is_day,relative_humidity_2m';
 const D = 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,sunrise,sunset';

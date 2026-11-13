@@ -1,11 +1,11 @@
-import * as db from '../db.js?v=20261113155634-0665be7';
-import { store, hunters } from '../db.js?v=20261113155634-0665be7';
-import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261113155634-0665be7';
-import { hunterDatalist, speciesDatalist } from './log.js?v=20261113155634-0665be7';
-import { icon } from '../icons.js?v=20261113155634-0665be7';
-import * as M from '../map.js?v=20261113155634-0665be7';
-import * as L from '../limits.js?v=20261113155634-0665be7';
-import { muSort } from '../seasons.js?v=20261113155634-0665be7';
+import * as db from '../db.js?v=20261113155857-f37cc7b';
+import { store, hunters } from '../db.js?v=20261113155857-f37cc7b';
+import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261113155857-f37cc7b';
+import { hunterDatalist, speciesDatalist } from './log.js?v=20261113155857-f37cc7b';
+import { icon } from '../icons.js?v=20261113155857-f37cc7b';
+import * as M from '../map.js?v=20261113155857-f37cc7b';
+import * as L from '../limits.js?v=20261113155857-f37cc7b';
+import { muSort } from '../seasons.js?v=20261113155857-f37cc7b';
 
 // Tags & LEH. LEH hunts come from the 2026-2027 LEH synopsis (hunt-hq-handoff/data/leh_2026.json, scripts/parse_leh.py).
 const yr = new Date().getFullYear();
@@ -216,7 +216,7 @@ async function lehArea(h) {
   return areaCache.get(key);
 }
 export async function highlightHunt(h) {
-  const { selChip } = await import('../main.js?v=20261113155634-0665be7');
+  const { selChip } = await import('../main.js?v=20261113155857-f37cc7b');
   let fc = await lehArea(h); let exact = !!fc;
   if (!fc) fc = { type: 'FeatureCollection', features: (M.WMU_GEO?.features || []).filter((f) => h.mus.includes(f.properties.id)) };
   fc = { type: 'FeatureCollection', features: fc.features.map((f) => ({ ...f, properties: { stroke: '#ff8a00', fill: '#ff8a00', fillOpacity: 0.22 } })) };
@@ -255,7 +255,7 @@ function renderTags(body) {
     <details class="lim-reg"><summary>Still allowed by region ${icon('chevR', { size: 16 })}</summary>
       <table class="lim-table"><thead><tr><th>Region</th><th>Mule</th><th>Whitetail</th><th>Any deer</th></tr></thead><tbody>
       ${regRows.map(({ r, d, mine }) => `<tr class="${mine ? 'mine' : ''}"><td>${r} <span class="muted">${esc(L.REGION_NAMES[r])}</span>${d.L.note ? tip(d.L.note) : ''}</td>
-        <td class="tnum">${d.mule}${d.mule && d.muleBuck < d.mule ? ` <span class="muted">(${d.muleBuck ? d.muleBuck + ' buck' : 'antlerless only'})</span>` : ''}</td><td class="tnum">${d.wt}</td><td class="tnum">${d.all}</td></tr>`).join('')}
+        <td class="tnum">${d.mule}${d.mule && d.muleBuck < d.mule ? ` <span class="muted">(${d.muleBuck ? d.muleBuck + ' buck' : 'antlerless only'})</span>` : ''}</td><td class="tnum">${d.wt}${d.wt && d.wtBuck < d.wt ? ` <span class="muted">(${d.wtBuck ? d.wtBuck + ' buck' : 'antlerless only'})</span>` : ''}</td><td class="tnum">${d.all}</td></tr>`).join('')}
       </tbody></table><p class="list-note">Bold rows are regions you've hunted. Numbers are what you can still take this licence year.</p></details>
   </div>
   ${others.length ? `<div class="lim-grid">${others.map((sp) => { const lim = L.PROVINCIAL[sp]; const n = T.other[sp] || 0; return `<div class="lim-mini"><span>${esc(sp)}</span><b class="tnum">${n}${lim ? ` of ${lim}` : ' taken'}</b>${lim ? dots(n, lim) : ''}</div>`; }).join('')}</div>` : ''}

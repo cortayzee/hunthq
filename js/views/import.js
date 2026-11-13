@@ -1,10 +1,10 @@
-import * as db from '../db.js?v=20261113155634-0665be7';
-import { store } from '../db.js?v=20261113155634-0665be7';
-import { KINDS, SPECIES } from '../config.js?v=20261113155634-0665be7';
-import { esc, opts, toast, parseCSV, haversineKm, localDT } from '../util.js?v=20261113155634-0665be7';
-import { hunterDatalist, speciesDatalist } from './log.js?v=20261113155634-0665be7';
-import { icon } from '../icons.js?v=20261113155634-0665be7';
-import * as M from '../map.js?v=20261113155634-0665be7';
+import * as db from '../db.js?v=20261113155857-f37cc7b';
+import { store } from '../db.js?v=20261113155857-f37cc7b';
+import { KINDS, SPECIES } from '../config.js?v=20261113155857-f37cc7b';
+import { esc, opts, toast, parseCSV, haversineKm, localDT } from '../util.js?v=20261113155857-f37cc7b';
+import { hunterDatalist, speciesDatalist } from './log.js?v=20261113155857-f37cc7b';
+import { icon } from '../icons.js?v=20261113155857-f37cc7b';
+import * as M from '../map.js?v=20261113155857-f37cc7b';
 
 let items = []; let tracks = [];
 
@@ -15,7 +15,7 @@ export function render(v) {
   <label>Hunter <input id="iHunter" list="hunterList" value="Me"></label></div>
   <label class="drop-zone" for="iFile">${icon('upload', { size: 22 })}<b>Choose files</b><span>KML, KMZ, GPX, GeoJSON or CSV</span></label><input type="file" id="iFile" class="visually-hidden" multiple accept=".kml,.kmz,.gpx,.geojson,.json,.csv">
   <div id="iPrev"></div>${hunterDatalist()}${speciesDatalist()}`;
-  v.querySelector('[data-back]').onclick = () => import('../main.js?v=20261113155634-0665be7').then((m) => m.showTabPublic('more'));
+  v.querySelector('[data-back]').onclick = () => import('../main.js?v=20261113155857-f37cc7b').then((m) => m.showTabPublic('more'));
   v.querySelector('#iFile').onchange = async (e) => {
     items = []; tracks = [];
     for (const file of e.target.files) {
