@@ -1,10 +1,10 @@
-import * as M from '../map.js?v=20261113071729-382c10f';
-import { esc } from '../util.js?v=20261113071729-382c10f';
-import { icon } from '../icons.js?v=20261113071729-382c10f';
-import { saveMapPrefs, showTabPublic } from '../main.js?v=20261113071729-382c10f';
-import { muSort } from '../seasons.js?v=20261113071729-382c10f';
-import { store } from '../db.js?v=20261113071729-382c10f';
-import * as W from '../wildlife.js?v=20261113071729-382c10f';
+import * as M from '../map.js?v=20261113072907-6262054';
+import { esc, tip } from '../util.js?v=20261113072907-6262054';
+import { icon } from '../icons.js?v=20261113072907-6262054';
+import { saveMapPrefs, showTabPublic } from '../main.js?v=20261113072907-6262054';
+import { muSort } from '../seasons.js?v=20261113072907-6262054';
+import { store } from '../db.js?v=20261113072907-6262054';
+import * as W from '../wildlife.js?v=20261113072907-6262054';
 
 // Layers panel: "On now" chips, then collapsible sections. A row is swatch + name + switch; opacity only for layers that are on.
 const SECTIONS = [
@@ -29,11 +29,10 @@ function wmuByRegion() {
 }
 
 export function render(v) {
-  v.innerHTML = `<div class="page-h"><h2>Layers</h2></div>
+  v.innerHTML = `<div class="page-h"><h2 class="tip-h">Layers${tip('Map type, roads and 3D terrain are under the map button on the right side of the map.')}</h2></div>
   <input id="lyrSearch" type="search" placeholder="Search layers or a WMU, like 4-24" style="width:100%" aria-label="Search layers">
   <div id="onNow" class="on-now"></div>
-  <div id="lyrSecs" class="lyr-list"></div>
-  <p class="muted fine" style="margin-top:14px">Map type, roads and 3D are under the map button on the right.</p>`;
+  <div id="lyrSecs" class="lyr-list"></div>`;
   const q = () => (v.querySelector('#lyrSearch')?.value || '').trim().toLowerCase();
 
   const drawOnNow = () => {
@@ -67,8 +66,7 @@ export function render(v) {
         <div class="lyr-row"><label class="lyr-main"><span class="swatch" style="background:#a0612f"></span><span class="t"><b>Grizzly density (2018)</b><span class="muted">Bears per 1,000 km², by population unit</span></span>
           <span class="switch"><input type="checkbox" id="wGriz" ${st.griz ? 'checked' : ''}></span></label></div>
         <div class="lyr-row"><label class="lyr-main"><span class="swatch" style="background:#7b3fb5"></span><span class="t"><b>Aerial survey densities</b><span class="muted">Moose, goat and mule deer per km² in 22 survey areas</span></span>
-          <span class="switch"><input type="checkbox" id="wSurv" ${st.surv ? 'checked' : ''}></span></label></div>
-        <p class="muted fine">From the BC resident hunter survey, 5-year average. It counts what hunters took, not how many animals live there. Tap a unit for its numbers.</p>`, on);
+          <span class="switch"><input type="checkbox" id="wSurv" ${st.surv ? 'checked' : ''}></span></label></div>`, on);
     }
     // Unit visibility
     const groups = wmuByRegion(); const hiddenN = M.getState().hiddenWmu.length;
@@ -80,9 +78,9 @@ export function render(v) {
         <div class="wmu-chips">${list.map((m) => `<button class="wmu-chip" data-mu="${m}" aria-pressed="${!M.wmuHidden(m)}">${m}</button>`).join('')}</div></details>`;
     }).join('');
     if (!s || regions) html += sec('Units', 'Unit visibility', hiddenN ? `${hiddenN} WMU${hiddenN > 1 ? 's' : ''} hidden` : 'Hide or show WMUs',
-      groups.length ? `<div class="row" style="justify-content:space-between;margin:4px 0 6px"><span class="muted fine" style="margin:0">Tap a unit to hide or show it.</span>${hiddenN ? '<button class="small" id="wmuAll">Show all units</button>' : ''}</div>${regions}` : '<p class="muted">Loading units…</p>', 0);
+      groups.length ? `<div class="row" style="justify-content:space-between;margin:4px 0 6px"><span class="muted fine tip-h" style="margin:0">By region${tip('Tap a WMU number to hide or show it on the map.')}</span>${hiddenN ? '<button class="small" id="wmuAll">Show all units</button>' : ''}</div>${regions}` : '<p class="muted">Loading units…</p>', 0);
     if (!s) html += sec('Mine', 'My waypoints', `${store.spots.length} waypoints, ${store.tracks.length} routes`,
-      `<p class="muted fine" style="margin:2px 0 8px">Hide or show by type, hunt, group, year or hunter on the Waypoints page.</p><button class="small" id="goWp">${icon('pin', { size: 16 })}Open Waypoints</button>`, 0);
+      `<div class="row" style="margin:8px 0 4px"><button class="small" id="goWp">${icon('pin', { size: 16 })}Open Waypoints</button>${tip('Hide or show waypoints by type, hunt, group, year or hunter on the Waypoints page.')}</div>`, 0);
     v.querySelector('#lyrSecs').innerHTML = html || '<p class="muted">No layer matches.</p>';
     drawOnNow();
     if (!groups.length) setTimeout(() => v.isConnected && draw(), 700);
@@ -106,7 +104,7 @@ export function render(v) {
     const m = W.METRICS[mt]; const lab = ['Lowest', ...r.breaks.map((b) => (b >= 10 ? Math.round(b) : b))];
     el.innerHTML = `<div class="w-ramp">${r.ramp.map((c, i) => `<span style="background:${c}"></span>`).join('')}</div>
       <div class="w-ticks">${lab.map((x, i) => `<span>${i ? (m.invert ? '≤' : '≥') + x : ''}</span>`).join('')}</div>
-      <p class="muted fine" style="margin:4px 0 0">${esc(sp)}: ${esc(m.name.toLowerCase())} (${esc(m.unit)}), ${r.years[0]}–${r.years[1]} average. ${esc(m.help)}</p>`;
+      <p class="muted fine tip-h" style="margin:4px 0 0">${esc(sp)}, ${esc(m.unit)}, ${r.years[0]}–${r.years[1]} average${tip(`${m.help} From the BC resident hunter survey. It counts what hunters took, not how many animals live there. Tap a WMU on the map for its numbers.`, 'About this data')}</p>`;
   };
   v.onchange = (e) => {
     const t = e.target;

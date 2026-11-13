@@ -35,7 +35,7 @@ export function modal(content, { wide = false } = {}) {
   m.classList.remove('hidden'); m.classList.remove('dirty'); m.dataset.dirty = '';
   const mark = (e) => { if (e.target.closest('form')) markDirty(); };
   body.addEventListener('input', mark); body.addEventListener('change', mark);
-  import('./icons.js?v=20261113071729-382c10f').then((i) => i.hydrateIcons(body));
+  import('./icons.js?v=20261113072907-6262054').then((i) => i.hydrateIcons(body));
   return body;
 }
 export function markDirty() { const m = $('#modal'); m.dataset.dirty = '1'; m.classList.add('dirty'); }
@@ -117,4 +117,34 @@ export function groupBy(arr, fn) {
   const m = new Map();
   for (const x of arr) { const k = fn(x); if (k == null) continue; if (!m.has(k)) m.set(k, []); m.get(k).push(x); }
   return m;
+}
+
+// ---- Info tips: a small (i) that explains on hover (mouse) or tap (touch), instead of paragraphs everywhere ----
+const INFO_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.2"/></svg>';
+export const tip = (text, label = 'More info') => `<button type="button" class="tip" aria-label="${esc(label)}" data-tip="${esc(text)}">${INFO_SVG}</button>`;
+let tipEl = null, tipFor = null, pinned = false;
+function showTip(btn) {
+  if (!tipEl) { tipEl = document.createElement('div'); tipEl.className = 'tip-pop'; tipEl.setAttribute('role', 'tooltip'); tipEl.id = 'tipPop'; document.body.append(tipEl); }
+  tipFor = btn; tipEl.textContent = btn.dataset.tip; tipEl.classList.add('on'); btn.setAttribute('aria-describedby', 'tipPop');
+  const r = btn.getBoundingClientRect(), w = Math.min(280, innerWidth - 24);
+  tipEl.style.width = w + 'px';
+  const h = tipEl.offsetHeight, below = r.bottom + 8 + h < innerHeight - 8;
+  tipEl.style.left = Math.max(12, Math.min(innerWidth - w - 12, r.left + r.width / 2 - w / 2)) + 'px';
+  tipEl.style.top = (below ? r.bottom + 8 : Math.max(8, r.top - h - 8)) + 'px';
+  tipEl.dataset.side = below ? 'below' : 'above';
+}
+export function hideTip() { if (!tipEl) return; tipEl.classList.remove('on'); tipFor?.removeAttribute('aria-describedby'); tipFor = null; pinned = false; }
+export function initTips() {
+  document.addEventListener('pointerover', (e) => { if (e.pointerType !== 'mouse' || pinned) return; const b = e.target.closest?.('.tip[data-tip]'); if (b) showTip(b); });
+  document.addEventListener('pointerout', (e) => { if (e.pointerType !== 'mouse' || pinned) return; const b = e.target.closest?.('.tip[data-tip]'); if (b && !b.contains(e.relatedTarget)) hideTip(); });
+  // Capture so a tip inside <summary> or a clickable row never toggles / opens it.
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest?.('.tip[data-tip]');
+    if (b) { e.preventDefault(); e.stopPropagation(); if (tipFor === b && pinned) hideTip(); else { showTip(b); pinned = true; } return; }
+    if (tipFor && !e.target.closest?.('.tip-pop')) hideTip();
+  }, true);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideTip(); });
+  document.addEventListener('focusin', (e) => { const b = e.target.closest?.('.tip[data-tip]'); if (b && !pinned) showTip(b); });
+  document.addEventListener('focusout', (e) => { if (!pinned && e.target.closest?.('.tip[data-tip]')) hideTip(); });
+  addEventListener('scroll', () => tipFor && hideTip(), true); addEventListener('resize', () => tipFor && hideTip());
 }

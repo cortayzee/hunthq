@@ -1,10 +1,10 @@
-import * as db from '../db.js?v=20261113071729-382c10f';
-import { store } from '../db.js?v=20261113071729-382c10f';
-import { esc, download, toast, todayISO, fmtDate } from '../util.js?v=20261113071729-382c10f';
-import { exportKML } from '../exporters.js?v=20261113071729-382c10f';
-import { BC_WMS, BC_WFS, LEH_LAYER, LEH_TYPE_FIELD, MVPR_LAYER, WMU_LAYER } from '../config.js?v=20261113071729-382c10f';
-import { icon } from '../icons.js?v=20261113071729-382c10f';
-import * as M from '../map.js?v=20261113071729-382c10f';
+import * as db from '../db.js?v=20261113072907-6262054';
+import { store } from '../db.js?v=20261113072907-6262054';
+import { esc, download, toast, todayISO, fmtDate, tip } from '../util.js?v=20261113072907-6262054';
+import { exportKML } from '../exporters.js?v=20261113072907-6262054';
+import { BC_WMS, BC_WFS, LEH_LAYER, LEH_TYPE_FIELD, MVPR_LAYER, WMU_LAYER } from '../config.js?v=20261113072907-6262054';
+import { icon } from '../icons.js?v=20261113072907-6262054';
+import * as M from '../map.js?v=20261113072907-6262054';
 
 const theme = () => { try { return localStorage.getItem('hunthq_theme') || 'system'; } catch { return 'system'; } };
 function setTheme(t) {
@@ -21,14 +21,13 @@ export function render(v) {
   </div>
   <h3 class="list-h">Appearance</h3>
   <div class="seg seg-full" role="radiogroup" aria-label="Appearance">${[['system', 'System'], ['light', 'Light'], ['dark', 'Dark']].map(([k, n]) => `<button role="radio" data-theme="${k}" aria-checked="${theme() === k}" class="${theme() === k ? 'on' : ''}">${n}</button>`).join('')}</div>
-  <h3 class="list-h">Your data</h3>
+  <h3 class="list-h tip-h">Your data${tip('The free database plan has no automatic backups, so download one now and then.')}</h3>
   <div class="list-group">
     ${row('goImport', 'upload', 'Import from onX or iHunter', 'KML, KMZ, GPX, GeoJSON or CSV')}
     ${row('bExp', 'download', 'Download a backup', store.prefs.lastBackup ? 'Last backup ' + fmtDate(store.prefs.lastBackup) : 'Never backed up', '')}
     <label class="list-row" for="bImp"><span class="lr-ic">${icon('history', { size: 20 })}</span><span class="lr-t"><b>Restore a backup</b><span>From a Hunt HQ .json file</span></span><input type="file" id="bImp" accept=".json" class="visually-hidden"></label>
     ${row('kmlAll', 'globe', 'Export to Google Earth', 'All waypoints and tracks as KML', '')}
   </div>
-  <p class="list-note">The free database plan has no automatic backups, so download one now and then.</p>
   <details class="list-more"><summary><h3 class="list-h">Tracks <span class="muted tnum">${store.tracks.length}</span></h3>${icon('chevR', { size: 16 })}</summary>
   <div class="list-group">${store.tracks.map((t) => `<div class="list-row static"><span class="lr-t"><b>${esc(t.name || 'Track')}</b><span>${[t.hunter, t.distance_km != null ? t.distance_km + ' km' : '', t.source].filter(Boolean).map(esc).join(', ')}</span></span><button class="small" data-zoom="${t.id}">Show</button><button class="icon-btn" data-del="${t.id}" aria-label="Delete track">${icon('trash', { size: 18 })}</button></div>`).join('') || '<div class="list-row static"><span class="lr-t"><span>Routes you draw and tracks you import show up here.</span></span></div>'}</div></details>
   <details class="list-more"><summary><h3 class="list-h">Advanced</h3>${icon('chevR', { size: 16 })}</summary>
@@ -39,8 +38,8 @@ export function render(v) {
   <div class="card"><h4 style="margin-top:0">Layer check</h4>
   <p class="muted">Checks that BC map services respond and lists the closure and LEH layers they return.</p>
   <button id="diag">Run check</button><pre id="diagOut" style="white-space:pre-wrap;font-size:12px"></pre></div></details>
-  <p class="list-note">Seasons from the 2026–2028 BC Hunting &amp; Trapping Regulations Synopsis (general open seasons). Always confirm in the synopsis and in-season changes at gov.bc.ca/hunting. Map data © Province of BC, Esri, OpenTopoMap, OpenStreetMap contributors; terrain © Mapzen / AWS; weather © Open-Meteo.</p>`;
-  v.querySelector('#goImport').onclick = () => import('../main.js?v=20261113071729-382c10f').then((m) => m.showTabPublic('import'));
+  <p class="list-note tip-h">Data sources${tip('Seasons: 2026–2028 BC Hunting & Trapping Regulations Synopsis (general open seasons). Always confirm in the synopsis and in-season changes at gov.bc.ca/hunting. Map data © Province of BC, Esri, OpenTopoMap, OpenStreetMap contributors. Terrain © Mapzen / AWS. Weather © Open-Meteo.', 'Data sources')}</p>`;
+  v.querySelector('#goImport').onclick = () => import('../main.js?v=20261113072907-6262054').then((m) => m.showTabPublic('import'));
   v.querySelector('#signOut').onclick = async () => { await db.signOut(); location.reload(); };
   v.querySelector('#bExp').onclick = async () => { download(`hunthq_backup_${todayISO()}.json`, db.backupJSON(), 'application/json'); await db.savePrefs({ lastBackup: new Date().toISOString() }).catch(() => {}); };
   v.querySelector('#bImp').onchange = async (e) => {

@@ -1,16 +1,16 @@
-import * as db from '../db.js?v=20261113071729-382c10f';
-import { store, hunters } from '../db.js?v=20261113071729-382c10f';
-import { KINDS, KIND_GROUPS, SIGN_TYPES, SPECIES, WEAPONS, SEXES, kindColor } from '../config.js?v=20261113071729-382c10f';
-import { esc, opts, modal, closeModal, requestClose, markDirty, toast, formData, localDT, fmtDT, earthLink, parseLatLon, parseCSV, yearOf } from '../util.js?v=20261113071729-382c10f';
-import * as M from '../map.js?v=20261113071729-382c10f';
-import { normMU } from '../seasons.js?v=20261113071729-382c10f';
-import { pickOnMap, closePanel } from '../main.js?v=20261113071729-382c10f';
-import { exportKML, exportGPX, exportCSV } from '../exporters.js?v=20261113071729-382c10f';
-import { glyphSVG, glyphFor, animalFor, sexTerms, hasPoints, autoName, spotLabel } from '../animals.js?v=20261113071729-382c10f';
-import { MODES, fmtKm, fmtHours } from '../elevation.js?v=20261113071729-382c10f';
-import * as V from '../vis.js?v=20261113071729-382c10f';
-import { tripOf, groupOf, tripTitle, spotYear } from '../vis.js?v=20261113071729-382c10f';
-import { icon } from '../icons.js?v=20261113071729-382c10f';
+import * as db from '../db.js?v=20261113072907-6262054';
+import { store, hunters } from '../db.js?v=20261113072907-6262054';
+import { KINDS, KIND_GROUPS, SIGN_TYPES, SPECIES, WEAPONS, SEXES, kindColor } from '../config.js?v=20261113072907-6262054';
+import { esc, opts, modal, closeModal, requestClose, markDirty, toast, formData, localDT, fmtDT, earthLink, parseLatLon, parseCSV, yearOf, tip } from '../util.js?v=20261113072907-6262054';
+import * as M from '../map.js?v=20261113072907-6262054';
+import { normMU } from '../seasons.js?v=20261113072907-6262054';
+import { pickOnMap, closePanel } from '../main.js?v=20261113072907-6262054';
+import { exportKML, exportGPX, exportCSV } from '../exporters.js?v=20261113072907-6262054';
+import { glyphSVG, glyphFor, animalFor, sexTerms, hasPoints, autoName, spotLabel } from '../animals.js?v=20261113072907-6262054';
+import { MODES, fmtKm, fmtHours } from '../elevation.js?v=20261113072907-6262054';
+import * as V from '../vis.js?v=20261113072907-6262054';
+import { tripOf, groupOf, tripTitle, spotYear } from '../vis.js?v=20261113072907-6262054';
+import { icon } from '../icons.js?v=20261113072907-6262054';
 
 const PICK = [['Moose', 'moose'], ['Elk', 'elk'], ['Mule Deer', 'deer'], ['White-tailed Deer', 'deer'], ['Black Bear', 'bear'], ['Grizzly Bear', 'bear'],
   ['Bighorn Sheep', 'sheep'], ['Mountain Goat', 'goat'], ['Caribou', 'caribou'], ['Cougar', 'cougar'], ['Wolf', 'wolf'], ['Coyote', 'wolf'],
@@ -80,7 +80,7 @@ export function render(v) {
     ${hs.length > 1 ? `<div class="f-lbl">Hunter</div><div class="f-row">${hs.map((h) => chip('hunters', h, h, all.filter((s) => (s.hunter || 'Me') === h).length)).join('')}</div>` : ''}
   </div>
   ${!all.length ? `<div class="empty">${icon('pin', { size: 22 })}<b>No waypoints yet</b><span class="muted">Tap Drop waypoint on the map, or import from onX or iHunter in More.</span></div>` : ''}
-  ${grps.length || all.length ? sec('groups', 'Groups', `<p class="muted sec-help">Camps, stands, cams and access points. Groups stay on the map when you hide years or hunts.</p>
+  ${grps.length || all.length ? sec('groups', `Groups${tip('Groups hold permanent spots like camps, stands, cams and access points. They stay on the map when you hide years or hunts.')}`, `
     ${grps.length ? `<div class="wp-list">${grps.map((g) => { const sp = list.filter((s) => s.extra?.group_id === g.id); return block(g.id, 'groups', g.name, g.color, sp, `${sp.length} waypoint${sp.length === 1 ? '' : 's'}`); }).join('')}</div>` : ''}
     <button class="link add-link" data-m="group">${icon('plus', { size: 16 })}New group</button>`, grps.length) : ''}
   ${trips.length ? sec('hunts', 'Hunts', `<div class="wp-list">${trips.map((t) => { const sp = list.filter((s) => s.extra?.trip_id === t.id); return block(t.id, 'trips', tripTitle(t), '#d4661c', sp, `${dateSpan(t)}, ${sp.length} waypoint${sp.length === 1 ? '' : 's'}`); }).join('')}</div>`, trips.length) : ''}
@@ -115,10 +115,10 @@ export function render(v) {
       if (a === 'DELETE') await V.deleteGroup(gm); else if (a?.trim() && a !== g.name) await V.renameGroup(gm, a.trim());
       render(v); return;
     }
-    const ot = e.target.closest('[data-open-trip]')?.dataset.openTrip; if (ot) { (await import('./trips.js?v=20261113071729-382c10f')).openTrip(ot); return; }
+    const ot = e.target.closest('[data-open-trip]')?.dataset.openTrip; if (ot) { (await import('./trips.js?v=20261113072907-6262054')).openTrip(ot); return; }
     if (e.target.closest('[data-act]')) return;
     const tr = e.target.closest('[data-track]');
-    if (tr && !e.target.closest('.switch')) { const t = store.tracks.find((x) => x.id === tr.dataset.track); if (t) (await import('../route.js?v=20261113071729-382c10f')).openRoute(t); return; }
+    if (tr && !e.target.closest('.switch')) { const t = store.tracks.find((x) => x.id === tr.dataset.track); if (t) (await import('../route.js?v=20261113072907-6262054')).openRoute(t); return; }
     const row = e.target.closest('[data-fly]');
     if (row) { const s = store.spots.find((x) => x.id === row.dataset.fly); if (s) { if (!V.isVisible(s)) toast('A filter above is hiding that waypoint'); M.flyTo(s.lon, s.lat, 14); if (innerWidth <= 760) closePanel(); } }
   };

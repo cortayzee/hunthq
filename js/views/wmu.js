@@ -1,9 +1,9 @@
 // iHunter-style WMU detail: every general season in the WMU, Open/Closed for the chosen date, grouped by category.
-import { seasonsFor, openRange, fmtMD } from '../seasons.js?v=20261113071729-382c10f';
-import { REGS_URL, BC_WFS, WMU_LAYER, WMU_FIELD } from '../config.js?v=20261113071729-382c10f';
-import { esc, todayISO } from '../util.js?v=20261113071729-382c10f';
-import * as M from '../map.js?v=20261113071729-382c10f';
-import { icon } from '../icons.js?v=20261113071729-382c10f';
+import { seasonsFor, openRange, fmtMD } from '../seasons.js?v=20261113072907-6262054';
+import { REGS_URL, BC_WFS, WMU_LAYER, WMU_FIELD } from '../config.js?v=20261113072907-6262054';
+import { esc, todayISO, tip } from '../util.js?v=20261113072907-6262054';
+import * as M from '../map.js?v=20261113072907-6262054';
+import { icon } from '../icons.js?v=20261113072907-6262054';
 
 const BIG = /deer|moose|elk|goat|sheep|caribou|bison/i;
 const PRED = /bear|cougar|wolf|coyote|lynx|bobcat|wolverine|raccoon|skunk|fox|marten|fisher/i;
@@ -73,18 +73,17 @@ export async function showWmu(view, mu, { region, date = todayISO(), onBack } = 
   const openNow = rows.filter((r) => openRange(r, date)).length;
   view.innerHTML = `<div class="wmu-head">
     <button class="back-link" id="wBack">${icon('chevL', { size: 16 })}Back</button>
-    <div class="page-h" style="margin-bottom:2px"><h2>WMU ${esc(mu)}</h2>
+    <div class="page-h" style="margin-bottom:2px"><h2 class="tip-h">WMU ${esc(mu)}${tip('General open seasons from the 2026–2028 synopsis only, not LEH. Always check the synopsis and in-season changes.')}</h2>
       <div class="row"><button class="icon-btn" id="wJump" aria-label="Zoom to boundary" title="Zoom to boundary">${icon('target', { size: 20 })}</button>
       <button class="icon-btn" id="wHide" aria-label="${M.wmuHidden(mu) ? 'Show on map' : 'Hide on map'}" title="${M.wmuHidden(mu) ? 'Show on map' : 'Hide on map'}">${icon(M.wmuHidden(mu) ? 'eyeOff' : 'eye', { size: 20 })}</button></div></div>
     <div class="muted">${esc(region)}, ${openNow} season${openNow === 1 ? '' : 's'} open${date === todayISO() ? ' today' : ''}</div>
     <label class="date-inline">On <input type="date" id="wDate" value="${date}" aria-label="Date"></label></div>
   <div class="cat-tabs" role="tablist">${CATS.map(([k, n, ic]) => `<button role="tab" data-cat="${k}" class="${k === cat ? 'active' : ''}" aria-selected="${k === cat}">${icon(ic, { size: 22 })}<span>${n}</span><span class="n tnum">${counts[k].length}</span></button>`).join('')}</div>
   <div id="wList"></div>
-  <details class="card hv-here" open><summary><b>Hunting results here</b> <span class="muted" id="wHvY"></span></summary><div id="wHv"><p class="muted">Loading…</p></div></details>
-  <details class="card leh-here"><summary><b>LEH draw hunts in this unit</b> <span class="muted" id="wLehN"></span></summary><div id="wLeh"><p class="muted">Loading…</p></div></details>
-  <details class="card"><summary><b>Motor vehicle closures in ${esc(region || 'this region')}</b></summary><pre id="wMv" class="mv-text">Loading…</pre>
-  <p class="muted">Tap the map to check whether a mapped closure covers a spot.</p></details>
-  <div class="notice">General open seasons only, not LEH. Check the 2026–2028 synopsis and <a href="${REGS_URL}" target="_blank" rel="noopener">in-season changes</a>.</div>`;
+  <details class="card hv-here" open><summary><b class="tip-h">Hunting results here${tip('Resident hunter survey estimates, general and LEH hunts combined. The trend compares with the 2010–2014 average.')}</b> <span class="muted" id="wHvY"></span></summary><div id="wHv"><p class="muted">Loading…</p></div></details>
+  <details class="card leh-here"><summary><b class="tip-h">LEH draw hunts in this unit${tip("Odds are last year's first-choice odds.")}</b> <span class="muted" id="wLehN"></span></summary><div id="wLeh"><p class="muted">Loading…</p></div></details>
+  <details class="card"><summary><b class="tip-h">Motor vehicle closures in ${esc(region || 'this region')}${tip('From the synopsis text. Tap the map to check whether a mapped closure covers a spot.')}</b></summary><pre id="wMv" class="mv-text">Loading…</pre></details>
+  <p class="list-note"><a href="${REGS_URL}" target="_blank" rel="noopener">In-season changes</a></p>`;
   const draw = () => {
     const d = view.querySelector('#wDate').value || todayISO();
     const list = counts[cat].slice().sort((a, b) => a.sp.localeCompare(b.sp) || a.d[0][0].localeCompare(b.d[0][0]));
@@ -110,19 +109,18 @@ export async function showWmu(view, mu, { region, date = todayISO(), onBack } = 
   view.querySelector('#wBack').onclick = () => onBack?.();
   view.querySelector('#wJump').onclick = () => outline(mu, true);
   M.selectWmu(mu); outline(mu, false);
-  import('../wildlife.js?v=20261113071729-382c10f').then(async (W) => {
+  import('../wildlife.js?v=20261113072907-6262054').then(async (W) => {
     const { years, rows } = await W.statsFor(mu); const el = view.querySelector('#wHv'); if (!el) return;
     view.querySelector('#wHvY').textContent = `· ${years[0]}–${years[1]} avg / year`;
     el.innerHTML = rows.length ? `<table class="hv-table"><thead><tr><th>Species</th><th>Hunters</th><th>Kills</th><th>Success</th><th>Days/kill</th><th>vs 2010–14</th></tr></thead><tbody>
       ${rows.map((r) => `<tr><td>${esc(r.sp)}</td><td class="tnum">${r.h}</td><td class="tnum">${Math.round(r.k)}</td><td class="tnum"><b>${r.succ ?? '–'}%</b></td><td class="tnum">${r.dpk ?? '–'}</td>
-        <td class="tnum ${r.trend > 10 ? 'trend-up' : r.trend < -10 ? 'trend-down' : ''}">${r.trend == null ? '–' : (r.trend > 0 ? '▲' : r.trend < 0 ? '▼' : '') + Math.abs(r.trend) + '%'}</td></tr>`).join('')}</tbody></table>
-      <p class="muted fine">Resident hunter survey estimates, general and LEH combined. Trend compares with the 2010–2014 average.</p>`
+        <td class="tnum ${r.trend > 10 ? 'trend-up' : r.trend < -10 ? 'trend-down' : ''}">${r.trend == null ? '–' : (r.trend > 0 ? '▲' : r.trend < 0 ? '▼' : '') + Math.abs(r.trend) + '%'}</td></tr>`).join('')}</tbody></table>`
       : '<p class="muted">No hunter survey results recorded for this unit.</p>';
   });
-  import('./tags.js?v=20261113071729-382c10f').then(async (T) => {
+  import('./tags.js?v=20261113072907-6262054').then(async (T) => {
     const hs = await T.lehForMu(mu); const el = view.querySelector('#wLeh'); if (!el) return;
     view.querySelector('#wLehN').textContent = `· ${hs.length}`;
-    el.innerHTML = hs.length ? `<p class="muted fine">Odds are last year's first-choice odds.</p>${hs.map((h) => T.huntCard(h)).join('')}` : '<p class="muted">No LEH hunts list this unit.</p>';
+    el.innerHTML = hs.length ? hs.map((h) => T.huntCard(h)).join('') : '<p class="muted">No LEH hunts list this unit.</p>';
     el.onclick = (e) => T.handleLehClick(e);
   });
   regionClosures(region).then((t) => { const el = view.querySelector('#wMv'); if (el) el.textContent = t || 'Not found. See the synopsis.'; });

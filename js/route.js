@@ -1,11 +1,11 @@
 // Draw a route by tapping the map: live distance / climb / time / difficulty, elevation profile, save as a track.
-import * as db from './db.js?v=20261113071729-382c10f';
-import { store } from './db.js?v=20261113071729-382c10f';
-import * as M from './map.js?v=20261113071729-382c10f';
-import { esc, toast, haversineKm, fmtDate } from './util.js?v=20261113071729-382c10f';
-import { icon } from './icons.js?v=20261113071729-382c10f';
-import { profile, stats, MODES, fmtHours, fmtKm } from './elevation.js?v=20261113071729-382c10f';
-import * as V from './vis.js?v=20261113071729-382c10f';
+import * as db from './db.js?v=20261113072907-6262054';
+import { store } from './db.js?v=20261113072907-6262054';
+import * as M from './map.js?v=20261113072907-6262054';
+import { esc, toast, haversineKm, fmtDate, tip } from './util.js?v=20261113072907-6262054';
+import { icon } from './icons.js?v=20261113072907-6262054';
+import { profile, stats, MODES, fmtHours, fmtKm } from './elevation.js?v=20261113072907-6262054';
+import * as V from './vis.js?v=20261113072907-6262054';
 
 const st = { on: false, pts: [], mode: 'trail', prof: [], seq: 0 };
 let bar = null;
@@ -62,7 +62,7 @@ function drawBar() {
 
 // ---- Route detail (new or saved track) ----
 export async function openRoute(track, prof) {
-  const { openPanel } = await import('./main.js?v=20261113071729-382c10f');
+  const { openPanel } = await import('./main.js?v=20261113072907-6262054');
   openPanel();
   const v = document.getElementById('view'); v.scrollTop = 0;
   document.querySelectorAll('#tabs button').forEach((b) => b.classList.remove('active'));
@@ -87,20 +87,20 @@ export async function openRoute(track, prof) {
     const s = stats(prof, mode);
     v.querySelector('#rStats').innerHTML = `<div class="kpis route-kpis">
       <div class="kpi"><b class="tnum">${fmtKm(s.dist)}</b><span>distance</span></div>
-      <div class="kpi"><b class="tnum">${fmtHours(s.hours)}</b><span>${MODES[mode].foot ? 'on foot (est.)' : 'drive time (est.)'}</span></div>
+      <div class="kpi"><b class="tnum">${fmtHours(s.hours)}</b><span class="tip-h">${MODES[mode].foot ? 'on foot' : 'drive time'}${tip(`Estimated with Tobler's hiking function, which slows on climbs and steep descents${MODES[mode].foot ? '' : '. Vehicles use an average speed plus time for climbing'}. Rest stops and glassing aren't included.`, 'How time is estimated')}</span></div>
       <div class="kpi"><b class="tnum">↑ ${Math.round(s.up)} m</b><span>elevation gain</span></div>
       <div class="kpi"><b class="tnum">↓ ${Math.round(s.down)} m</b><span>elevation loss</span></div>
       <div class="kpi"><b class="tnum">${s.lo != null ? Math.round(s.lo) + '–' + Math.round(s.hi) + ' m' : '—'}</b><span>low – high</span></div>
       <div class="kpi"><b class="tnum">${Math.round(s.maxGrade * 100)}%</b><span>steepest grade</span></div></div>
       <div class="diff diff-${['Easy', 'Moderate', 'Hard', 'Very hard'].indexOf(s.difficulty)}">${esc(s.difficulty)}${MODES[mode].foot ? ` <span class="muted">· ${esc(MODES[mode].name.toLowerCase())}</span>` : ''}</div>
-      <p class="muted fine">Time uses Tobler's hiking function (slows on climbs and steep descents)${MODES[mode].foot ? '' : '; vehicles use an average speed plus time for climbing'}. Rest stops and glassing aren't included.</p>`;
+`;
     chart(v.querySelector('#rProf'), prof, MODES[mode].color, v.querySelector('#rRead'));
   };
   draw();
   v.querySelector('#rModes').onclick = (e) => { const b = e.target.closest('[data-mode]'); if (!b) return; mode = b.dataset.mode; v.querySelectorAll('#rModes button').forEach((x) => x.setAttribute('aria-checked', String(x === b))); draw(); };
-  v.querySelector('#rBack').onclick = async () => { M.setCursor(null); (await import('./main.js?v=20261113071729-382c10f')).rerender(); };
-  v.querySelector('#rFit').onclick = () => { M.fitTo(coords); if (innerWidth <= 760) import('./main.js?v=20261113071729-382c10f').then((m) => m.closePanel()); };
-  v.querySelector('#rDel')?.addEventListener('click', async () => { if (!confirm('Delete this route?')) return; await db.remove('tracks', track.id); M.setCursor(null); (await import('./main.js?v=20261113071729-382c10f')).rerender(); });
+  v.querySelector('#rBack').onclick = async () => { M.setCursor(null); (await import('./main.js?v=20261113072907-6262054')).rerender(); };
+  v.querySelector('#rFit').onclick = () => { M.fitTo(coords); if (innerWidth <= 760) import('./main.js?v=20261113072907-6262054').then((m) => m.closePanel()); };
+  v.querySelector('#rDel')?.addEventListener('click', async () => { if (!confirm('Delete this route?')) return; await db.remove('tracks', track.id); M.setCursor(null); (await import('./main.js?v=20261113072907-6262054')).rerender(); });
   v.querySelector('#rForm').onsubmit = async (e) => {
     e.preventDefault(); const f = e.target; const s = stats(prof, mode);
     const extra = { ...(track.extra || {}), mode, notes: f.notes.value || undefined, up: Math.round(s.up), down: Math.round(s.down), hours: +s.hours.toFixed(2), difficulty: s.difficulty };

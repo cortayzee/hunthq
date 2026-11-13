@@ -1,11 +1,11 @@
 // Seasons: "Where can I hunt <species> on <date>?"  Pick a species → open WMUs shade on the map.
-import { SEASONS, openRange, fmtRange, outsideSynopsis, muSort } from '../seasons.js?v=20261113071729-382c10f';
-import * as M from '../map.js?v=20261113071729-382c10f';
-import { REGS_URL } from '../config.js?v=20261113071729-382c10f';
-import { esc, todayISO, pad } from '../util.js?v=20261113071729-382c10f';
-import { icon } from '../icons.js?v=20261113071729-382c10f';
-import { category } from './wmu.js?v=20261113071729-382c10f';
-import { app } from '../main.js?v=20261113071729-382c10f';
+import { SEASONS, openRange, fmtRange, outsideSynopsis, muSort } from '../seasons.js?v=20261113072907-6262054';
+import * as M from '../map.js?v=20261113072907-6262054';
+import { REGS_URL } from '../config.js?v=20261113072907-6262054';
+import { esc, todayISO, pad, tip } from '../util.js?v=20261113072907-6262054';
+import { icon } from '../icons.js?v=20261113072907-6262054';
+import { category } from './wmu.js?v=20261113072907-6262054';
+import { app } from '../main.js?v=20261113072907-6262054';
 
 const st = { sp: '', weapon: 'any', youth: false };
 const CATS = [['big', 'Big game', 'deer'], ['pred', 'Bears & predators', 'paw'], ['bird', 'Birds & small game', 'bird']];
@@ -48,8 +48,7 @@ export function render(v) {
   const sps = speciesList();
   const counts = Object.fromEntries(sps.map((s) => [s, muCount(rowsFor(s, date))]));
   const quick = [['Today', todayISO()], ['Sat', nextSat()]];
-  v.innerHTML = `<h2>Seasons</h2>
-  <p class="muted" style="margin-top:0">Pick a species to see where it's open. The number shows how many WMUs are open that day.</p>
+  v.innerHTML = `<h2 class="tip-h">Seasons${tip('Pick a species to see where it is open on the map. The number on each tile is how many WMUs are open that day. General open seasons from the 2026–2028 synopsis only, not LEH hunts. Always check the synopsis and in-season changes.')}</h2>
   <div class="seg-row">
     <div class="seg" role="group" aria-label="Date">${quick.map(([l, d]) => `<button data-date="${d}" class="${d === date ? 'on' : ''}">${l}</button>`).join('')}
       <label class="seg-date ${quick.some(([, d]) => d === date) ? '' : 'on'}">${icon('calendar', { size: 16 })}<span>${pretty(date)}</span><input type="date" id="sDate" value="${date}" aria-label="Pick a date"></label></div>
@@ -66,7 +65,7 @@ export function render(v) {
         <span class="nm">${esc(s.replace(' (incl. Black-tailed)', ''))}</span><span class="ct tnum">${counts[s] || 'Closed'}</span></button>`).join('')}</div>`;
   }).join('')}
   <div id="sOut"></div>
-  <p class="muted" style="margin-top:18px">General open seasons from the 2026–2028 synopsis, not LEH hunts. Check the synopsis and <a href="${REGS_URL}" target="_blank" rel="noopener">in-season changes</a>.</p>`;
+  <p class="list-note"><a href="${REGS_URL}" target="_blank" rel="noopener">In-season changes</a></p>`;
 
   const out = v.querySelector('#sOut');
   if (st.sp) {
