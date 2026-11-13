@@ -1,10 +1,10 @@
-import { store, hunters, localNote } from '../db.js?v=20261113074749-ce63ffc';
-import { icon } from '../icons.js?v=20261113074749-ce63ffc';
-import { esc, opts, yearOf, groupBy, fmtTime, tip } from '../util.js?v=20261113074749-ce63ffc';
-import * as M from '../map.js?v=20261113074749-ce63ffc';
-import { RUT, RUT_SPECIES, rutStatus, fmtMD, moonSVG, moonDay, MOON_TIPS } from '../rut.js?v=20261113074749-ce63ffc';
-import * as W from '../weather.js?v=20261113074749-ce63ffc';
-import { harvested } from '../vis.js?v=20261113074749-ce63ffc';
+import { store, hunters, localNote } from '../db.js?v=20261113075752-75055de';
+import { icon } from '../icons.js?v=20261113075752-75055de';
+import { esc, opts, yearOf, groupBy, fmtTime, tip } from '../util.js?v=20261113075752-75055de';
+import * as M from '../map.js?v=20261113075752-75055de';
+import { RUT, RUT_SPECIES, rutStatus, fmtMD, moonSVG, moonDay, MOON_TIPS } from '../rut.js?v=20261113075752-75055de';
+import * as W from '../weather.js?v=20261113075752-75055de';
+import { harvested } from '../vis.js?v=20261113075752-75055de';
 
 const f = { hunter: '', species: '', from: '', to: '' };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -121,14 +121,14 @@ function renderRut(body) {
     if (b.dataset.wday != null) { ui.wday = ui.wday === +b.dataset.wday ? -1 : +b.dataset.wday; fillWx(body.querySelector('#wxCard'), c); return; }
     if (b.dataset.hday != null) { ui.wx = 'hourly'; ui.hday = b.dataset.hday; fillWx(body.querySelector('#wxCard'), c, true); return; }
     if (b.dataset.spot) { const x = spots.find((y) => y.v === b.dataset.spot); if (x) { setForecastPos({ lat: x.lat, lng: x.lng, label: x.label }); M.flyTo(x.lng, x.lat, 11); renderRut(body); } return; }
-    if (b.dataset.sun != null) { import('../main.js?v=20261113074749-ce63ffc').then((m) => m.showTabPublic('sun')); return; }
+    if (b.dataset.sun != null) { import('../main.js?v=20261113075752-75055de').then((m) => m.showTabPublic('sun')); return; }
     if (b.dataset.rsp) { ui.sp = b.dataset.rsp; ui.stage = null; saveUi(); renderRut(body); }
     else if (b.dataset.stage != null) { ui.stage = +b.dataset.stage; renderRut(body); }
     else if (b.dataset.day != null) { ui.day = +b.dataset.day; renderRut(body); }
     else if (b.dataset.loc === 'center') { const m = M.map.getCenter(); setForecastPos({ lat: m.lat, lng: m.lng, label: '' }); renderRut(body); }
     else if (b.dataset.loc === 'show') M.flyTo(c.lng, c.lat, 11);
     else if (b.dataset.loc === 'pick') {
-      import('../main.js?v=20261113074749-ce63ffc').then(async (mm) => { const ll = await mm.pickOnMap('Tap the map where you want the forecast'); setForecastPos({ lat: ll.lat, lng: ll.lng, label: '' }); mm.openPanel(); if (render.v?.isConnected) render(render.v); });
+      import('../main.js?v=20261113075752-75055de').then(async (mm) => { const ll = await mm.pickOnMap('Tap the map where you want the forecast'); setForecastPos({ lat: ll.lat, lng: ll.lng, label: '' }); mm.openPanel(); if (render.v?.isConnected) render(render.v); });
     }
     else if (b.dataset.loc === 'gps') navigator.geolocation?.getCurrentPosition((p) => { setForecastPos({ lat: p.coords.latitude, lng: p.coords.longitude, label: 'My location' }); renderRut(body); }, (er) => alert(er.message));
   };
@@ -210,7 +210,11 @@ async function fillWx(el, c, scrollHours = false) {
   if (!el) return; ui.wx = ui.wx || 'week'; if (ui.wday == null) ui.wday = 0;
   let wx; try { wx = await W.fetchWx(c.lat, c.lng); } catch (e) { el.innerHTML = `<p class="muted" style="margin:0">Weather unavailable right now (${esc(e.message)}).</p>`; return; }
   if (!el.isConnected) return;
-  const tz = wx.tz, mv = W.movement(wx, ui.sp, c.lat, c.lng), best = W.bestByDay(mv, tz), now = Date.now();
+  const mu = wmuAt(c.lng, c.lat);
+  const hv = await import('../wildlife.js?v=20261113075752-75055de').then((m) => m.harvest()).catch(() => null); if (!el.isConnected) return;
+  const ab = W.abundance(hv, ui.sp, mu);
+  const tz = wx.tz, mv = W.movement(wx, ui.sp, c.lat, c.lng, ab), best = W.bestByDay(mv, tz), now = Date.now();
+  const abLine = ab ? `<div class="wx-ab ${ab.f < 0.5 ? 'low' : ''}"><span>${esc(short(ui.sp))} here</span><b>${esc(ab.label)}</b>${tip(`From BC hunter survey harvest density in WMU ${mu}, compared with every other unit in BC. Fewer animals means a lower movement %.${ab.f < 0.5 ? ' Few or none are taken here, so you may not see any.' : ''}`, 'How local numbers are set')}</div>` : '';
   const todayK = W.dayKey(new Date(), tz);
   const nowH = mv.find((h) => h.t <= now && +h.t + 36e5 > now) || mv.find((h) => h.t > now);
   const ring = (p, sz = 40) => { const r = sz / 2 - 3, L = 2 * Math.PI * r; return `<svg class="mv-ring ${W.levelCls(p)}" width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" aria-hidden="true"><circle cx="${sz / 2}" cy="${sz / 2}" r="${r}" class="bg"/><circle cx="${sz / 2}" cy="${sz / 2}" r="${r}" class="fg" stroke-dasharray="${(L * p) / 100} ${L}" transform="rotate(-90 ${sz / 2} ${sz / 2})"/></svg>`; };
@@ -257,8 +261,8 @@ async function fillWx(el, c, scrollHours = false) {
           <button class="small" data-hday="${k}">Hour by hour ${icon('chevR', { size: 14 })}</button>
         </div>` : ''}</div>`; }).join('')}</div>`;
   }
-  el.innerHTML = `<div class="wx-top"><h3 class="tip-h" style="margin:0">Weather &amp; movement${tip(`The % is a movement index for ${spName}: our estimate from first and last light, the rut stage, temperature drops, pressure changes around fronts, wind, rain and snow, and solunar periods. It isn't trained on trail-cam photos, so use it to plan, not as a promise. In Hourly, dimmed hours are outside legal light and blue % is the chance of rain or snow. Weather from Open-Meteo.`, 'How the movement index works')}</h3><span class="muted fine" style="margin:0">${Math.round(wx.elev)} m elevation</span></div>
+  el.innerHTML = `<div class="wx-top"><h3 class="tip-h" style="margin:0">Weather &amp; movement${tip(`The % is a movement index for ${spName}: our estimate from how common they are in this WMU, first and last light, the rut stage, temperature drops, pressure changes around fronts, wind, rain and snow, and solunar periods. It isn't trained on trail-cam photos, so use it to compare days and hours rather than as a true probability. In Hourly, dimmed hours are outside legal light and blue % is the chance of rain or snow. Weather from Open-Meteo.`, 'How the movement index works')}</h3><span class="muted fine" style="margin:0">${Math.round(wx.elev)} m elevation</span></div>
     <div class="seg wx-seg" role="tablist">${[['now', 'Now'], ['hourly', 'Hourly'], ['week', '7 days']].map(([k, n]) => `<button data-wx="${k}" class="${ui.wx === k ? 'on' : ''}">${n}</button>`).join('')}</div>
-    ${body}`;
+    ${abLine}${body}`;
   if (scrollHours && ui.hday) { const sep = el.querySelector(`.wx-h[data-dk="${ui.hday}"]`); if (sep) el.querySelector('#wxHours').scrollLeft = sep.offsetLeft - 8; }
 }

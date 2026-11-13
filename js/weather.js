@@ -1,7 +1,7 @@
 // Weather (Open-Meteo, no key) + an hour-by-hour movement index for big game.
 // The movement index is a transparent rule-based estimate from known drivers (light, rut, temperature change,
 // pressure, wind, precipitation, moon). It is NOT trained on trail-cam data; the UI says so.
-import { rutStatus, solunar } from './rut.js?v=20261113074749-ce63ffc';
+import { rutStatus, solunar } from './rut.js?v=20261113075752-75055de';
 
 const H = 'temperature_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation_probability,precipitation,snowfall,pressure_msl,cloud_cover,is_day,relative_humidity_2m';
 const D = 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,sunrise,sunset';
@@ -59,7 +59,20 @@ export const hourIn = (d, off) => shift(d, off).getUTCHours();
 // ---- Movement index ----
 const gauss = (x, s) => Math.exp(-(x * x) / (2 * s * s));
 const RUT_HOT = /seeking|chasing|peak|^rut$|breeding|building|early rut/i;
-export function movement(wx, sp, lat, lon) {
+// How common the species is in this WMU, from harvest density vs. every other BC unit (0 = none recorded).
+// Returns { f: multiplier, label, note } or null when there's no data for the species at all.
+export function abundance(harvestData, sp, mu) {
+  const key = sp === 'Black-tailed Deer' ? 'Mule Deer' : sp;
+  const rows = harvestData?.species?.[key]; if (!rows || !mu) return null;
+  const r = rows[mu];
+  if (!r || !r.k) return { f: 0.3, label: 'Few or none', note: `no ${sp.toLowerCase()} harvest recorded in WMU ${mu}` };
+  if (r.k < 2) return { f: 0.42, label: 'Very few', note: `very few ${sp.toLowerCase()} taken in WMU ${mu}` };
+  const all = Object.values(rows).map((x) => x.kpa).filter((x) => x != null).sort((a, b) => a - b);
+  const p = all.findIndex((x) => x >= r.kpa) / Math.max(1, all.length - 1);
+  const label = p >= 0.8 ? 'High' : p >= 0.4 ? 'Average' : p >= 0.15 ? 'Low' : 'Very low';
+  return { f: 0.55 + 0.45 * p, label, p, note: `${label.toLowerCase()} ${sp.toLowerCase()} numbers in WMU ${mu}` };
+}
+export function movement(wx, sp, lat, lon, abund = null) {
   const { hours, days, tz } = wx;
   const byDay = new Map(days.map((d) => [dayKey(d.t, tz), d]));
   // Recent baseline: mean of daily mean temps over the past 3 days + today.
@@ -74,7 +87,7 @@ export function movement(wx, sp, lat, lon) {
     const hr = (x) => (h.t - x) / 36e5;
     const crep = Math.max(gauss(hr(d.sunrise) - 0.3, 1.25), gauss(hr(d.sunset) + 0.1, 1.25));
     const dark = h.t < d.sunrise - 36e5 || h.t > +d.sunset + 36e5;
-    let s = (dark ? 0.2 : 0.12) + 0.38 * crep;
+    let s = (dark ? 0.13 : 0.09) + 0.3 * crep;
     const rs = rutStatus(sp, h.t); const hot = rs?.cur && RUT_HOT.test(rs.cur.name);
     if (hot) { const add = 0.08 + 0.1 * (1 - crep) * (dark ? 0.3 : 1); s += add; f.push([add, `the ${rs.cur.name.toLowerCase()} phase of the rut`]); }
     const dev = mean(d) - recent;
@@ -93,13 +106,14 @@ export function movement(wx, sp, lat, lon) {
     else { const prev = hours.slice(Math.max(0, i - 8), i).reduce((a, x) => a + (x.mm || 0), 0); if (prev >= 3) { s += 0.08; f.push([0.08, 'the storm clearing out']); } }
     const w = sol(dk, h.t).find((x) => h.t >= x.s && h.t <= x.e);
     if (w) { const v = w.kind === 'major' ? 0.04 : 0.02; s += v; f.push([v, `a solunar ${w.kind} (${w.what})`]); }
+    if (abund) { const before = s; s *= abund.f; if (Math.abs(s - before) >= 0.02) f.push([s - before, abund.note]); }
     const legal = h.t >= d.sunrise - 18e5 && h.t <= +d.sunset + 18e5;
-    return { ...h, pct: Math.round(Math.max(3, Math.min(95, s * 100))), f, legal, dk, crep };
+    return { ...h, pct: Math.round(Math.max(2, Math.min(90, s * 100))), f, legal, dk, crep };
   }).filter(Boolean);
   return out;
 }
-export const level = (p) => (p >= 70 ? 'Very high' : p >= 52 ? 'High' : p >= 32 ? 'Moderate' : 'Low');
-export const levelCls = (p) => (p >= 70 ? 'vh' : p >= 52 ? 'hi' : p >= 32 ? 'md' : 'lo');
+export const level = (p) => (p >= 65 ? 'Very high' : p >= 48 ? 'High' : p >= 28 ? 'Moderate' : 'Low');
+export const levelCls = (p) => (p >= 65 ? 'vh' : p >= 48 ? 'hi' : p >= 28 ? 'md' : 'lo');
 // Best legal-light hour for each day + a one-line "why".
 export function bestByDay(mv, tz) {
   const m = new Map();

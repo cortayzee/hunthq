@@ -1,10 +1,10 @@
-import * as M from '../map.js?v=20261113074749-ce63ffc';
-import { esc, tip } from '../util.js?v=20261113074749-ce63ffc';
-import { icon } from '../icons.js?v=20261113074749-ce63ffc';
-import { saveMapPrefs, showTabPublic } from '../main.js?v=20261113074749-ce63ffc';
-import { muSort } from '../seasons.js?v=20261113074749-ce63ffc';
-import { store } from '../db.js?v=20261113074749-ce63ffc';
-import * as W from '../wildlife.js?v=20261113074749-ce63ffc';
+import * as M from '../map.js?v=20261113075752-75055de';
+import { esc, tip } from '../util.js?v=20261113075752-75055de';
+import { icon } from '../icons.js?v=20261113075752-75055de';
+import { saveMapPrefs, showTabPublic } from '../main.js?v=20261113075752-75055de';
+import { muSort } from '../seasons.js?v=20261113075752-75055de';
+import { store } from '../db.js?v=20261113075752-75055de';
+import * as W from '../wildlife.js?v=20261113075752-75055de';
 
 // Layers panel: "On now" chips, then collapsible sections. A row is swatch + name + switch; opacity only for layers that are on.
 const SECTIONS = [

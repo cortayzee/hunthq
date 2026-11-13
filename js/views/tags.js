@@ -1,10 +1,10 @@
-import * as db from '../db.js?v=20261113074749-ce63ffc';
-import { store, hunters } from '../db.js?v=20261113074749-ce63ffc';
-import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261113074749-ce63ffc';
-import { hunterDatalist, speciesDatalist } from './log.js?v=20261113074749-ce63ffc';
-import { icon } from '../icons.js?v=20261113074749-ce63ffc';
-import * as M from '../map.js?v=20261113074749-ce63ffc';
-import { muSort } from '../seasons.js?v=20261113074749-ce63ffc';
+import * as db from '../db.js?v=20261113075752-75055de';
+import { store, hunters } from '../db.js?v=20261113075752-75055de';
+import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261113075752-75055de';
+import { hunterDatalist, speciesDatalist } from './log.js?v=20261113075752-75055de';
+import { icon } from '../icons.js?v=20261113075752-75055de';
+import * as M from '../map.js?v=20261113075752-75055de';
+import { muSort } from '../seasons.js?v=20261113075752-75055de';
 
 // Tags & LEH. LEH hunts come from the 2026-2027 LEH synopsis (hunt-hq-handoff/data/leh_2026.json, scripts/parse_leh.py).
 const yr = new Date().getFullYear();
@@ -215,7 +215,7 @@ async function lehArea(h) {
   return areaCache.get(key);
 }
 export async function highlightHunt(h) {
-  const { selChip } = await import('../main.js?v=20261113074749-ce63ffc');
+  const { selChip } = await import('../main.js?v=20261113075752-75055de');
   let fc = await lehArea(h); let exact = !!fc;
   if (!fc) fc = { type: 'FeatureCollection', features: (M.WMU_GEO?.features || []).filter((f) => h.mus.includes(f.properties.id)) };
   fc = { type: 'FeatureCollection', features: fc.features.map((f) => ({ ...f, properties: { stroke: '#ff8a00', fill: '#ff8a00', fillOpacity: 0.22 } })) };

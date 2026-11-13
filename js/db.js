@@ -1,6 +1,6 @@
 // Data layer: Supabase (synced) or local mode (localStorage). Everything is cached in `store`.
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=20261113074749-ce63ffc';
-import { uuid } from './util.js?v=20261113074749-ce63ffc';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=20261113075752-75055de';
+import { uuid } from './util.js?v=20261113075752-75055de';
 
 export const TABLES = { spots: 'hunt_spots', trips: 'hunt_trips', tracks: 'hunt_tracks', tags: 'hunt_tags', leh: 'hunt_leh' };
 export const store = { spots: [], trips: [], tracks: [], tags: [], leh: [], prefs: {} };
