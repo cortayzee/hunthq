@@ -545,3 +545,9 @@ details.lyr-sec[open] > summary { border-bottom: 1px solid var(--line); backgrou
 .sync-banner .t { flex: 1; }
 .local-note { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 10px 12px; margin: 8px 0 12px;
   border-radius: 10px; background: rgba(224,137,58,.12); border: 1px solid rgba(224,137,58,.4); font-size: 13.5px; }
+
+/* Map popup listing several LEH hunts at one spot */
+.leh-pop { display: grid; gap: 6px; max-height: 260px; overflow: auto; }
+.leh-pop button { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; text-align: left; padding: 8px 10px; min-height: 44px; }
+.leh-pop button b { grid-row: span 2; align-self: center; color: var(--accent, #e0893a); }
+.leh-pop button .muted { font-size: 12px; }

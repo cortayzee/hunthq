@@ -1,10 +1,10 @@
-import * as db from '../db.js?v=20261113055324-718ddfe';
-import { store, hunters } from '../db.js?v=20261113055324-718ddfe';
-import { esc, opts, modal, closeModal, toast, formData, num } from '../util.js?v=20261113055324-718ddfe';
-import { hunterDatalist, speciesDatalist } from './log.js?v=20261113055324-718ddfe';
-import { icon } from '../icons.js?v=20261113055324-718ddfe';
-import * as M from '../map.js?v=20261113055324-718ddfe';
-import { muSort } from '../seasons.js?v=20261113055324-718ddfe';
+import * as db from '../db.js?v=20261113060050-30af831';
+import { store, hunters } from '../db.js?v=20261113060050-30af831';
+import { esc, opts, modal, closeModal, toast, formData, num } from '../util.js?v=20261113060050-30af831';
+import { hunterDatalist, speciesDatalist } from './log.js?v=20261113060050-30af831';
+import { icon } from '../icons.js?v=20261113060050-30af831';
+import * as M from '../map.js?v=20261113060050-30af831';
+import { muSort } from '../seasons.js?v=20261113060050-30af831';
 
 // Tags & LEH. LEH hunts come from the 2026-2027 LEH synopsis (hunt-hq-handoff/data/leh_2026.json, scripts/parse_leh.py).
 const yr = new Date().getFullYear();
@@ -12,7 +12,7 @@ const yr = new Date().getFullYear();
 const DRAW_YEAR = Date.now() > Date.parse('2026-06-24T07:00:00Z') ? 2027 : 2026;
 let LEH = null;
 export const loadLeh = () => LEH || (LEH = fetch('hunt-hq-handoff/data/leh_2026.json').then((r) => r.json()).catch(() => ({ hunts: [] })));
-const ui = { tab: 'leh', sp: '', region: '', mine: false, sort: 'odds', q: '', limit: 40, when: '', day: '' };
+const ui = { pin: '', tab: 'leh', sp: '', region: '', mine: false, sort: 'odds', q: '', limit: 40, when: '', day: '' };
 // "Oct 16-Oct 24 & Oct 27-Oct 31" -> [['10-16','10-24'], ['10-27','10-31']] (ranges may wrap past Dec 31)
 const MONTH_N = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
 const p2 = (n) => String(n).padStart(2, '0');
@@ -67,6 +67,7 @@ export async function render(v) {
   <div id="tagBody"></div>`;
   v.querySelector('.seg').onclick = (e) => { const b = e.target.closest('[data-t]'); if (b) { ui.tab = b.dataset.t; render(v); } };
   const body = v.querySelector('#tagBody');
+  if (ui.tab !== 'leh') onLeave();
   if (ui.tab === 'tags') return renderTags(body);
   if (ui.tab === 'hist') return renderHist(body);
   const data = await loadLeh(); if (!v.isConnected) return;
@@ -107,25 +108,29 @@ export async function render(v) {
   </div>
   <label class="switch"><input type="checkbox" id="lMine" ${ui.mine ? 'checked' : ''}><span>Only units I've hunted (${myMus().size})</span></label>
   <div id="lList"></div>`;
+  let fitNext = false;
+  render.reveal = (code) => { ui.pin = code; draw(); };
   const draw = () => {
     const q = ui.q.toLowerCase(); const mine = myMus();
     let list = hunts.filter((h) => whenOk(h) && (!ui.sp || h.sp === ui.sp) && (!ui.region || h.rn === ui.region) && (!ui.mine || h.mus.some((m) => mine.has(m)))
       && (!q || [h.code, h.area, h.mu, h.mus.join(' '), h.class, h.tag, h.sp].join(' ').toLowerCase().includes(q)));
     const startKey = (h) => { const r = huntRanges(h)[0]; if (!r) return '99'; const m = +r[0].slice(0, 2); return (m < 7 ? m + 12 : m) + r[0].slice(2); }; // season year runs Aug -> spring
     list.sort(ui.sort === 'date' ? (a, b) => startKey(a).localeCompare(startKey(b)) : ui.sort === 'odds' ? (a, b) => (a.odds ?? 1e9) - (b.odds ?? 1e9) : ui.sort === 'tags' ? (a, b) => b.auth - a.auth : (a, b) => a.code.localeCompare(b.code));
+    const pinned = ui.pin && list.find((h) => h.code === ui.pin); if (pinned) list = [pinned, ...list.filter((h) => h !== pinned)];
     const shown = list.slice(0, ui.limit);
+    showFiltered(list, { fit: fitNext }); fitNext = false;
     body.querySelector('#lList').innerHTML = `<p class="muted fine">${list.length} hunts${ui.when ? ` ${ui.when === 'day' ? 'open on ' + (ui.day || 'that date') : 'with days in ' + WHEN_OPTS.find((w) => w[0] === ui.when)[1]}` : ''}${list.length > shown.length ? ` · showing ${shown.length}` : ''}</p>${shown.map((h) => huntCard(h)).join('')}
       ${list.length > shown.length ? '<button id="lMore" class="small" style="width:100%">Show more</button>' : ''}${!list.length ? '<div class="empty"><b>No hunts match</b><span class="muted">Try another species or region.</span></div>' : ''}`;
   };
   draw();
   body.querySelector('details.how').addEventListener('toggle', (e) => { if (!e.target.open && !store.prefs.lehHowSeen) db.savePrefs({ lehHowSeen: true }).catch(() => {}); });
-  body.querySelector('.sp-filter').onclick = (e) => { const b = e.target.closest('[data-sp]'); if (!b) return; ui.sp = b.dataset.sp; ui.limit = 40; body.querySelectorAll('.sp-filter .f-chip').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); draw(); };
-  body.querySelector('#lReg').onchange = (e) => { ui.region = e.target.value; ui.limit = 40; draw(); };
+  body.querySelector('.sp-filter').onclick = (e) => { const b = e.target.closest('[data-sp]'); if (!b) return; ui.sp = b.dataset.sp; ui.limit = 40; ui.pin = ''; fitNext = true; body.querySelectorAll('.sp-filter .f-chip').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); draw(); };
+  body.querySelector('#lReg').onchange = (e) => { ui.region = e.target.value; ui.limit = 40; ui.pin = ''; fitNext = true; draw(); };
   body.querySelector('#lSort').onchange = (e) => { ui.sort = e.target.value; draw(); };
-  body.querySelector('#lWhen').onchange = (e) => { ui.when = e.target.value; ui.limit = 40; body.querySelector('#lDayWrap').classList.toggle('hidden', ui.when !== 'day'); if (ui.when === 'day' && !ui.day) { ui.day = new Date().toISOString().slice(0, 10); body.querySelector('#lDay').value = ui.day; } draw(); };
+  body.querySelector('#lWhen').onchange = (e) => { ui.when = e.target.value; ui.limit = 40; ui.pin = ''; body.querySelector('#lDayWrap').classList.toggle('hidden', ui.when !== 'day'); if (ui.when === 'day' && !ui.day) { ui.day = new Date().toISOString().slice(0, 10); body.querySelector('#lDay').value = ui.day; } draw(); };
   body.querySelector('#lDay').onchange = (e) => { ui.day = e.target.value; ui.limit = 40; draw(); };
-  body.querySelector('#lMine').onchange = (e) => { ui.mine = e.target.checked; draw(); };
-  body.querySelector('#lQ').oninput = (e) => { ui.q = e.target.value; ui.limit = 40; draw(); };
+  body.querySelector('#lMine').onchange = (e) => { ui.mine = e.target.checked; ui.pin = ''; fitNext = true; draw(); };
+  let qT; body.querySelector('#lQ').oninput = (e) => { ui.q = e.target.value; ui.limit = 40; ui.pin = ''; clearTimeout(qT); draw(); qT = setTimeout(() => { fitNext = true; draw(); }, 700); };
   body.onclick = (e) => {
     if (e.target.closest('#lMore')) { ui.limit += 40; draw(); return; }
     handleLehClick(e, hunts);
@@ -158,6 +163,46 @@ export async function handleLehClick(e, hunts) {
 // Outline the hunt's exact LEH area (zone or whole unit) from the BC LEH zone layer; fall back to the unit outline.
 const TYPE = { 'Mule Deer': 'MULE DEER', 'White-tailed Deer': 'WHITE-TAILED DEER', 'Mountain Goat': 'MOUNTAIN GOAT', 'Mountain Sheep': 'MOUNTAIN SHEEP', 'Black Bear': 'BLACK BEAR' };
 const areaCache = new Map();
+export const lehKey = (h) => (TYPE[h.sp] || (h.sp || '').toUpperCase()) + '|' + (h.mus[0] || '').replace(/^(\d)-(\d+)$/, (m, a, b) => a + String(b).padStart(2, '0')) + (h.zone || '');
+let zoneKeys = null; // keys present in the zone file, so missing ones fall back to the unit outline
+async function knownKeys() {
+  if (!zoneKeys) zoneKeys = fetch('hunt-hq-handoff/data/leh_zones_2026.geojson').then((r) => r.json()).then((j) => new Set(j.features.map((f) => f.properties.k)));
+  return zoneKeys;
+}
+// Show the finder's current results on the map; fit the map to them when the filter is narrowed.
+let lastFit = '';
+async function showFiltered(list, { fit = false } = {}) {
+  const known = knownSet = await knownKeys();
+  const keys = [], mus = [];
+  for (const h of list) { const k = lehKey(h); if (known.has(k)) keys.push(k); else mus.push(h.mus[0]); }
+  shownList = list;
+  await M.setLehFilter([...new Set(keys)], [...new Set(mus)]);
+  const sig = keys.concat(mus).sort().join();
+  if (fit && sig !== lastFit && list.length && list.length < 400) {
+    lastFit = sig;
+    const fc = await (await fetch('hunt-hq-handoff/data/leh_zones_2026.geojson')).json(); // cached by the browser
+    const ks = new Set(keys), ms = new Set(mus); const cs = []; const walk = (a) => (typeof a[0] === 'number' ? cs.push(a) : a.forEach(walk));
+    fc.features.forEach((f) => ks.has(f.properties.k) && walk(f.geometry.coordinates));
+    (M.WMU_GEO?.features || []).forEach((f) => ms.has(f.properties.id) && walk(f.geometry.coordinates));
+    if (cs.length) M.fitTo(cs, { maxZoom: 10 });
+  }
+}
+let shownList = []; let knownSet = null;
+export function onLeave() { shownList = []; lastFit = ''; M.setLehFilter(null, []); }
+// Map tap inside a highlighted LEH area: which filtered hunts cover it?
+export function huntsAt(features) {
+  const ks = new Set(features.filter((f) => f.layer.id === 'lehf-fill').map((f) => f.properties.k));
+  const ms = new Set(features.filter((f) => f.layer.id === 'lehf-mu-fill').map((f) => f.properties.id));
+  return shownList.filter((h) => ks.has(lehKey(h)) || (ms.has(h.mus[0]) && !knownSet?.has(lehKey(h))));
+}
+export async function pickHunt(code) {
+  const h = shownList.find((x) => x.code === code) || (await loadLeh()).hunts.find((x) => x.code === code); if (!h) return;
+  document.querySelectorAll('.leh-card.hl').forEach((c) => c.classList.remove('hl'));
+  let card = document.querySelector(`#lList .leh-card[data-hl="${code}"]`);
+  if (!card && render.reveal) { render.reveal(code); card = document.querySelector(`#lList .leh-card[data-hl="${code}"]`); }
+  card?.classList.add('hl'); card?.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  await highlightHunt(h);
+}
 async function lehArea(h) {
   const id = (h.mus[0] || '').replace(/^(\d)-(\d+)$/, (m, a, b) => a + String(b).padStart(2, '0')) + (h.zone || '');
   const type = TYPE[h.sp] || (h.sp || '').toUpperCase();
@@ -170,7 +215,7 @@ async function lehArea(h) {
   return areaCache.get(key);
 }
 export async function highlightHunt(h) {
-  const { selChip } = await import('../main.js?v=20261113055324-718ddfe');
+  const { selChip } = await import('../main.js?v=20261113060050-30af831');
   let fc = await lehArea(h); let exact = !!fc;
   if (!fc) fc = { type: 'FeatureCollection', features: (M.WMU_GEO?.features || []).filter((f) => h.mus.includes(f.properties.id)) };
   fc = { type: 'FeatureCollection', features: fc.features.map((f) => ({ ...f, properties: { stroke: '#ff8a00', fill: '#ff8a00', fillOpacity: 0.22 } })) };
