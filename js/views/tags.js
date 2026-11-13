@@ -1,13 +1,13 @@
-import * as db from '../db.js?v=20261113160952-836c863';
-import { store, hunters } from '../db.js?v=20261113160952-836c863';
-import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261113160952-836c863';
-import { hunterDatalist, speciesDatalist } from './log.js?v=20261113160952-836c863';
-import { icon } from '../icons.js?v=20261113160952-836c863';
-import * as M from '../map.js?v=20261113160952-836c863';
-import * as LIC from '../licences.js?v=20261113160952-836c863';
-import * as L from '../limits.js?v=20261113160952-836c863';
-import { SEASONS, openRange } from '../seasons.js?v=20261113160952-836c863';
-import { muSort } from '../seasons.js?v=20261113160952-836c863';
+import * as db from '../db.js?v=20261113161343-e1f21e7';
+import { store, hunters } from '../db.js?v=20261113161343-e1f21e7';
+import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261113161343-e1f21e7';
+import { hunterDatalist, speciesDatalist } from './log.js?v=20261113161343-e1f21e7';
+import { icon } from '../icons.js?v=20261113161343-e1f21e7';
+import * as M from '../map.js?v=20261113161343-e1f21e7';
+import * as LIC from '../licences.js?v=20261113161343-e1f21e7';
+import * as L from '../limits.js?v=20261113161343-e1f21e7';
+import { SEASONS, openRange } from '../seasons.js?v=20261113161343-e1f21e7';
+import { muSort } from '../seasons.js?v=20261113161343-e1f21e7';
 
 // Tags & LEH. LEH hunts come from the 2026-2027 LEH synopsis (hunt-hq-handoff/data/leh_2026.json, scripts/parse_leh.py).
 const yr = new Date().getFullYear();
@@ -218,7 +218,7 @@ async function lehArea(h) {
   return areaCache.get(key);
 }
 export async function highlightHunt(h) {
-  const { selChip } = await import('../main.js?v=20261113160952-836c863');
+  const { selChip } = await import('../main.js?v=20261113161343-e1f21e7');
   let fc = await lehArea(h); let exact = !!fc;
   if (!fc) fc = { type: 'FeatureCollection', features: (M.WMU_GEO?.features || []).filter((f) => h.mus.includes(f.properties.id)) };
   fc = { type: 'FeatureCollection', features: fc.features.map((f) => ({ ...f, properties: { stroke: '#ff8a00', fill: '#ff8a00', fillOpacity: 0.22 } })) };
@@ -294,7 +294,7 @@ function renderTags(body) {
   ${S.untagged.length ? `<div class="notice tip-h">${S.untagged.length} kill${S.untagged.length === 1 ? '' : 's'} without a tag: ${S.untagged.map((k) => esc(`${k.s.species} ${fmtD(k.d)}`)).join(', ')}.&nbsp;<button class="link" id="tagKills">Add tag${S.untagged.length === 1 ? '' : 's'}</button></div>` : ''}`;
   body.onclick = async (e) => {
     const yb = e.target.closest('[data-ly]'); if (yb) { tui.year = +yb.dataset.ly; renderTags(body); return; }
-    if (e.target.closest('#goLic')) { import('../main.js?v=20261113160952-836c863').then((m) => m.showTabPublic('more')); return; }
+    if (e.target.closest('#goLic')) { import('../main.js?v=20261113161343-e1f21e7').then((m) => m.showTabPublic('more')); return; }
     if (e.target.closest('#addTags')) { addTagsSheet(y); return; }
     if (e.target.closest('#allRegs')) { tui.allRegs = !tui.allRegs; renderTags(body); return; }
     if (e.target.closest('#tagKills')) { for (const k of S.untagged) await db.insert('tags', { year: y, species: k.s.species, tag_type: 'General', hunter: 'Me' }); toast('Tags added'); return; }
@@ -317,11 +317,28 @@ function addTagsSheet(year) {
   };
 }
 
-function renderHist(body) {
-  const rows = store.leh.slice().sort((a, b) => b.year - a.year || (a.choice || 1) - (b.choice || 1));
-  body.innerHTML = `<div class="row" style="justify-content:space-between"><span class="muted tip-h">Past draws${tip('A win lowers your odds for that species in later draws.')}</span><button class="small primary" id="addLeh">${icon('plus', { size: 15 })}Add</button></div>
-  ${rows.length ? rows.map((l) => `<div class="wp-row" data-leh="${l.id}"><span class="pick-n">${l.year}</span><div class="t"><b>${esc(l.hunt_code || '—')} · ${esc(l.species || '')} ${esc(l.class || '')}</b><span class="muted">${l.choice === 2 ? '2nd choice' : '1st choice'} · ${l.drawn == null ? 'pending' : l.drawn ? 'DRAWN' : 'not drawn'}</span></div>${icon('chevR', { size: 18 })}</div>`).join('')
-    : '<div class="empty"><b>No LEH history</b><span class="muted">Add past applications to keep track of your wins.</span></div>'}`;
+// Draw record: summary, a rough "how unlucky am I" check from published odds, then applications grouped by year.
+async function renderHist(body) {
+  const rows = store.leh.filter((l) => +l.year < DRAW_YEAR || l.drawn != null).sort((a, b) => b.year - a.year || (a.species || '').localeCompare(b.species || ''));
+  const hunts = (await loadLeh()).hunts || []; const byCode = new Map(hunts.map((h) => [h.code, h]));
+  const done = rows.filter((l) => l.drawn != null); const wins = done.filter((l) => l.drawn);
+  const years = [...new Set(rows.map((l) => +l.year))];
+  const bySp = {}; for (const l of done) (bySp[l.species || 'Other'] ||= []).push(l);
+  // Chance each application was drawn, using the 1st-choice odds for the same code in the current synopsis.
+  const ps = done.map((l) => { const o = byCode.get(l.hunt_code)?.odds; return o ? Math.min(1, 1 / o) : null; }).filter((x) => x != null);
+  const expected = ps.reduce((a, p) => a + p, 0); const pNone = ps.reduce((a, p) => a * (1 - p), 1);
+  const statusChip = (l) => (l.drawn == null ? '<span class="lic-st warn">Pending</span>' : l.drawn ? '<span class="lic-st ok">Drawn</span>' : '<span class="lic-st">Not drawn</span>');
+  body.innerHTML = `
+  ${done.length ? `<div class="card lim-card">
+    <div class="lim-h"><b>Draw record</b><span class="lim-n tnum">${wins.length} of ${done.length}</span></div>
+    <p class="lim-left">${done.length} applications over ${years.length} draw${years.length === 1 ? '' : 's'}, ${wins.length ? `${wins.length} drawn` : 'none drawn yet'}.</p>
+    <div class="lim-rows">${Object.entries(bySp).sort((a, b) => b[1].length - a[1].length).map(([sp, ls]) => `<div><span>${esc(sp)}</span><b class="tnum">${ls.filter((l) => l.drawn).length} of ${ls.length}</b></div>`).join('')}</div>
+    ${ps.length >= 3 ? `<p class="hist-luck tip-h">On these odds you'd expect about <b>${expected.toFixed(1)}</b> draw${expected.toFixed(1) === '1.0' ? '' : 's'} by now, and there was a <b>${Math.round(pNone * 100)}%</b> chance of none.${tip(`Uses the published first-choice odds for the same hunt codes in the 2026–27 synopsis (${ps.length} of ${done.length} codes matched). Codes and odds change every year, so treat this as a rough check. BC's draw is random each year: past losses don't improve your odds, and wins lower them for some species.`, 'How this is worked out')}</p>` : ''}
+  </div>` : ''}
+  <div class="list-h-row"><h3 class="list-h">Applications</h3><button class="small primary" id="addLeh">${icon('plus', { size: 15 })}Add</button></div>
+  ${rows.length ? years.map((y) => `<h4 class="lim-sub">${y} draw</h4><div class="list-group">${rows.filter((l) => +l.year === y).map((l) => { const h = byCode.get(l.hunt_code);
+      return `<button class="list-row" data-leh="${l.id}"><span class="lr-t"><b>${esc(l.species || 'LEH')}${h && y === DRAW_YEAR - 1 ? `, ${esc(h.class.toLowerCase())}` : ''}</b><span>${esc(l.zone || l.hunt_code || '')}${/shared/i.test(l.notes || '') ? ' · shared' : ''}</span></span>${statusChip(l)}</button>`; }).join('')}</div>`).join('')
+    : '<div class="empty"><b>No LEH history yet</b><span class="muted">Add past applications to keep track of your draws.</span></div>'}`;
   body.querySelector('#addLeh').onclick = () => lehForm({ year: yr });
   body.onclick = (e) => { const r = e.target.closest('[data-leh]'); if (r) lehForm(store.leh.find((x) => x.id === r.dataset.leh)); };
 }
