@@ -1,9 +1,9 @@
 // MapLibre map: base styles, 3D terrain, BC WMS overlays, identify, waypoints/tracks, open-WMU shading.
-import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261113052704-0aa16a3';
-import { store } from './db.js?v=20261113052704-0aa16a3';
-import { MODES, fmtKm } from './elevation.js?v=20261113052704-0aa16a3';
-import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261113052704-0aa16a3';
-import { esc, earthLink, fmtDT } from './util.js?v=20261113052704-0aa16a3';
+import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261113053301-16ced9b';
+import { store } from './db.js?v=20261113053301-16ced9b';
+import { MODES, fmtKm } from './elevation.js?v=20261113053301-16ced9b';
+import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261113053301-16ced9b';
+import { esc, earthLink, fmtDT } from './util.js?v=20261113053301-16ced9b';
 
 export let map;
 const state = { base: 'sat', terrain: false, exag: 1.5, hillshade: false, ref: false, hiddenWmu: [], layers: {}, opacity: {}, shade: null, custom: [] };
@@ -20,11 +20,29 @@ const wmsTiles = (layer, { cql, sld, styles = '' } = {}) => {
 };
 
 // iHunter-style overlay look: coloured outline + light tint instead of the layer's default solid fill.
+const LEH_LAYER_NAME = 'WHSE_WILDLIFE_MANAGEMENT.WAA_LTD_HNT_ZONE_CURR_YEAR_SVW';
+// One label per LEH zone ("4-24 A"), from precomputed points; shown for whichever LEH species layers are on.
+const lehType = (l) => (l.cql ? (l.cql.match(/'([^']+)'/) || [])[1] : '*');
+export async function updateLehLabels() {
+  if (!map) return;
+  const on = BC_LAYERS.filter((l) => l.layer === LEH_LAYER_NAME && layerOn(l.id));
+  if (!map.getSource('leh-lab')) {
+    if (!on.length) return;
+    map.addSource('leh-lab', { type: 'geojson', data: 'hunt-hq-handoff/data/leh_zone_labels.geojson' });
+    map.addLayer({ id: 'leh-lab', type: 'symbol', source: 'leh-lab', minzoom: 7.5,
+      layout: { 'text-field': ['get', 'l'], 'text-font': ['Open Sans Semibold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 7.5, 11, 11, 13], 'symbol-sort-key': ['-', 0, ['get', 'a']], 'text-padding': 3 },
+      paint: { 'text-color': '#fff', 'text-halo-width': 2, 'text-halo-color': ['match', ['get', 't'], ...BC_LAYERS.filter((l) => l.layer === LEH_LAYER_NAME && l.cql).flatMap((l) => [lehType(l), l.color]), '#7b3fb5'] } });
+  }
+  const types = on.some((l) => !l.cql) ? null : on.map(lehType);
+  map.setLayoutProperty('leh-lab', 'visibility', on.length ? 'visible' : 'none');
+  map.setFilter('leh-lab', types ? ['in', ['get', 't'], ['literal', types]] : null);
+}
 const sldStyle = (l) => {
   const sym = l.geom === 'line'
     ? `<LineSymbolizer><Stroke><CssParameter name="stroke">${l.color}</CssParameter><CssParameter name="stroke-width">3</CssParameter></Stroke></LineSymbolizer>`
     : `<PolygonSymbolizer><Fill><CssParameter name="fill">${l.color}</CssParameter><CssParameter name="fill-opacity">0.12</CssParameter></Fill><Stroke><CssParameter name="stroke">${l.color}</CssParameter><CssParameter name="stroke-width">2</CssParameter></Stroke></PolygonSymbolizer>`;
-  return `<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld"><NamedLayer><Name>pub:${l.layer}</Name><UserStyle><FeatureTypeStyle><Rule>${sym}</Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>`;
+  const label = '';
+  return `<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld" xmlns:ogc="http://www.opengis.net/ogc"><NamedLayer><Name>pub:${l.layer}</Name><UserStyle><FeatureTypeStyle><Rule>${sym}</Rule>${label}</FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>`;
 };
 
 export const allLayers = () => [...BC_LAYERS, ...state.custom];
@@ -50,6 +68,7 @@ export function initMap(container, saved = {}) {
     for (const l of allLayers()) if (state.layers[l.id] ?? l.on) addWms(l);
     addDataLayers();
     addWmuVector();
+    updateLehLabels();
     if (state.hillshade) setHillshade(true);
     if (state.terrain) setTerrain(true, { animate: false });
     map.on('click', (e) => clickHandler && clickHandler(e));
@@ -128,6 +147,7 @@ export function setLayer(id, on) {
   const l = allLayers().find((x) => x.id === id); if (!l) return;
   state.layers[id] = on; on ? addWms(l) : removeWms(l);
   if (id === 'wmu') applyWmuFilter();
+  if (l.layer === LEH_LAYER_NAME) updateLehLabels();
   changed();
 }
 export const layerOn = (id) => { const l = allLayers().find((x) => x.id === id); return !!(state.layers[id] ?? l?.on); };
