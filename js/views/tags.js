@@ -1,10 +1,10 @@
-import * as db from '../db.js?v=20261113050808-88c37d4';
-import { store, hunters } from '../db.js?v=20261113050808-88c37d4';
-import { esc, opts, modal, closeModal, toast, formData, num } from '../util.js?v=20261113050808-88c37d4';
-import { hunterDatalist, speciesDatalist } from './log.js?v=20261113050808-88c37d4';
-import { icon } from '../icons.js?v=20261113050808-88c37d4';
-import * as M from '../map.js?v=20261113050808-88c37d4';
-import { muSort } from '../seasons.js?v=20261113050808-88c37d4';
+import * as db from '../db.js?v=20261113051435-cd982ac';
+import { store, hunters } from '../db.js?v=20261113051435-cd982ac';
+import { esc, opts, modal, closeModal, toast, formData, num } from '../util.js?v=20261113051435-cd982ac';
+import { hunterDatalist, speciesDatalist } from './log.js?v=20261113051435-cd982ac';
+import { icon } from '../icons.js?v=20261113051435-cd982ac';
+import * as M from '../map.js?v=20261113051435-cd982ac';
+import { muSort } from '../seasons.js?v=20261113051435-cd982ac';
 
 // Tags & LEH. LEH hunts come from the 2026-2027 LEH synopsis (hunt-hq-handoff/data/leh_2026.json, scripts/parse_leh.py).
 const yr = new Date().getFullYear();
@@ -27,7 +27,7 @@ const picked = (code) => store.leh.find((l) => String(l.year) === String(DRAW_YE
 
 export function huntCard(h, { compact = false } = {}) {
   const o = oddsText(h.odds); const p = picked(h.code);
-  return `<article class="leh-card">
+  return `<article class="leh-card" data-hl="${h.code}" tabindex="0" title="Tap to highlight on the map">
     <div class="leh-top"><span class="leh-code tnum">${h.code}</span><div class="t"><b>${esc(h.sp || '')} · ${esc(h.class)}</b>
       <span class="muted">${esc(h.area)} · <span class="nowrap">MU ${esc(h.mu.replace(/\*+/g, ''))}${h.zone ? ' zone ' + esc(h.zone) : ''}</span>${h.partial ? ' (part)' : ''}</span></div>
       <div class="leh-odds ${o.cls}"><b>${o.big}</b><span>${esc(o.small)}</span></div></div>
@@ -119,17 +119,38 @@ export async function handleLehClick(e, hunts) {
   const ch = e.target.closest('[data-choice]')?.dataset.choice;
   if (ch) { const l = store.leh.find((x) => x.id === ch); const other = store.leh.find((x) => x.id !== ch && String(x.year) === String(l.year) && x.species === l.species);
     await db.update('leh', ch, { choice: l.choice === 2 ? 1 : 2 }); if (other) await db.update('leh', other.id, { choice: l.choice === 2 ? 2 : 1 }); return; }
-  const mp = e.target.closest('[data-lehmap]')?.dataset.lehmap;
+  const mp = e.target.closest('[data-lehmap]')?.dataset.lehmap || (!e.target.closest('button,a,input,select') && e.target.closest('[data-hl]')?.dataset.hl);
   if (mp) {
     hunts = hunts || (await loadLeh()).hunts; const h = hunts.find((x) => x.code === mp);
-    const id = { Moose: 'leh_moose', Elk: 'leh_elk', 'Mule Deer': 'leh_mule_deer', 'White-tailed Deer': 'leh_white_tailed_deer', 'Mountain Goat': 'leh_mountain_goat', 'Mountain Sheep': 'leh_mountain_sheep', Caribou: 'leh_caribou', Bison: 'leh_bison', Turkey: 'leh_turkey', 'Black Bear': 'leh_black_bear' }[h.sp];
-    if (id) M.setLayer(id, true);
-    const cs = []; const walk = (a) => (typeof a[0] === 'number' ? cs.push(a) : a.forEach(walk));
-    for (const f of M.WMU_GEO?.features || []) if (h.mus.includes(f.properties.id)) walk(f.geometry.coordinates);
-    if (cs.length) M.fitTo(cs);
-    toast(`${h.code}: ${h.sp} LEH zones shown${h.partial || h.zone ? ' (hunt covers only part of the unit; see synopsis map)' : ''}`, 4000);
-    if (innerWidth <= 760) (await import('../main.js?v=20261113050808-88c37d4')).closePanel();
+    document.querySelectorAll('.leh-card.hl').forEach((c) => c.classList.remove('hl'));
+    document.querySelectorAll(`.leh-card[data-hl="${mp}"]`).forEach((c) => c.classList.add('hl'));
+    await highlightHunt(h);
   }
+}
+
+// Outline the hunt's exact LEH area (zone or whole unit) from the BC LEH zone layer; fall back to the unit outline.
+const TYPE = { 'Mule Deer': 'MULE DEER', 'White-tailed Deer': 'WHITE-TAILED DEER', 'Mountain Goat': 'MOUNTAIN GOAT', 'Mountain Sheep': 'MOUNTAIN SHEEP', 'Black Bear': 'BLACK BEAR' };
+const areaCache = new Map();
+async function lehArea(h) {
+  const id = (h.mus[0] || '').replace(/^(\d)-(\d+)$/, (m, a, b) => a + String(b).padStart(2, '0')) + (h.zone || '');
+  const type = TYPE[h.sp] || (h.sp || '').toUpperCase();
+  const key = type + '|' + id;
+  if (!areaCache.has(key)) areaCache.set(key, (async () => {
+    const p = new URLSearchParams({ service: 'WFS', version: '2.0.0', request: 'GetFeature', typeName: 'pub:WHSE_WILDLIFE_MANAGEMENT.WAA_LTD_HNT_ZONE_CURR_YEAR_SVW', outputFormat: 'application/json', srsName: 'EPSG:4326',
+      CQL_FILTER: `LTD_ENTRY_HUNTING_ZONE_TYPE='${type}' AND LEH_HUNT_AREA_ID='${id}'` });
+    try { const j = await (await fetch(`https://openmaps.gov.bc.ca/geo/pub/wfs?${p}`)).json(); return j.features?.length ? j : null; } catch { return null; }
+  })());
+  return areaCache.get(key);
+}
+export async function highlightHunt(h) {
+  const { selChip } = await import('../main.js?v=20261113051435-cd982ac');
+  let fc = await lehArea(h); let exact = !!fc;
+  if (!fc) fc = { type: 'FeatureCollection', features: (M.WMU_GEO?.features || []).filter((f) => h.mus.includes(f.properties.id)) };
+  fc = { type: 'FeatureCollection', features: fc.features.map((f) => ({ ...f, properties: { stroke: '#ff8a00', fill: '#ff8a00', fillOpacity: 0.22 } })) };
+  M.setSelection(fc);
+  const cs = []; const walk = (a) => (typeof a[0] === 'number' ? cs.push(a) : a.forEach(walk)); fc.features.forEach((f) => walk(f.geometry.coordinates));
+  if (cs.length) M.fitTo(cs, { maxZoom: 11 });
+  selChip(`${h.code} · ${h.sp} ${h.class}${exact ? '' : ' (unit outline)'}`);
 }
 export function onData(w) { if (['tags', 'leh', 'all'].includes(w) && render.v?.isConnected) render(render.v); }
 

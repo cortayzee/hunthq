@@ -1,20 +1,20 @@
-import * as db from './db.js?v=20261113050808-88c37d4';
-import { store } from './db.js?v=20261113050808-88c37d4';
-import * as M from './map.js?v=20261113050808-88c37d4';
-import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261113050808-88c37d4';
-import { $, $$, esc, toast, closeModal, requestClose, todayISO, earthLink } from './util.js?v=20261113050808-88c37d4';
-import { REGS_URL, BASES } from './config.js?v=20261113050808-88c37d4';
-import { sunInfo } from './views/sun.js?v=20261113050808-88c37d4';
-import { mvprSummary, mvprStatus } from './mvpr.js?v=20261113050808-88c37d4';
-import { icon, hydrateIcons } from './icons.js?v=20261113050808-88c37d4';
-import * as R from './route.js?v=20261113050808-88c37d4';
-import * as V from './vis.js?v=20261113050808-88c37d4';
+import * as db from './db.js?v=20261113051435-cd982ac';
+import { store } from './db.js?v=20261113051435-cd982ac';
+import * as M from './map.js?v=20261113051435-cd982ac';
+import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261113051435-cd982ac';
+import { $, $$, esc, toast, closeModal, requestClose, todayISO, earthLink } from './util.js?v=20261113051435-cd982ac';
+import { REGS_URL, BASES } from './config.js?v=20261113051435-cd982ac';
+import { sunInfo } from './views/sun.js?v=20261113051435-cd982ac';
+import { mvprSummary, mvprStatus } from './mvpr.js?v=20261113051435-cd982ac';
+import { icon, hydrateIcons } from './icons.js?v=20261113051435-cd982ac';
+import * as R from './route.js?v=20261113051435-cd982ac';
+import * as V from './vis.js?v=20261113051435-cd982ac';
 
 const views = {};
 const viewModules = {
-  layers: () => import('./views/layers.js?v=20261113050808-88c37d4'), open: () => import('./views/open.js?v=20261113050808-88c37d4'), log: () => import('./views/log.js?v=20261113050808-88c37d4'),
-  trips: () => import('./views/trips.js?v=20261113050808-88c37d4'), tags: () => import('./views/tags.js?v=20261113050808-88c37d4'), insights: () => import('./views/insights.js?v=20261113050808-88c37d4'),
-  import: () => import('./views/import.js?v=20261113050808-88c37d4'), sun: () => import('./views/sun.js?v=20261113050808-88c37d4'), more: () => import('./views/more.js?v=20261113050808-88c37d4'),
+  layers: () => import('./views/layers.js?v=20261113051435-cd982ac'), open: () => import('./views/open.js?v=20261113051435-cd982ac'), log: () => import('./views/log.js?v=20261113051435-cd982ac'),
+  trips: () => import('./views/trips.js?v=20261113051435-cd982ac'), tags: () => import('./views/tags.js?v=20261113051435-cd982ac'), insights: () => import('./views/insights.js?v=20261113051435-cd982ac'),
+  import: () => import('./views/import.js?v=20261113051435-cd982ac'), sun: () => import('./views/sun.js?v=20261113051435-cd982ac'), more: () => import('./views/more.js?v=20261113051435-cd982ac'),
 };
 export const app = { tab: 'layers', date: todayISO(), dropMode: false };
 const isPhone = () => innerWidth <= 760;
@@ -52,23 +52,23 @@ export function closePanel() {
 }
 // Selected-WMU indicator on the map: shows which unit is highlighted red; X clears it.
 let selEl = null;
-function selChip(mu) {
+export function selChip(label) {
   if (!selEl) {
     selEl = document.createElement('div'); selEl.className = 'map-chip sel-chip hidden';
-    selEl.innerHTML = `<span class="dot" style="background:#ff4d4d"></span><span class="t"></span><button aria-label="Clear selected unit">${icon('x', { size: 16 })}</button>`;
+    selEl.innerHTML = `<span class="dot" style="background:#ff4d4d"></span><span class="t"></span><button aria-label="Clear highlight">${icon('x', { size: 16 })}</button>`;
     selEl.querySelector('button').onclick = () => { clearSelection(); if (!$$('#tabs button.active').length && !$('#app').classList.contains('panel-closed')) showTab(app.tab); };
     $('#app').append(selEl);
   }
-  selEl.querySelector('.t').textContent = mu ? `WMU ${mu} selected` : '';
-  selEl.classList.toggle('hidden', !mu);
+  selEl.querySelector('.t').textContent = label || '';
+  selEl.classList.toggle('hidden', !label);
 }
 export function clearSelection() { M.setSelection?.(null); selChip(null); }
 export async function openWmu(mu, region) {
-  const { showWmu } = await import('./views/wmu.js?v=20261113050808-88c37d4');
+  const { showWmu } = await import('./views/wmu.js?v=20261113051435-cd982ac');
   $$('#tabs button').forEach((b) => b.classList.remove('active'));
   openPanel(); const v = $('#view'); v.scrollTop = 0; v.onclick = v.onchange = v.oninput = v.onkeydown = null;
   await showWmu(v, mu, { region, date: app.date, onBack: () => showTab(app.tab) });
-  selChip(mu);
+  selChip(`WMU ${mu} selected`);
   hydrateIcons(v);
 }
 db.onChange((what) => {
@@ -213,10 +213,10 @@ function wireUI() {
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const { act, id } = b.dataset;
-    if (act === 'edit-spot') (await import('./views/log.js?v=20261113050808-88c37d4')).openSpotForm(store.spots.find((s) => s.id === id));
-    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261113050808-88c37d4')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'edit-spot') (await import('./views/log.js?v=20261113051435-cd982ac')).openSpotForm(store.spots.find((s) => s.id === id));
+    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261113051435-cd982ac')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
     if (act === 'wmu') { e.preventDefault(); popup?.remove(); M.selectWmu(b.dataset.mu); openWmu(b.dataset.mu, b.dataset.region); }
-    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261113050808-88c37d4')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261113051435-cd982ac')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
   });
   document.addEventListener('submit', (e) => {
     if (!e.target.matches('[data-wmuform]')) return; e.preventDefault();
@@ -229,12 +229,12 @@ function wireUI() {
     if (popup?.isOpen() && !app.dropMode && !app.pickHandler) { popup.remove(); popup = null; return; }
     // Tapping outside the highlighted unit clears the highlight.
     if (selEl && !selEl.classList.contains('hidden')) {
-      const inSel = M.map.queryRenderedFeatures(e.point, { layers: ['wmu-sel'] }).some((f) => f.state?.sel);
+      const inSel = M.map.queryRenderedFeatures(e.point, { layers: ['wmu-sel'] }).some((f) => f.state?.sel) || M.map.queryRenderedFeatures(e.point, { layers: ['sel-fill'] }).length > 0;
       if (!inSel) clearSelection();
     }
     if (app.dropMode) {
       setDropMode(false);
-      const { openSpotForm } = await import('./views/log.js?v=20261113050808-88c37d4');
+      const { openSpotForm } = await import('./views/log.js?v=20261113051435-cd982ac');
       const form = openSpotForm({ lat: e.lngLat.lat, lon: e.lngLat.lng });
       const res = await M.identify(e.lngLat, ['wmu']);
       const w = M.wmuFromIdentify(res); if (w && form?.wmu && !form.wmu.value) form.wmu.value = w;

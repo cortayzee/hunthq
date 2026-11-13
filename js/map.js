@@ -1,9 +1,9 @@
 // MapLibre map: base styles, 3D terrain, BC WMS overlays, identify, waypoints/tracks, open-WMU shading.
-import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261113050808-88c37d4';
-import { store } from './db.js?v=20261113050808-88c37d4';
-import { MODES, fmtKm } from './elevation.js?v=20261113050808-88c37d4';
-import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261113050808-88c37d4';
-import { esc, earthLink, fmtDT } from './util.js?v=20261113050808-88c37d4';
+import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261113051435-cd982ac';
+import { store } from './db.js?v=20261113051435-cd982ac';
+import { MODES, fmtKm } from './elevation.js?v=20261113051435-cd982ac';
+import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261113051435-cd982ac';
+import { esc, earthLink, fmtDT } from './util.js?v=20261113051435-cd982ac';
 
 export let map;
 const state = { base: 'sat', terrain: false, exag: 1.5, hillshade: false, ref: false, hiddenWmu: [], layers: {}, opacity: {}, shade: null, custom: [] };
@@ -275,7 +275,8 @@ function addDataLayers() {
   map.addSource('hot', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
   map.addLayer({ id: 'hot-fill', type: 'fill', source: 'hot', paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.35, 'fill-outline-color': ['get', 'color'] } }, 'tracks-line');
   map.addSource('sel', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-  map.addLayer({ id: 'sel-line', type: 'line', source: 'sel', paint: { 'line-color': '#ff4d4d', 'line-width': 3.5 } }, 'tracks-line');
+  map.addLayer({ id: 'sel-fill', type: 'fill', source: 'sel', paint: { 'fill-color': ['coalesce', ['get', 'fill'], '#ff4d4d'], 'fill-opacity': ['coalesce', ['get', 'fillOpacity'], 0] } }, 'tracks-line');
+  map.addLayer({ id: 'sel-line', type: 'line', source: 'sel', paint: { 'line-color': ['coalesce', ['get', 'stroke'], '#ff4d4d'], 'line-width': 3.5 } }, 'tracks-line');
   for (const l of ['spots-dot', 'tracks-line']) {
     map.on('mouseenter', l, () => (map.getCanvas().style.cursor = 'pointer'));
     map.on('mouseleave', l, () => (map.getCanvas().style.cursor = ''));
@@ -326,8 +327,10 @@ export function spotPopupHTML(s) {
 }
 
 export function flyTo(lon, lat, zoom = 13) { map.flyTo({ center: [lon, lat], zoom: Math.max(map.getZoom(), zoom) }); }
-export function fitTo(coords) {
+export function fitTo(coords, { maxZoom = 14 } = {}) {
   if (!coords.length) return;
   const b = coords.reduce((bb, c) => bb.extend(c), new maplibregl.LngLatBounds(coords[0], coords[0]));
-  map.fitBounds(b, { padding: 60, maxZoom: 14, duration: reducedMotion() ? 0 : 900 });
+  // On phones the bottom sheet covers the lower half: keep the area in the visible top part.
+  const sheet = innerWidth <= 760 && !document.getElementById('app').classList.contains('panel-closed') ? Math.round(innerHeight * 0.5) : 0;
+  map.fitBounds(b, { padding: { top: 70, left: 40, right: 60, bottom: 40 + sheet }, maxZoom, duration: reducedMotion() ? 0 : 900 });
 }

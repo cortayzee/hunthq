@@ -322,7 +322,7 @@ details.region > summary .name { flex: 1; font-weight: 550; }
 .map-chip .dot { width: 9px; height: 9px; border-radius: 50%; background: #2fbf4a; flex: 0 0 auto; }
 .map-chip button { width: 32px; height: 32px; min-height: 0; padding: 0; border: none; border-radius: 50%; background: var(--chrome-2); color: var(--chrome-ink); }
 .app:not(.panel-closed) .map-chip { left: calc(50% + var(--panel-w) / 2); max-width: calc(100vw - var(--panel-w) - 280px); }
-@media (max-width: 760px) { .map-chip { top: calc(66px + env(safe-area-inset-top)); left: 10px; transform: none; max-width: calc(100vw - 80px); } @starting-style { .map-chip { opacity: 0; transform: translateY(-6px); } } .app:not(.panel-closed) .map-chip { left: 10px; } }
+@media (max-width: 760px) { .map-chip { top: calc(66px + env(safe-area-inset-top)); left: 10px; transform: none; max-width: calc(100vw - 80px); } @starting-style { .map-chip { opacity: 0; transform: translateY(-6px); } } .app:not(.panel-closed) .map-chip { left: 10px; max-width: calc(100vw - 80px); } }
 
 /* ---------- Waypoint badges & pickers ---------- */
 .spot-badge { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; box-shadow: 0 0 0 2px #fff, var(--shadow-sm); flex: 0 0 auto; }
@@ -526,3 +526,9 @@ details.lyr-sec[open] > summary { border-bottom: 1px solid var(--line); backgrou
 .odds-bar { height: 5px; border-radius: 99px; background: var(--panel-2); overflow: hidden; } .odds-bar span { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
 .leh-act { margin-top: 8px; }
 .nowrap { white-space: nowrap; }
+
+.leh-card { cursor: pointer; transition: border-color 150ms ease, box-shadow 150ms ease; }
+.leh-card.hl { border-color: #ff8a00; box-shadow: 0 0 0 2px rgba(255,138,0,.35); }
+@media (hover: hover) and (pointer: fine) { .leh-card:hover { border-color: var(--line-2); } }
+
+.map-chip { width: max-content; } .map-chip .t { flex: 1 1 auto; min-width: 0; white-space: nowrap; }

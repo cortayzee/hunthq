@@ -1,9 +1,9 @@
 // iHunter-style WMU detail: every general season in the WMU, Open/Closed for the chosen date, grouped by category.
-import { seasonsFor, openRange, fmtMD } from '../seasons.js?v=20261113050808-88c37d4';
-import { REGS_URL, BC_WFS, WMU_LAYER, WMU_FIELD } from '../config.js?v=20261113050808-88c37d4';
-import { esc, todayISO } from '../util.js?v=20261113050808-88c37d4';
-import * as M from '../map.js?v=20261113050808-88c37d4';
-import { icon } from '../icons.js?v=20261113050808-88c37d4';
+import { seasonsFor, openRange, fmtMD } from '../seasons.js?v=20261113051435-cd982ac';
+import { REGS_URL, BC_WFS, WMU_LAYER, WMU_FIELD } from '../config.js?v=20261113051435-cd982ac';
+import { esc, todayISO } from '../util.js?v=20261113051435-cd982ac';
+import * as M from '../map.js?v=20261113051435-cd982ac';
+import { icon } from '../icons.js?v=20261113051435-cd982ac';
 
 const BIG = /deer|moose|elk|goat|sheep|caribou|bison/i;
 const PRED = /bear|cougar|wolf|coyote|lynx|bobcat|wolverine|raccoon|skunk|fox|marten|fisher/i;
@@ -99,7 +99,7 @@ export async function showWmu(view, mu, { region, date = todayISO(), onBack } = 
   view.querySelector('#wBack').onclick = () => onBack?.();
   view.querySelector('#wJump').onclick = () => outline(mu, true);
   M.selectWmu(mu); outline(mu, false);
-  import('./tags.js?v=20261113050808-88c37d4').then(async (T) => {
+  import('./tags.js?v=20261113051435-cd982ac').then(async (T) => {
     const hs = await T.lehForMu(mu); const el = view.querySelector('#wLeh'); if (!el) return;
     view.querySelector('#wLehN').textContent = `· ${hs.length}`;
     el.innerHTML = hs.length ? `<p class="muted fine">Odds are last year's first-choice odds. Apply by June 23, 2026 on WILD.</p>${hs.map((h) => T.huntCard(h)).join('')}` : '<p class="muted">No LEH hunts list this unit.</p>';

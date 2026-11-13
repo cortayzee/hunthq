@@ -1,5 +1,5 @@
 // BC general open seasons (2026–2028 synopsis). See hunt-hq-handoff/data/SEASONS_QA.md for known gaps.
-import { SEASONS_URL, SYNOPSIS_RANGE } from './config.js?v=20261113050808-88c37d4';
+import { SEASONS_URL, SYNOPSIS_RANGE } from './config.js?v=20261113051435-cd982ac';
 
 export let SEASONS = [];
 
