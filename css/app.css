@@ -510,3 +510,19 @@ details.lyr-sec[open] > summary { border-bottom: 1px solid var(--line); backgrou
 .r-here { background: var(--warn-soft); border-radius: 8px; padding: 8px 10px; margin: 6px 0; }
 .r-ok { background: var(--ok-soft); border-radius: 8px; padding: 8px 10px; margin: 6px 0; }
 .r-sec { margin: 6px 0; } .r-other summary { color: var(--muted); cursor: pointer; font-size: .9em; }
+
+/* ---------- LEH ---------- */
+.how summary { cursor: pointer; } .how-list { margin: 10px 0 4px; padding-left: 18px; } .how-list li { margin: 6px 0; line-height: 1.45; font-size: .92em; }
+.picks .pick-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.picks .pick-row:first-of-type { margin-top: 8px; } .pick-row .t, .wp-row .t { flex: 1; min-width: 0; } .pick-row .t b, .pick-row .t .muted { display: block; }
+.pick-n { font-size: .74em; font-weight: 700; background: var(--accent-soft); color: var(--accent-strong); border-radius: 6px; padding: 3px 6px; white-space: nowrap; }
+.sp-filter { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; } .sp-filter::-webkit-scrollbar { display: none; } .sp-filter .f-chip { flex: 0 0 auto; padding: 0 12px; }
+.leh-card { border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; margin: 8px 0; background: var(--panel); }
+.leh-top { display: flex; gap: 10px; align-items: flex-start; } .leh-top .t { flex: 1; min-width: 0; } .leh-top .t b, .leh-top .t .muted { display: block; } .leh-top .t .muted { font-size: .82em; }
+.leh-code { font-weight: 800; font-size: .9em; background: var(--chrome); color: var(--chrome-ink); border-radius: 7px; padding: 4px 7px; }
+.leh-odds { text-align: right; flex: 0 0 auto; } .leh-odds b { display: block; font-size: 1.05em; } .leh-odds span { font-size: .72em; color: var(--muted); display: block; max-width: 140px; }
+.leh-odds.ok b { color: var(--ok); } .leh-odds.warn b { color: var(--warn); } .leh-odds.bad b { color: var(--bad); }
+.leh-meta { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: .82em; color: var(--muted); margin: 8px 0 6px; } .leh-meta span { display: inline-flex; align-items: center; gap: 4px; }
+.odds-bar { height: 5px; border-radius: 99px; background: var(--panel-2); overflow: hidden; } .odds-bar span { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.leh-act { margin-top: 8px; }
+.nowrap { white-space: nowrap; }

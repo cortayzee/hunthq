@@ -35,7 +35,7 @@ export function modal(content, { wide = false } = {}) {
   m.classList.remove('hidden'); m.classList.remove('dirty'); m.dataset.dirty = '';
   const mark = (e) => { if (e.target.closest('form')) markDirty(); };
   body.addEventListener('input', mark); body.addEventListener('change', mark);
-  import('./icons.js?v=20261113044709-1cc4355').then((i) => i.hydrateIcons(body));
+  import('./icons.js?v=20261113050808-88c37d4').then((i) => i.hydrateIcons(body));
   return body;
 }
 export function markDirty() { const m = $('#modal'); m.dataset.dirty = '1'; m.classList.add('dirty'); }
