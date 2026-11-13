@@ -1,13 +1,13 @@
-import * as db from '../db.js?v=20261113162631-a815802';
-import { store, hunters } from '../db.js?v=20261113162631-a815802';
-import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261113162631-a815802';
-import { hunterDatalist, speciesDatalist } from './log.js?v=20261113162631-a815802';
-import { icon } from '../icons.js?v=20261113162631-a815802';
-import * as M from '../map.js?v=20261113162631-a815802';
-import * as LIC from '../licences.js?v=20261113162631-a815802';
-import * as L from '../limits.js?v=20261113162631-a815802';
-import { SEASONS, openRange } from '../seasons.js?v=20261113162631-a815802';
-import { muSort } from '../seasons.js?v=20261113162631-a815802';
+import * as db from '../db.js?v=20261113164139-93b0f19';
+import { store, hunters } from '../db.js?v=20261113164139-93b0f19';
+import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261113164139-93b0f19';
+import { hunterDatalist, speciesDatalist } from './log.js?v=20261113164139-93b0f19';
+import { icon } from '../icons.js?v=20261113164139-93b0f19';
+import * as M from '../map.js?v=20261113164139-93b0f19';
+import * as LIC from '../licences.js?v=20261113164139-93b0f19';
+import * as L from '../limits.js?v=20261113164139-93b0f19';
+import { SEASONS, openRange } from '../seasons.js?v=20261113164139-93b0f19';
+import { muSort } from '../seasons.js?v=20261113164139-93b0f19';
 
 // Tags & LEH. LEH hunts come from the 2026-2027 LEH synopsis (hunt-hq-handoff/data/leh_2026.json, scripts/parse_leh.py).
 const yr = new Date().getFullYear();
@@ -61,6 +61,16 @@ export function groupRule(h) {
   if (/black bear/i.test(h.sp || '') || (/elk/i.test(h.sp || '') && ['1', '2'].includes(String(h.rn)))) return null;
   return 'group';
 }
+const archeryHunt = (h) => (h.flags || []).includes('archery') || /archery/i.test(h.tag || '');
+function flagChips(h) {
+  const f = h.flags || []; const out = [];
+  const note = h.note ? ` From the LEH synopsis: “${h.note}”` : '';
+  if (f.includes('private')) out.push(`<span class="chip flag bad tip-h">Private land${tip(`Most or all of this hunt is on private land. You need each landowner's permission before you hunt, and landowners can limit how many hunters they allow.${note}`, 'Private land')}</span>`);
+  if (archeryHunt(h)) out.push(`<span class="chip flag warn tip-h">Archery only${tip(`Bows only for this hunt or zone.${note}`, 'Archery only')}</span>`);
+  if (f.includes('access')) out.push(`<span class="chip flag warn tip-h">Hard access${tip(`Access is limited.${note}`, 'Access')}</span>`);
+  if (!out.length && h.note) out.push(`<span class="chip flag tip-h">Area notes${tip(h.note, 'Area notes')}</span>`);
+  return out.join('');
+}
 function groupChip(h) {
   const g = groupRule(h); if (!g) return '';
   if (g === 'group') return `<span class="chip grp tip-h">Group OK${tip('You can apply as a group of 2 to 4. The group is one entry, and if it is drawn with enough tags left, everyone in it gets a tag. Your odds are the same as applying alone.', 'Group hunts')}</span>`;
@@ -75,7 +85,7 @@ export function huntCard(h, { compact = false } = {}) {
   return `<article class="leh-card ${p ? 'picked' : ''}" data-hl="${h.code}" tabindex="0" title="Tap to show on the map">
     <span class="leh-code tnum">${h.code}</span>
     <div class="t"><b>${esc(h.sp || '')}, ${esc(h.class.toLowerCase())}</b><span class="muted">${esc(where)}</span>
-      <span class="leh-meta tnum">${esc(h.dates)} · ${h.auth} tag${h.auth === 1 ? '' : 's'}${h.tag ? ` · ${esc(youthHunt(h) ? 'youth only (under 18)' : h.tag.toLowerCase())}` : ''}</span>${compact ? '' : groupChip(h)}</div>
+      <span class="leh-meta tnum">${esc(h.dates)} · ${h.auth} tag${h.auth === 1 ? '' : 's'}${h.tag ? ` · ${esc(youthHunt(h) ? 'youth only (under 18)' : h.tag.toLowerCase())}` : ''}</span>${compact ? '' : `<span class="leh-flags">${flagChips(h)}${groupChip(h)}</span>`}</div>
     <div class="leh-side"><span class="leh-odds ${o.cls}" title="${esc(o.small)}">${o.big}</span>
       ${compact ? '' : p ? `<button class="pick-btn on" data-unpick="${p.id}" aria-label="Remove ${h.code} from my picks">${icon('check', { size: 16 })}${p.choice === 2 ? '2nd' : '1st'}</button>`
         : `<button class="pick-btn" data-pick="${h.code}" aria-label="Add ${h.code} to my picks">${icon('plus', { size: 16 })}Pick</button>`}</div>
@@ -85,7 +95,7 @@ export function huntCard(h, { compact = false } = {}) {
 // ---- Recommended LEH hunts ----
 // score = 45% odds + 20% hunter success in that unit + 20% familiarity (units/regions you hunt) + 15% timing (months you hunt)
 const REC_W = { odds: 0.45, succ: 0.2, fam: 0.2, time: 0.15 };
-let HV = null; const harvestData = () => HV || (HV = import('../wildlife.js?v=20261113162631-a815802').then((m) => m.harvest()).catch(() => null));
+let HV = null; const harvestData = () => HV || (HV = import('../wildlife.js?v=20261113164139-93b0f19').then((m) => m.harvest()).catch(() => null));
 function recContext(H) {
   const mus = new Set([...store.trips.map((t) => t.wmu), ...store.spots.map((x) => x.wmu)].filter(Boolean));
   const regions = new Set([...mus].map((m) => String(m).split('-')[0]));
@@ -102,7 +112,9 @@ function scoreHunt(h, c) {
   const sFam = h.mus.some((m) => c.mus.has(m)) ? 1 : c.regions.has(String(h.rn).replace(/[AB]$/, '')) ? 0.6 : 0.2;
   const hm = new Set(huntRanges(h).flatMap(([a, b]) => { const x = +a.slice(0, 2), y = +b.slice(0, 2); return x <= y ? Array.from({ length: y - x + 1 }, (_, i) => x + i) : [x, 12, 1, y]; }));
   const sTime = !c.months.size ? 0.7 : [...hm].some((m) => c.months.has(m)) ? 1 : 0.35;
-  const score = Math.round(100 * (REC_W.odds * sOdds + REC_W.succ * sSucc + REC_W.fam * sFam + REC_W.time * sTime));
+  // Access: private-land and archery-only hunts are hard to fill even when drawn.
+  const f = h.flags || []; const sAccess = (f.includes('private') ? 0.45 : 1) * (archeryHunt(h) ? 0.75 : 1) * (f.includes('access') ? 0.85 : 1);
+  const score = Math.round(100 * sAccess * (REC_W.odds * sOdds + REC_W.succ * sSucc + REC_W.fam * sFam + REC_W.time * sTime));
   const why = [];
   if (st?.succ != null && st.h >= 10) why.push(`${Math.round(st.succ)}% hunter success`);
   if (sFam === 1) why.push(`you hunt ${h.mus.find((m) => c.mus.has(m))}`); else if (sFam === 0.6) why.push(`a region you hunt`);
@@ -150,9 +162,11 @@ export async function render(v) {
     }).join('') : '<p class="muted" style="margin:6px 0 0">No picks yet. Add a 1st and 2nd choice per species from the list below.</p>'}
     ${picks.length ? `<p class="muted fine">Codes to enter: ${[...new Set(picks.map((l) => l.species))].map((s) => `${esc(s)}: ${picks.filter((l) => l.species === s).sort((a, b) => (a.choice || 1) - (b.choice || 1)).map((l) => l.hunt_code).join(' then ')}`).join(' · ')}</p>` : ''}
   </div>
-  <details class="card rec-card" ${ui.recOpen === false ? '' : 'open'}><summary><b class="tip-h">Recommended for you${tip('Each hunt gets a score out of 100: 45% your odds of being drawn (last year\'s first-choice odds), 20% hunter success for that species in the unit (resident hunter survey), 20% whether you already hunt that unit or region, and 15% whether the season falls in months you usually hunt. Species default to the ones you apply for or hunt.', 'How picks are scored')}</b>${icon('chevR', { size: 16 })}</summary>
+  <details class="card rec-card" ${ui.recOpen === false ? '' : 'open'}><summary><b class="tip-h">Recommended for you${tip('Each hunt gets a score out of 100: 45% your odds of being drawn (last year\'s first-choice odds), 20% hunter success for that species in the unit (resident hunter survey), 20% whether you already hunt that unit or region, and 15% whether the season falls in months you usually hunt. Hunts that are mostly private land (permission needed) score less than half, archery-only and hard-access hunts score lower too. Species default to the ones you apply for or hunt.', 'How picks are scored')}</b>${icon('chevR', { size: 16 })}</summary>
     <div class="rec-opts"><div class="sp-filter rec-sp">${species.map((x) => `<button class="f-chip" data-rsp="${esc(x)}" aria-pressed="${recSp().has(x)}">${esc(x)}</button>`).join('')}</div>
-      <label class="switch"><input type="checkbox" id="recMale" ${ui.recMale ? 'checked' : ''}><span>Bulls, bucks and rams only</span></label></div>
+      <label class="switch"><input type="checkbox" id="recMale" ${ui.recMale ? 'checked' : ''}><span>Bulls, bucks and rams only</span></label>
+      <label class="switch"><input type="checkbox" id="recPub" ${ui.recPub !== false ? 'checked' : ''}><span>Skip private-land hunts</span></label>
+      <label class="switch"><input type="checkbox" id="recRifle" ${ui.recRifle ? 'checked' : ''}><span>Skip archery-only hunts</span></label></div>
     <div id="recList"><p class="muted">Scoring hunts…</p></div></details>
   <h3 class="sub-h">Find hunts <span class="muted tnum">${hunts.length}</span></h3>
   <div class="sp-filter">${['', ...species].map((s) => `<button class="f-chip" aria-pressed="${ui.sp === s}" data-sp="${esc(s)}">${esc(s || 'All')}</button>`).join('')}</div>
@@ -169,7 +183,7 @@ export async function render(v) {
   render.reveal = (code) => { ui.pin = code; draw(); };
   const drawRec = () => {
     const el = body.querySelector('#recList'); if (!el) return;
-    const per = {}; const top = hunts.filter((h) => visible(h) && recSp().has(h.sp) && (!ui.recMale || maleOnly(h))).sort((a, b) => scoreOf.get(b.code).score - scoreOf.get(a.code).score)
+    const per = {}; const top = hunts.filter((h) => visible(h) && recSp().has(h.sp) && (!ui.recMale || maleOnly(h)) && (ui.recPub === false || !(h.flags || []).includes('private')) && (!ui.recRifle || !archeryHunt(h))).sort((a, b) => scoreOf.get(b.code).score - scoreOf.get(a.code).score)
       .filter((h) => ((per[h.sp] = (per[h.sp] || 0) + 1) <= 2)).slice(0, 6);
     el.innerHTML = top.length ? top.map((h) => { const r = scoreOf.get(h.code); return `<div class="rec-item"><span class="rec-score tnum" title="Score out of 100">${r.score}</span>${huntCard(h)}<div class="rec-why">${r.why.map((w) => `<span>${esc(w)}</span>`).join('')}</div></div>`; }).join('')
       : '<p class="muted">Pick at least one species above.</p>';
@@ -193,6 +207,8 @@ export async function render(v) {
   body.querySelector('#lSort').onchange = (e) => { ui.sort = e.target.value; draw(); };
   body.querySelector('.rec-sp').onclick = (e) => { const b = e.target.closest('[data-rsp]'); if (!b) return; const set = recSp(); set.has(b.dataset.rsp) ? set.delete(b.dataset.rsp) : set.add(b.dataset.rsp); b.setAttribute('aria-pressed', String(set.has(b.dataset.rsp))); drawRec(); };
   body.querySelector('#recMale').onchange = (e) => { ui.recMale = e.target.checked; drawRec(); };
+  body.querySelector('#recPub').onchange = (e) => { ui.recPub = e.target.checked; drawRec(); };
+  body.querySelector('#recRifle').onchange = (e) => { ui.recRifle = e.target.checked; drawRec(); };
   body.querySelector('.rec-card').addEventListener('toggle', (e) => { ui.recOpen = e.target.open; });
   body.querySelector('#lWhen').onchange = (e) => { ui.when = e.target.value; ui.limit = 40; ui.pin = ''; body.querySelector('#lDayWrap').classList.toggle('hidden', ui.when !== 'day'); if (ui.when === 'day' && !ui.day) { ui.day = new Date().toISOString().slice(0, 10); body.querySelector('#lDay').value = ui.day; } draw(); };
   body.querySelector('#lDay').onchange = (e) => { ui.day = e.target.value; ui.limit = 40; draw(); };
@@ -282,7 +298,7 @@ async function lehArea(h) {
   return areaCache.get(key);
 }
 export async function highlightHunt(h) {
-  const { selChip } = await import('../main.js?v=20261113162631-a815802');
+  const { selChip } = await import('../main.js?v=20261113164139-93b0f19');
   let fc = await lehArea(h); let exact = !!fc;
   if (!fc) fc = { type: 'FeatureCollection', features: (M.WMU_GEO?.features || []).filter((f) => h.mus.includes(f.properties.id)) };
   fc = { type: 'FeatureCollection', features: fc.features.map((f) => ({ ...f, properties: { stroke: '#ff8a00', fill: '#ff8a00', fillOpacity: 0.22 } })) };
@@ -358,7 +374,7 @@ function renderTags(body) {
   ${S.untagged.length ? `<div class="notice tip-h">${S.untagged.length} kill${S.untagged.length === 1 ? '' : 's'} without a tag: ${S.untagged.map((k) => esc(`${k.s.species} ${fmtD(k.d)}`)).join(', ')}.&nbsp;<button class="link" id="tagKills">Add tag${S.untagged.length === 1 ? '' : 's'}</button></div>` : ''}`;
   body.onclick = async (e) => {
     const yb = e.target.closest('[data-ly]'); if (yb) { tui.year = +yb.dataset.ly; renderTags(body); return; }
-    if (e.target.closest('#goLic')) { import('../main.js?v=20261113162631-a815802').then((m) => m.showTabPublic('more')); return; }
+    if (e.target.closest('#goLic')) { import('../main.js?v=20261113164139-93b0f19').then((m) => m.showTabPublic('more')); return; }
     if (e.target.closest('#addTags')) { addTagsSheet(y); return; }
     if (e.target.closest('#allRegs')) { tui.allRegs = !tui.allRegs; renderTags(body); return; }
     if (e.target.closest('#tagKills')) { for (const k of S.untagged) await db.insert('tags', { year: y, species: k.s.species, tag_type: 'General', hunter: 'Me' }); toast('Tags added'); return; }

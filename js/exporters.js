@@ -1,5 +1,5 @@
-import { KINDS, kindColor } from './config.js?v=20261113162631-a815802';
-import { download, esc, toCSV, todayISO } from './util.js?v=20261113162631-a815802';
+import { KINDS, kindColor } from './config.js?v=20261113164139-93b0f19';
+import { download, esc, toCSV, todayISO } from './util.js?v=20261113164139-93b0f19';
 
 const kmlColor = (hex) => { const h = hex.replace('#', ''); return 'ff' + h.slice(4, 6) + h.slice(2, 4) + h.slice(0, 2); };
 const desc = (s) => [s.species && `Species: ${s.species} ${s.sex || ''}`, s.hunter && `Hunter: ${s.hunter}`, s.observed_at && `When: ${s.observed_at}`, s.wmu && `WMU: ${s.wmu}`, s.weapon && `Weapon: ${s.weapon}`, s.notes].filter(Boolean).join('\n');
