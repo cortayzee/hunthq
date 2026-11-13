@@ -1,6 +1,6 @@
 // Data layer: Supabase (synced) or local mode (localStorage). Everything is cached in `store`.
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=20261113172831-3298ad6';
-import { uuid } from './util.js?v=20261113172831-3298ad6';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=20261113175850-e805291';
+import { uuid } from './util.js?v=20261113175850-e805291';
 
 export const TABLES = { spots: 'hunt_spots', trips: 'hunt_trips', tracks: 'hunt_tracks', tags: 'hunt_tags', leh: 'hunt_leh' };
 export const store = { spots: [], trips: [], tracks: [], tags: [], leh: [], prefs: {} };
@@ -32,12 +32,18 @@ export async function signIn(email, password) {
   const { data, error } = await client().auth.signInWithPassword({ email, password });
   if (error) throw error; user = data.user; mode = 'remote'; localStorage.setItem('hunthq_mode', 'remote');
 }
-export async function signUp(email, password) {
-  const { data, error } = await client().auth.signUp({ email, password, options: { emailRedirectTo: location.href.split('#')[0] } });
+export async function signUp(email, password, name) {
+  const { data, error } = await client().auth.signUp({ email, password, options: { emailRedirectTo: location.href.split('#')[0], data: name ? { name } : undefined } });
   if (error) throw error;
   if (data.session) { user = data.user; mode = 'remote'; localStorage.setItem('hunthq_mode', 'remote'); return true; }
   return false; // email confirmation required
 }
+export async function resetPassword(email) {
+  const { error } = await client().auth.resetPasswordForEmail(email, { redirectTo: location.href.split('#')[0] }); if (error) throw error;
+}
+export async function updatePassword(password) { const { error } = await client().auth.updateUser({ password }); if (error) throw error; }
+// Fires when someone opens the reset link from their email.
+export function onRecovery(fn) { client().auth.onAuthStateChange((ev) => { if (ev === 'PASSWORD_RECOVERY') fn(); }); }
 export function useLocal() { mode = 'local'; localStorage.setItem('hunthq_mode', 'local'); }
 export async function signOut() {
   if (mode === 'remote') await client().auth.signOut();

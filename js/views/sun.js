@@ -1,7 +1,7 @@
-import { esc, fmtTime, todayISO, tip } from '../util.js?v=20261113172831-3298ad6';
-import { moonSVG } from '../rut.js?v=20261113172831-3298ad6';
-import { icon } from '../icons.js?v=20261113172831-3298ad6';
-import * as M from '../map.js?v=20261113172831-3298ad6';
+import { esc, fmtTime, todayISO, tip } from '../util.js?v=20261113175850-e805291';
+import { moonSVG } from '../rut.js?v=20261113175850-e805291';
+import { icon } from '../icons.js?v=20261113175850-e805291';
+import * as M from '../map.js?v=20261113175850-e805291';
 
 const PH = [[0.03, 'New moon', '🌑'], [0.22, 'Waxing crescent', '🌒'], [0.28, 'First quarter', '🌓'], [0.47, 'Waxing gibbous', '🌔'], [0.53, 'Full moon', '🌕'], [0.72, 'Waning gibbous', '🌖'], [0.78, 'Last quarter', '🌗'], [0.97, 'Waning crescent', '🌘'], [1.01, 'New moon', '🌑']];
 const add = (d, min) => (d && !isNaN(d) ? new Date(d.getTime() + min * 60000) : null);
@@ -35,7 +35,7 @@ export function render(v) {
       ${r('Moonrise and moonset', `${s.moonrise} – ${s.moonset}`)}</div>
       <h3 class="list-h">Next 14 days</h3><div class="table-wrap"><table><thead><tr><th>Day</th><th>Legal light</th><th>Moon</th></tr></thead><tbody>${week}</tbody></table></div>`;
   };
-  v.querySelector('[data-back]').onclick = () => import('../main.js?v=20261113172831-3298ad6').then((m) => m.showTabPublic('insights'));
+  v.querySelector('[data-back]').onclick = () => import('../main.js?v=20261113175850-e805291').then((m) => m.showTabPublic('insights'));
   v.querySelector('#sDate').onchange = draw;
   draw();
 }

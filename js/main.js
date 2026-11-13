@@ -1,20 +1,20 @@
-import * as db from './db.js?v=20261113172831-3298ad6';
-import { store } from './db.js?v=20261113172831-3298ad6';
-import * as M from './map.js?v=20261113172831-3298ad6';
-import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261113172831-3298ad6';
-import { $, $$, esc, initTips, toast, closeModal, requestClose, todayISO } from './util.js?v=20261113172831-3298ad6';
-import { REGS_URL, BASES } from './config.js?v=20261113172831-3298ad6';
-import { sunInfo } from './views/sun.js?v=20261113172831-3298ad6';
-import { mvprSummary, mvprStatus } from './mvpr.js?v=20261113172831-3298ad6';
-import { icon, hydrateIcons } from './icons.js?v=20261113172831-3298ad6';
-import * as R from './route.js?v=20261113172831-3298ad6';
-import * as V from './vis.js?v=20261113172831-3298ad6';
+import * as db from './db.js?v=20261113175850-e805291';
+import { store } from './db.js?v=20261113175850-e805291';
+import * as M from './map.js?v=20261113175850-e805291';
+import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261113175850-e805291';
+import { $, $$, esc, initTips, toast, closeModal, requestClose, todayISO } from './util.js?v=20261113175850-e805291';
+import { REGS_URL, BASES } from './config.js?v=20261113175850-e805291';
+import { sunInfo } from './views/sun.js?v=20261113175850-e805291';
+import { mvprSummary, mvprStatus } from './mvpr.js?v=20261113175850-e805291';
+import { icon, hydrateIcons } from './icons.js?v=20261113175850-e805291';
+import * as R from './route.js?v=20261113175850-e805291';
+import * as V from './vis.js?v=20261113175850-e805291';
 
 const views = {};
 const viewModules = {
-  layers: () => import('./views/layers.js?v=20261113172831-3298ad6'), open: () => import('./views/open.js?v=20261113172831-3298ad6'), log: () => import('./views/log.js?v=20261113172831-3298ad6'),
-  trips: () => import('./views/trips.js?v=20261113172831-3298ad6'), tags: () => import('./views/tags.js?v=20261113172831-3298ad6'), insights: () => import('./views/insights.js?v=20261113172831-3298ad6'),
-  import: () => import('./views/import.js?v=20261113172831-3298ad6'), sun: () => import('./views/sun.js?v=20261113172831-3298ad6'), more: () => import('./views/more.js?v=20261113172831-3298ad6'),
+  layers: () => import('./views/layers.js?v=20261113175850-e805291'), open: () => import('./views/open.js?v=20261113175850-e805291'), log: () => import('./views/log.js?v=20261113175850-e805291'),
+  trips: () => import('./views/trips.js?v=20261113175850-e805291'), tags: () => import('./views/tags.js?v=20261113175850-e805291'), insights: () => import('./views/insights.js?v=20261113175850-e805291'),
+  import: () => import('./views/import.js?v=20261113175850-e805291'), sun: () => import('./views/sun.js?v=20261113175850-e805291'), more: () => import('./views/more.js?v=20261113175850-e805291'),
 };
 export const app = { tab: 'layers', date: todayISO(), dropMode: false };
 const isPhone = () => innerWidth <= 760;
@@ -66,7 +66,7 @@ export function selChip(label) {
 }
 export function clearSelection() { M.setSelection?.(null); selChip(null); }
 export async function openWmu(mu, region) {
-  const { showWmu } = await import('./views/wmu.js?v=20261113172831-3298ad6');
+  const { showWmu } = await import('./views/wmu.js?v=20261113175850-e805291');
   $$('#tabs button').forEach((b) => b.classList.remove('active'));
   openPanel(); const v = $('#view'); v.scrollTop = 0; v.onclick = v.onchange = v.oninput = v.onkeydown = null;
   await showWmu(v, mu, { region, date: app.date, onBack: () => showTab(app.tab) });
@@ -81,17 +81,39 @@ db.onChange((what) => {
 // ---- Auth ----
 async function boot() {
   hydrateIcons(); initTips();
-  $('#authForm').addEventListener('submit', async (e) => {
-    e.preventDefault(); const f = e.target; $('#authMsg').textContent = '';
-    try { await db.signIn(f.email.value, f.password.value); start(); } catch (err) { $('#authMsg').textContent = err.message; }
-  });
-  $('#signupBtn').onclick = async () => {
-    const f = $('#authForm'); if (!f.reportValidity()) return;
-    try {
-      const ok = await db.signUp(f.email.value, f.password.value);
-      if (ok) start(); else $('#authMsg').innerHTML = '<span class="ok">Check your email to confirm, then sign in.</span>';
-    } catch (err) { $('#authMsg').textContent = err.message; }
+  // Welcome page: sign in / create account / reset password, one form.
+  let amode = 'in';
+  const f = $('#authForm'), msg = (t, ok) => { const m = $('#authMsg'); m.textContent = t || ''; m.className = 'auth-msg' + (ok ? ' ok' : t ? ' err' : ''); };
+  const setMode = (m) => {
+    amode = m; msg('');
+    f.querySelectorAll('[data-amode]').forEach((b) => { const on = b.dataset.amode === m; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); });
+    f.querySelector('.auth-seg').classList.toggle('hidden', m === 'reset' || m === 'newpw');
+    f.querySelector('.a-name').classList.toggle('hidden', m !== 'up');
+    f.email.closest('label').classList.toggle('hidden', m === 'newpw');
+    f.querySelector('.a-pass').classList.toggle('hidden', m === 'reset');
+    f.password.autocomplete = m === 'in' ? 'current-password' : 'new-password';
+    f.querySelector('.a-pass').firstChild.textContent = m === 'newpw' ? 'New password ' : 'Password ';
+    f.querySelector('.auth-go').textContent = { in: 'Sign in', up: 'Create account', reset: 'Email me a reset link', newpw: 'Save new password' }[m];
+    $('#forgotBtn').textContent = m === 'in' ? 'Forgot your password?' : m === 'up' ? '' : 'Back to sign in';
+    $('#forgotBtn').classList.toggle('hidden', m === 'up' || m === 'newpw');
   };
+  f.querySelector('.auth-seg').onclick = (e) => { const b = e.target.closest('[data-amode]'); if (b) setMode(b.dataset.amode); };
+  $('#forgotBtn').onclick = () => setMode(amode === 'in' ? 'reset' : 'in');
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault(); msg('');
+    const email = f.email.value.trim(), pw = f.password.value;
+    if (amode !== 'newpw' && !/^\S+@\S+\.\S+$/.test(email)) return msg('Enter your email address.');
+    if (['in', 'up', 'newpw'].includes(amode) && pw.length < 6) return msg('Passwords need at least 6 characters.');
+    const go = f.querySelector('.auth-go'); go.disabled = true;
+    try {
+      if (amode === 'in') { await db.signIn(email, pw); start(); }
+      else if (amode === 'up') { const ok = await db.signUp(email, pw, f.name.value.trim()); if (ok) start(); else msg(`Almost there. We sent a confirmation link to ${email}. Open it, then sign in.`, true); }
+      else if (amode === 'reset') { await db.resetPassword(email); msg(`If ${email} has an account, a reset link is on its way.`, true); }
+      else if (amode === 'newpw') { await db.updatePassword(pw); msg('Password saved.', true); history.replaceState(null, '', location.pathname); start(); }
+    } catch (err) { msg(/invalid login/i.test(err.message) ? 'That email and password don’t match.' : err.message); }
+    finally { go.disabled = false; }
+  });
+  db.onRecovery(() => { $('#app').classList.add('hidden'); $('#auth').classList.remove('hidden'); started = false; setMode('newpw'); });
   $('#localModeBtn').onclick = (e) => { e.preventDefault(); db.useLocal(); start(); };
   if (await db.restoreSession()) start(); else $('#auth').classList.remove('hidden');
 }
@@ -113,7 +135,7 @@ function syncBanner(msg) {
   b.querySelector('.t').textContent = msg;
 }
 async function licReminder() {
-  const LIC = await import('./licences.js?v=20261113172831-3298ad6'); const due = LIC.due();
+  const LIC = await import('./licences.js?v=20261113175850-e805291'); const due = LIC.due();
   document.querySelector('#tabs [data-tab="more"]')?.classList.toggle('has-dot', due.length > 0);
   if (!due.length) return;
   const today = todayISO(); try { if (localStorage.getItem('hunthq_licnote') === today) return; localStorage.setItem('hunthq_licnote', today); } catch {}
@@ -138,11 +160,12 @@ async function start() {
   $('#auth').classList.add('hidden'); $('#app').classList.remove('hidden');
   await loadData();
   watchFreshness();
+  const nm = db.getUser()?.user_metadata?.name; if (nm && !store.prefs.myName) db.savePrefs({ myName: nm }).catch(() => {});
   licReminder();
   await loadSeasons();
   const saved = store.prefs.map || {};
   await M.initMap('map', store.prefs);
-  import('./wildlife.js?v=20261113172831-3298ad6').then((W) => { const go = () => (M.map.getLayer('wmu-fill') ? W.restore() : setTimeout(go, 300)); go(); });
+  import('./wildlife.js?v=20261113175850-e805291').then((W) => { const go = () => (M.map.getLayer('wmu-fill') ? W.restore() : setTimeout(go, 300)); go(); });
   if (saved.pitch && !saved.terrain) M.map.setPitch(0);
   V.apply();
   wireUI();
@@ -239,12 +262,12 @@ function wireUI() {
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const { act, id } = b.dataset;
-    if (act === 'edit-spot') (await import('./views/log.js?v=20261113172831-3298ad6')).openSpotForm(store.spots.find((s) => s.id === id));
-    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261113172831-3298ad6')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'edit-spot') (await import('./views/log.js?v=20261113175850-e805291')).openSpotForm(store.spots.find((s) => s.id === id));
+    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261113175850-e805291')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
     if (act === 'wmu') { e.preventDefault(); popup?.remove(); M.selectWmu(b.dataset.mu); openWmu(b.dataset.mu, b.dataset.region); }
     if (act === 'fc-here') { e.preventDefault(); popup?.remove(); popup = null; const I = views.insights || (views.insights = await viewModules.insights());
       I.openForecast({ lat: +b.dataset.lat, lng: +b.dataset.lon, label: b.dataset.label || '' }); await showTab('insights'); }
-    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261113172831-3298ad6')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261113175850-e805291')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
   });
   document.addEventListener('submit', (e) => {
     if (!e.target.matches('[data-wmuform]')) return; e.preventDefault();
@@ -262,7 +285,7 @@ function wireUI() {
     }
     if (app.dropMode) {
       setDropMode(false);
-      const { openSpotForm } = await import('./views/log.js?v=20261113172831-3298ad6');
+      const { openSpotForm } = await import('./views/log.js?v=20261113175850-e805291');
       const form = openSpotForm({ lat: e.lngLat.lat, lon: e.lngLat.lng });
       const res = await M.identify(e.lngLat, ['wmu']);
       const w = M.wmuFromIdentify(res); if (w && form?.wmu && !form.wmu.value) form.wmu.value = w;

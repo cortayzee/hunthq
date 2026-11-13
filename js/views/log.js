@@ -1,16 +1,16 @@
-import * as db from '../db.js?v=20261113172831-3298ad6';
-import { store, hunters } from '../db.js?v=20261113172831-3298ad6';
-import { KINDS, KIND_GROUPS, SIGN_TYPES, SPECIES, WEAPONS, SEXES, kindColor } from '../config.js?v=20261113172831-3298ad6';
-import { esc, opts, modal, closeModal, requestClose, markDirty, toast, formData, localDT, fmtDT, earthLink, parseLatLon, parseCSV, yearOf, tip } from '../util.js?v=20261113172831-3298ad6';
-import * as M from '../map.js?v=20261113172831-3298ad6';
-import { normMU } from '../seasons.js?v=20261113172831-3298ad6';
-import { pickOnMap, closePanel } from '../main.js?v=20261113172831-3298ad6';
-import { exportKML, exportGPX, exportCSV } from '../exporters.js?v=20261113172831-3298ad6';
-import { glyphSVG, glyphFor, animalFor, sexTerms, hasPoints, autoName, spotLabel } from '../animals.js?v=20261113172831-3298ad6';
-import { MODES, fmtKm, fmtHours } from '../elevation.js?v=20261113172831-3298ad6';
-import * as V from '../vis.js?v=20261113172831-3298ad6';
-import { tripOf, groupOf, tripTitle, spotYear } from '../vis.js?v=20261113172831-3298ad6';
-import { icon } from '../icons.js?v=20261113172831-3298ad6';
+import * as db from '../db.js?v=20261113175850-e805291';
+import { store, hunters } from '../db.js?v=20261113175850-e805291';
+import { KINDS, KIND_GROUPS, SIGN_TYPES, SPECIES, WEAPONS, SEXES, kindColor } from '../config.js?v=20261113175850-e805291';
+import { esc, opts, modal, closeModal, requestClose, markDirty, toast, formData, localDT, fmtDT, earthLink, parseLatLon, parseCSV, yearOf, tip } from '../util.js?v=20261113175850-e805291';
+import * as M from '../map.js?v=20261113175850-e805291';
+import { normMU } from '../seasons.js?v=20261113175850-e805291';
+import { pickOnMap, closePanel } from '../main.js?v=20261113175850-e805291';
+import { exportKML, exportGPX, exportCSV } from '../exporters.js?v=20261113175850-e805291';
+import { glyphSVG, glyphFor, animalFor, sexTerms, hasPoints, autoName, spotLabel } from '../animals.js?v=20261113175850-e805291';
+import { MODES, fmtKm, fmtHours } from '../elevation.js?v=20261113175850-e805291';
+import * as V from '../vis.js?v=20261113175850-e805291';
+import { tripOf, groupOf, tripTitle, spotYear } from '../vis.js?v=20261113175850-e805291';
+import { icon } from '../icons.js?v=20261113175850-e805291';
 
 const PICK = [['Moose', 'moose'], ['Elk', 'elk'], ['Mule Deer', 'deer'], ['White-tailed Deer', 'deer'], ['Black Bear', 'bear'], ['Grizzly Bear', 'bear'],
   ['Bighorn Sheep', 'sheep'], ['Mountain Goat', 'goat'], ['Caribou', 'caribou'], ['Cougar', 'cougar'], ['Wolf', 'wolf'], ['Coyote', 'wolf'],
@@ -115,10 +115,10 @@ export function render(v) {
       if (a === 'DELETE') await V.deleteGroup(gm); else if (a?.trim() && a !== g.name) await V.renameGroup(gm, a.trim());
       render(v); return;
     }
-    const ot = e.target.closest('[data-open-trip]')?.dataset.openTrip; if (ot) { (await import('./trips.js?v=20261113172831-3298ad6')).openTrip(ot); return; }
+    const ot = e.target.closest('[data-open-trip]')?.dataset.openTrip; if (ot) { (await import('./trips.js?v=20261113175850-e805291')).openTrip(ot); return; }
     if (e.target.closest('[data-act]')) return;
     const tr = e.target.closest('[data-track]');
-    if (tr && !e.target.closest('.switch')) { const t = store.tracks.find((x) => x.id === tr.dataset.track); if (t) (await import('../route.js?v=20261113172831-3298ad6')).openRoute(t); return; }
+    if (tr && !e.target.closest('.switch')) { const t = store.tracks.find((x) => x.id === tr.dataset.track); if (t) (await import('../route.js?v=20261113175850-e805291')).openRoute(t); return; }
     const row = e.target.closest('[data-fly]');
     if (row) { const s = store.spots.find((x) => x.id === row.dataset.fly); if (s) { if (!V.isVisible(s)) toast('A filter above is hiding that waypoint'); M.flyTo(s.lon, s.lat, 14); if (innerWidth <= 760) closePanel(); } }
   };
