@@ -1,9 +1,9 @@
 // iHunter-style WMU detail: every general season in the WMU, Open/Closed for the chosen date, grouped by category.
-import { seasonsFor, openRange, fmtMD } from '../seasons.js?v=20261113044049-2d0f958';
-import { REGS_URL, BC_WFS, WMU_LAYER, WMU_FIELD } from '../config.js?v=20261113044049-2d0f958';
-import { esc, todayISO } from '../util.js?v=20261113044049-2d0f958';
-import * as M from '../map.js?v=20261113044049-2d0f958';
-import { icon } from '../icons.js?v=20261113044049-2d0f958';
+import { seasonsFor, openRange, fmtMD } from '../seasons.js?v=20261113044709-1cc4355';
+import { REGS_URL, BC_WFS, WMU_LAYER, WMU_FIELD } from '../config.js?v=20261113044709-1cc4355';
+import { esc, todayISO } from '../util.js?v=20261113044709-1cc4355';
+import * as M from '../map.js?v=20261113044709-1cc4355';
+import { icon } from '../icons.js?v=20261113044709-1cc4355';
 
 const BIG = /deer|moose|elk|goat|sheep|caribou|bison/i;
 const PRED = /bear|cougar|wolf|coyote|lynx|bobcat|wolverine|raccoon|skunk|fox|marten|fisher/i;
@@ -30,9 +30,37 @@ function occurrence(r, iso) {
 }
 const fmtFull = (s) => fmtMD(s);
 
+// Footnote text from the synopsis (hunt-hq-handoff/data/season_notes.json, built by scripts/build_season_notes.py).
+let NOTES = null;
+const loadNotes = () => NOTES || (NOTES = fetch('hunt-hq-handoff/data/season_notes.json').then((r) => r.json()).catch(() => ({ notes: {}, rows: {} })));
+// MUs named in a note: "MU 7-43", "MUs 4-2, 4-20 to 4-22 and 4-40", "M.U.s 2-5 and 2-12".
+function musIn(text) {
+  const out = new Set();
+  for (const m of text.matchAll(/(\d)-(\d{1,2})(?:\s*(?:to|-|–)\s*(\d)-(\d{1,2}))?/g)) {
+    if (m[3] && m[3] === m[1]) for (let i = +m[2]; i <= +m[4]; i++) out.add(`${m[1]}-${i}`); else out.add(`${m[1]}-${+m[2]}`);
+  }
+  return out;
+}
+function restrictions(r, mu, notes) {
+  const list = notes.notes[notes.rows[`${r.p}|${r.sp}`]] || [];
+  const here = [], other = [], general = [];
+  for (const n of list) { const m = musIn(n); (m.size ? (m.has(mu) ? here : other) : general).push(n); }
+  const li = (a) => a.map((n) => `<li>${esc(n)}</li>`).join('');
+  let head;
+  if (here.length) head = `<div class="r-here"><b>For WMU ${esc(mu)}:</b><ul>${li(here)}</ul>${here.length > 1 ? `<div class="muted fine">These notes belong to different seasons in the table. Check synopsis p.${r.p} for which one matches this season.</div>` : ''}</div>`;
+  else if (r.n && other.length) head = `<div class="r-ok">No part-of-unit limit for <b>WMU ${esc(mu)}</b>. This season's footnotes only restrict other units (listed below).</div>`;
+  else if (r.n) head = `<div class="r-here">This season has a footnote in the synopsis (p.${r.p}). The rules below may apply to it.</div>`;
+  else head = `<div class="r-ok">No footnote on this season.</div>`;
+  return `${head}${general.length ? `<div class="r-sec">Rules for ${esc(r.sp.replace(/ \(.*\)/, '').toLowerCase())} in ${esc(r.r)}:<ul>${li(general)}</ul></div>` : ''}
+    ${other.length ? `<details class="r-other"><summary>Notes for other units (${other.length})</summary><ul>${li(other)}</ul></details>` : ''}`;
+}
+
 export async function showWmu(view, mu, { region, date = todayISO(), onBack } = {}) {
   const rows = seasonsFor(mu);
-  region = region || rows[0]?.r || '';
+  const notes = await loadNotes();
+  // Region as the synopsis tables group it (e.g. 7-45 is in the Peace table though BC data lists it under Omineca).
+  const regCount = {}; for (const r of rows) regCount[r.r] = (regCount[r.r] || 0) + 1;
+  region = Object.entries(regCount).sort((a, b) => b[1] - a[1])[0]?.[0] || region || '';
   const counts = Object.fromEntries(CATS.map(([k]) => [k, rows.filter((r) => category(r.sp) === k)]));
   if (!counts[cat].length) cat = CATS.find(([k]) => counts[k].length)?.[0] || 'big';
   const openNow = rows.filter((r) => openRange(r, date)).length;
@@ -57,9 +85,9 @@ export async function showWmu(view, mu, { region, date = todayISO(), onBack } = 
         <div class="s-main"><div class="s-sp">${esc(r.sp)}</div>${r.c ? `<div>${esc(r.c)}</div>` : ''}${r.b ? `<div class="muted">Limit: ${esc(r.b)}</div>` : ''}${r.q ? `<div><b>${esc(r.q)}</b></div>` : ''}</div>
         <div class="s-when"><div class="status ${on ? 'ok' : 'err'}">${on ? 'Open' : 'Closed'}</div>${(ranges.length ? ranges : r.d.slice(-1)).map((x) => { const o = occurrence(x, d); return `<div class="muted">${fmtFull(o[0])} –<br>${fmtFull(o[1])}</div>`; }).join('')}</div>
         <details class="s-more"><summary>View restrictions</summary>
-          ${r.n ? `<div class="notice">Has a footnote in the synopsis (p.${r.p}): may apply to only part of the MU, special antler rules, youth/senior, or island-only. Read it before hunting.</div>` : ''}
-          ${!r.c && BIG.test(r.sp) ? '<div class="notice">Class not captured by the parser — check the synopsis table.</div>' : ''}
-          <div class="muted">${esc(r.r)} region table, synopsis page ${r.p}. Same season applies in ${r.mu.length} MUs.${r.b ? '' : ' Bag limit: see regional bag limits.'}</div>
+          ${restrictions(r, mu, notes)}
+          ${!r.c && BIG.test(r.sp) ? '<div class="notice">Class not captured from the PDF — check the synopsis table.</div>' : ''}
+          <div class="muted fine">${esc(r.r)} table, synopsis page ${r.p}. Same season covers ${r.mu.length} MUs.${r.b ? '' : ' Bag limit: see regional bag limits.'}</div>
         </details></div>`;
     }).join('') : '<p class="muted">No general seasons for this category in this WMU.</p>';
   };

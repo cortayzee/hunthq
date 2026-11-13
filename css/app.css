@@ -505,3 +505,8 @@ details.lyr-sec[open] > summary { border-bottom: 1px solid var(--line); backgrou
 
 .map-chip.sel-chip { top: calc(60px + env(safe-area-inset-top)); }
 @media (max-width: 760px) { .map-chip.sel-chip { top: calc(118px + env(safe-area-inset-top)); } }
+
+.s-more ul { margin: 4px 0 6px; padding-left: 18px; } .s-more li { margin: 2px 0; line-height: 1.4; }
+.r-here { background: var(--warn-soft); border-radius: 8px; padding: 8px 10px; margin: 6px 0; }
+.r-ok { background: var(--ok-soft); border-radius: 8px; padding: 8px 10px; margin: 6px 0; }
+.r-sec { margin: 6px 0; } .r-other summary { color: var(--muted); cursor: pointer; font-size: .9em; }
