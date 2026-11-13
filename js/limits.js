@@ -1,5 +1,5 @@
 // Bag limits (2026–2028 BC Hunting & Trapping Regulations Synopsis, pp. 13–14) and the user's own tally against them.
-import { store } from './db.js?v=20261113162034-3095c13';
+import { store } from './db.js?v=20261113162234-0a1f428';
 
 // Provincial bag limits per licence year. Regional limits can be lower (see the synopsis region sections).
 export const PROVINCIAL = { Deer: 3, Elk: 1, Moose: 1, 'Black Bear': 2, Cougar: 2, Wolf: 3, 'Mountain Goat': 1, 'Mountain Sheep': 1, Caribou: 1, Bison: 1, Bobcat: 5, Lynx: 1, Wolverine: 1 };

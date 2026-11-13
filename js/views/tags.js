@@ -1,13 +1,13 @@
-import * as db from '../db.js?v=20261113162034-3095c13';
-import { store, hunters } from '../db.js?v=20261113162034-3095c13';
-import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261113162034-3095c13';
-import { hunterDatalist, speciesDatalist } from './log.js?v=20261113162034-3095c13';
-import { icon } from '../icons.js?v=20261113162034-3095c13';
-import * as M from '../map.js?v=20261113162034-3095c13';
-import * as LIC from '../licences.js?v=20261113162034-3095c13';
-import * as L from '../limits.js?v=20261113162034-3095c13';
-import { SEASONS, openRange } from '../seasons.js?v=20261113162034-3095c13';
-import { muSort } from '../seasons.js?v=20261113162034-3095c13';
+import * as db from '../db.js?v=20261113162234-0a1f428';
+import { store, hunters } from '../db.js?v=20261113162234-0a1f428';
+import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261113162234-0a1f428';
+import { hunterDatalist, speciesDatalist } from './log.js?v=20261113162234-0a1f428';
+import { icon } from '../icons.js?v=20261113162234-0a1f428';
+import * as M from '../map.js?v=20261113162234-0a1f428';
+import * as LIC from '../licences.js?v=20261113162234-0a1f428';
+import * as L from '../limits.js?v=20261113162234-0a1f428';
+import { SEASONS, openRange } from '../seasons.js?v=20261113162234-0a1f428';
+import { muSort } from '../seasons.js?v=20261113162234-0a1f428';
 
 // Tags & LEH. LEH hunts come from the 2026-2027 LEH synopsis (hunt-hq-handoff/data/leh_2026.json, scripts/parse_leh.py).
 const yr = new Date().getFullYear();
@@ -50,13 +50,28 @@ export function oddsText(o) {
 const myMus = () => new Set([...store.spots.map((s) => s.wmu), ...store.trips.map((t) => t.wmu)].filter(Boolean));
 const picked = (code) => store.leh.find((l) => String(l.year) === String(DRAW_YEAR) && l.hunt_code === code);
 
+// Group / shared rules (LEH synopsis 2026–27): moose and bison are single or SHARED (2–4, each an entry, group shares
+// 1 animal for 2 people or 2 for 3–4); black bear and elk in Regions 1–2 are single only; other hunts allow GROUP (2–4).
+export function groupRule(h) {
+  if (/moose|bison/i.test(h.sp || '')) return 'shared';
+  if (/black bear/i.test(h.sp || '') || (/elk/i.test(h.sp || '') && ['1', '2'].includes(String(h.rn)))) return null;
+  return 'group';
+}
+function groupChip(h) {
+  const g = groupRule(h); if (!g) return '';
+  if (g === 'group') return `<span class="chip grp tip-h">Group OK${tip('You can apply as a group of 2 to 4. The group is one entry, and if it is drawn with enough tags left, everyone in it gets a tag. Your odds are the same as applying alone.', 'Group hunts')}</span>`;
+  const p = h.odds ? Math.min(1, 1 / h.odds) : null;
+  const four = p != null ? 1 - Math.pow(1 - p, 4) : null;
+  const odds = (q) => (q >= 0.99 ? 'almost certain' : `about 1 in ${Math.max(1, Math.round(1 / q))}`);
+  return `<span class="chip grp tip-h">Shared OK${tip(`Apply with 2 to 4 people. Each person is a separate entry, so a group of 4 has ${p != null ? `${odds(four)} odds of being drawn instead of ${odds(p)} alone` : 'about four times the chances'}. A group of 2 shares 1 animal; a group of 3 or 4 shares 2. If anyone in the group was drawn for moose in the last 3 years, the whole group gets reduced odds.`, 'Shared hunts')}</span>`;
+}
 export function huntCard(h, { compact = false } = {}) {
   const o = oddsText(h.odds); const p = picked(h.code);
   const where = [h.area, `WMU ${h.mu.replace(/\*+/g, '')}${h.zone ? ' zone ' + h.zone : ''}${h.partial ? ' (part)' : ''}`].filter(Boolean).join(', ');
   return `<article class="leh-card ${p ? 'picked' : ''}" data-hl="${h.code}" tabindex="0" title="Tap to show on the map">
     <span class="leh-code tnum">${h.code}</span>
     <div class="t"><b>${esc(h.sp || '')}, ${esc(h.class.toLowerCase())}</b><span class="muted">${esc(where)}</span>
-      <span class="leh-meta tnum">${esc(h.dates)} · ${h.auth} tag${h.auth === 1 ? '' : 's'}${h.tag ? ` · ${esc(h.tag.toLowerCase())}` : ''}</span></div>
+      <span class="leh-meta tnum">${esc(h.dates)} · ${h.auth} tag${h.auth === 1 ? '' : 's'}${h.tag ? ` · ${esc(h.tag.toLowerCase())}` : ''}</span>${compact ? '' : groupChip(h)}</div>
     <div class="leh-side"><span class="leh-odds ${o.cls}" title="${esc(o.small)}">${o.big}</span>
       ${compact ? '' : p ? `<button class="pick-btn on" data-unpick="${p.id}" aria-label="Remove ${h.code} from my picks">${icon('check', { size: 16 })}${p.choice === 2 ? '2nd' : '1st'}</button>`
         : `<button class="pick-btn" data-pick="${h.code}" aria-label="Add ${h.code} to my picks">${icon('plus', { size: 16 })}Pick</button>`}</div>
@@ -66,7 +81,7 @@ export function huntCard(h, { compact = false } = {}) {
 // ---- Recommended LEH hunts ----
 // score = 45% odds + 20% hunter success in that unit + 20% familiarity (units/regions you hunt) + 15% timing (months you hunt)
 const REC_W = { odds: 0.45, succ: 0.2, fam: 0.2, time: 0.15 };
-let HV = null; const harvestData = () => HV || (HV = import('../wildlife.js?v=20261113162034-3095c13').then((m) => m.harvest()).catch(() => null));
+let HV = null; const harvestData = () => HV || (HV = import('../wildlife.js?v=20261113162234-0a1f428').then((m) => m.harvest()).catch(() => null));
 function recContext(H) {
   const mus = new Set([...store.trips.map((t) => t.wmu), ...store.spots.map((x) => x.wmu)].filter(Boolean));
   const regions = new Set([...mus].map((m) => String(m).split('-')[0]));
@@ -262,7 +277,7 @@ async function lehArea(h) {
   return areaCache.get(key);
 }
 export async function highlightHunt(h) {
-  const { selChip } = await import('../main.js?v=20261113162034-3095c13');
+  const { selChip } = await import('../main.js?v=20261113162234-0a1f428');
   let fc = await lehArea(h); let exact = !!fc;
   if (!fc) fc = { type: 'FeatureCollection', features: (M.WMU_GEO?.features || []).filter((f) => h.mus.includes(f.properties.id)) };
   fc = { type: 'FeatureCollection', features: fc.features.map((f) => ({ ...f, properties: { stroke: '#ff8a00', fill: '#ff8a00', fillOpacity: 0.22 } })) };
@@ -338,7 +353,7 @@ function renderTags(body) {
   ${S.untagged.length ? `<div class="notice tip-h">${S.untagged.length} kill${S.untagged.length === 1 ? '' : 's'} without a tag: ${S.untagged.map((k) => esc(`${k.s.species} ${fmtD(k.d)}`)).join(', ')}.&nbsp;<button class="link" id="tagKills">Add tag${S.untagged.length === 1 ? '' : 's'}</button></div>` : ''}`;
   body.onclick = async (e) => {
     const yb = e.target.closest('[data-ly]'); if (yb) { tui.year = +yb.dataset.ly; renderTags(body); return; }
-    if (e.target.closest('#goLic')) { import('../main.js?v=20261113162034-3095c13').then((m) => m.showTabPublic('more')); return; }
+    if (e.target.closest('#goLic')) { import('../main.js?v=20261113162234-0a1f428').then((m) => m.showTabPublic('more')); return; }
     if (e.target.closest('#addTags')) { addTagsSheet(y); return; }
     if (e.target.closest('#allRegs')) { tui.allRegs = !tui.allRegs; renderTags(body); return; }
     if (e.target.closest('#tagKills')) { for (const k of S.untagged) await db.insert('tags', { year: y, species: k.s.species, tag_type: 'General', hunter: 'Me' }); toast('Tags added'); return; }
