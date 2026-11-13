@@ -1,11 +1,12 @@
 // Licences that expire: PAL (firearms) and the BC hunting licence. Stored in prefs.licences. Reminders are in-app
 // (a dot on More, a once-a-day note) plus an optional calendar file, since a web page can't send notifications.
-import { store } from './db.js?v=20261113161343-e1f21e7';
-import * as db from './db.js?v=20261113161343-e1f21e7';
+import { store } from './db.js?v=20261113162034-3095c13';
+import * as db from './db.js?v=20261113162034-3095c13';
 
 export const TYPES = {
   pal: { name: 'Firearms licence (PAL)', warn: 180, help: 'Renew before it expires. If a PAL lapses you have to apply for a new one from scratch, and you can’t legally possess firearms until it’s issued. RCMP takes weeks to process a renewal, so start about 3–6 months ahead.' },
   hunting: { name: 'BC hunting licence', warn: 45, help: 'BC hunting licences run April 1 to March 31. Buy the new one (and species licences) on WILD before you hunt after April 1.' },
+  residency: { name: 'WILD residency status', warn: 60, help: 'Your BC resident status in WILD expires. Renew it in WILD > Renew/Change Residency by uploading proof of residency (for example a BC driver’s licence or BC Services Card). With it expired you can’t buy resident licences or apply for LEH, so renew before the LEH deadline in June.' },
   other: { name: 'Other licence', warn: 60, help: '' },
 };
 export const list = () => store.prefs.licences || [];

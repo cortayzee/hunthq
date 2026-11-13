@@ -1,11 +1,11 @@
 // iHunter-style WMU detail: every general season in the WMU, Open/Closed for the chosen date, grouped by category.
-import * as L from '../limits.js?v=20261113161343-e1f21e7';
-import { store } from '../db.js?v=20261113161343-e1f21e7';
-import { seasonsFor, openRange, fmtMD } from '../seasons.js?v=20261113161343-e1f21e7';
-import { REGS_URL, BC_WFS, WMU_LAYER, WMU_FIELD } from '../config.js?v=20261113161343-e1f21e7';
-import { esc, todayISO, tip } from '../util.js?v=20261113161343-e1f21e7';
-import * as M from '../map.js?v=20261113161343-e1f21e7';
-import { icon } from '../icons.js?v=20261113161343-e1f21e7';
+import * as L from '../limits.js?v=20261113162034-3095c13';
+import { store } from '../db.js?v=20261113162034-3095c13';
+import { seasonsFor, openRange, fmtMD } from '../seasons.js?v=20261113162034-3095c13';
+import { REGS_URL, BC_WFS, WMU_LAYER, WMU_FIELD } from '../config.js?v=20261113162034-3095c13';
+import { esc, todayISO, tip } from '../util.js?v=20261113162034-3095c13';
+import * as M from '../map.js?v=20261113162034-3095c13';
+import { icon } from '../icons.js?v=20261113162034-3095c13';
 
 const BIG = /deer|moose|elk|goat|sheep|caribou|bison/i;
 const PRED = /bear|cougar|wolf|coyote|lynx|bobcat|wolverine|raccoon|skunk|fox|marten|fisher/i;
@@ -95,6 +95,7 @@ export async function showWmu(view, mu, { region, date = todayISO(), onBack } = 
       <button class="icon-btn" id="wHide" aria-label="${M.wmuHidden(mu) ? 'Show on map' : 'Hide on map'}" title="${M.wmuHidden(mu) ? 'Show on map' : 'Hide on map'}">${icon(M.wmuHidden(mu) ? 'eyeOff' : 'eye', { size: 20 })}</button></div></div>
     <div class="muted">${esc(region)}, ${openNow} season${openNow === 1 ? '' : 's'} open${date === todayISO() ? ' today' : ''}</div>
     ${limitsLine(mu)}
+    ${L.isCWD(mu) ? `<a class="cwd-note" href="https://www.gov.bc.ca/CWDdropoffs" target="_blank" rel="noopener">${icon('alert', { size: 16 })}<span><b>CWD zone.</b> Deer, elk and moose heads must go to a drop-off freezer within 1 week.</span></a>` : ''}
     <label class="date-inline">On <input type="date" id="wDate" value="${date}" aria-label="Date"></label></div>
   <div class="cat-tabs" role="tablist">${CATS.map(([k, n, ic]) => `<button role="tab" data-cat="${k}" class="${k === cat ? 'active' : ''}" aria-selected="${k === cat}">${icon(ic, { size: 22 })}<span>${n}</span><span class="n tnum">${counts[k].length}</span></button>`).join('')}</div>
   <div id="wList"></div>
@@ -127,7 +128,7 @@ export async function showWmu(view, mu, { region, date = todayISO(), onBack } = 
   view.querySelector('#wBack').onclick = () => onBack?.();
   view.querySelector('#wJump').onclick = () => outline(mu, true);
   M.selectWmu(mu); outline(mu, false);
-  import('../wildlife.js?v=20261113161343-e1f21e7').then(async (W) => {
+  import('../wildlife.js?v=20261113162034-3095c13').then(async (W) => {
     const { years, rows } = await W.statsFor(mu); const el = view.querySelector('#wHv'); if (!el) return;
     view.querySelector('#wHvY').textContent = `· ${years[0]}–${years[1]} avg / year`;
     el.innerHTML = rows.length ? `<table class="hv-table"><thead><tr><th>Species</th><th>Hunters</th><th>Kills</th><th>Success</th><th>Days/kill</th><th>vs 2010–14</th></tr></thead><tbody>
@@ -135,7 +136,7 @@ export async function showWmu(view, mu, { region, date = todayISO(), onBack } = 
         <td class="tnum ${r.trend > 10 ? 'trend-up' : r.trend < -10 ? 'trend-down' : ''}">${r.trend == null ? '–' : (r.trend > 0 ? '▲' : r.trend < 0 ? '▼' : '') + Math.abs(r.trend) + '%'}</td></tr>`).join('')}</tbody></table>`
       : '<p class="muted">No hunter survey results recorded for this unit.</p>';
   });
-  import('./tags.js?v=20261113161343-e1f21e7').then(async (T) => {
+  import('./tags.js?v=20261113162034-3095c13').then(async (T) => {
     const hs = await T.lehForMu(mu); const el = view.querySelector('#wLeh'); if (!el) return;
     view.querySelector('#wLehN').textContent = `· ${hs.length}`;
     el.innerHTML = hs.length ? hs.map((h) => T.huntCard(h)).join('') : '<p class="muted">No LEH hunts list this unit.</p>';

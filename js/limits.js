@@ -1,5 +1,5 @@
 // Bag limits (2026–2028 BC Hunting & Trapping Regulations Synopsis, pp. 13–14) and the user's own tally against them.
-import { store } from './db.js?v=20261113161343-e1f21e7';
+import { store } from './db.js?v=20261113162034-3095c13';
 
 // Provincial bag limits per licence year. Regional limits can be lower (see the synopsis region sections).
 export const PROVINCIAL = { Deer: 3, Elk: 1, Moose: 1, 'Black Bear': 2, Cougar: 2, Wolf: 3, 'Mountain Goat': 1, 'Mountain Sheep': 1, Caribou: 1, Bison: 1, Bobcat: 5, Lynx: 1, Wolverine: 1 };
@@ -24,6 +24,9 @@ export const TAG_SPECIES = ['White-tailed Deer', 'Mule Deer', 'Elk', 'Moose', 'B
 // BC licence year runs April 1 to March 31; we name it by its starting year (2026 = 2026–27).
 export const licenceYear = (d) => { const x = d instanceof Date ? d : new Date(d); return x.getMonth() >= 3 ? x.getFullYear() : x.getFullYear() - 1; };
 export const yearLabel = (y) => `${y}–${String(y + 1).slice(2)}`;
+// Chronic wasting disease mandatory head submission zone (licence condition): MUs 4-1 to 4-8 and 4-20 to 4-25.
+export const isCWD = (mu) => { const m = /^4-(\d+)$/.exec(mu || ''); return !!m && ((+m[1] >= 1 && +m[1] <= 8) || (+m[1] >= 20 && +m[1] <= 25)); };
+export const CWD_TEXT = 'Chronic wasting disease zone: if you kill a deer, elk or moose here, drop the head (antlers off, about 3 inches of neck, ear tag filled in) at a CWD freezer within one week. Locations: gov.bc.ca/CWDdropoffs';
 export const regionOf = (mu) => { const m = /^(\d)-(\d+)/.exec(mu || ''); if (!m) return null; return m[1] === '7' ? (+m[2] <= 30 ? '7A' : '7B') : m[1]; };
 const isDeer = (sp) => /deer/i.test(sp || '');
 export const deerKind = (sp) => (/white/i.test(sp || '') ? 'wt' : 'mule');

@@ -1,9 +1,9 @@
 // MapLibre map: base styles, 3D terrain, BC WMS overlays, identify, waypoints/tracks, open-WMU shading.
-import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261113161343-e1f21e7';
-import { store } from './db.js?v=20261113161343-e1f21e7';
-import { MODES, fmtKm } from './elevation.js?v=20261113161343-e1f21e7';
-import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261113161343-e1f21e7';
-import { esc, fmtDT } from './util.js?v=20261113161343-e1f21e7';
+import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261113162034-3095c13';
+import { store } from './db.js?v=20261113162034-3095c13';
+import { MODES, fmtKm } from './elevation.js?v=20261113162034-3095c13';
+import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261113162034-3095c13';
+import { esc, fmtDT } from './util.js?v=20261113162034-3095c13';
 
 export let map;
 const state = { base: 'sat', terrain: false, exag: 1.5, hillshade: false, ref: false, hiddenWmu: [], layers: {}, opacity: {}, shade: null, custom: [] };
@@ -402,6 +402,7 @@ export function setRoutePreview(coords, { color = '#ffd23f', label = '' } = {}) 
 }
 export function setHotspots(fc) { map.getSource('hot')?.setData(fc || { type: 'FeatureCollection', features: [] }); }
 
+const CWD_RE = /^4-([1-8]|2[0-5])$/;
 export function spotPopupHTML(s) {
   const k = KINDS.find((x) => x.id === s.kind)?.name || s.kind;
   return `<div class="popup"><h4><span class="spot-badge" style="background:${kindColor(s.kind)}">${glyphSVG(glyphFor(s), { size: 20, color: "#fff", bg: kindColor(s.kind) })}</span> ${esc(spotLabel(s))}</h4>
@@ -410,6 +411,7 @@ export function spotPopupHTML(s) {
   ${s.wmu ? `<dt>WMU</dt><dd>${esc(s.wmu)}</dd>` : ''}${s.weapon ? `<dt>Weapon</dt><dd>${esc(s.weapon)}</dd>` : ''}
   <dt>Lat/Lon</dt><dd>${(+s.lat).toFixed(5)}, ${(+s.lon).toFixed(5)}</dd></dl>
   ${s.notes ? `<div class="muted">${esc(s.notes)}</div>` : ''}
+  ${s.kind === 'kill' && /deer|elk|moose/i.test(s.species || '') && CWD_RE.test(s.wmu || '') ? '<a class="cwd-note small" href="https://www.gov.bc.ca/CWDdropoffs" target="_blank" rel="noopener"><span><b>CWD zone:</b> head to a drop-off freezer within 1 week.</span></a>' : ''}
   <div class="row" style="margin-top:6px"><button class="small" data-act="edit-spot" data-id="${s.id}">Edit</button><button class="small" data-act="fc-here" data-lat="${s.lat}" data-lon="${s.lon}" data-label="${esc(spotLabel(s))}">Forecast</button></div></div>`;
 }
 

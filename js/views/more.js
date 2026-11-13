@@ -1,11 +1,11 @@
-import * as db from '../db.js?v=20261113161343-e1f21e7';
-import { store } from '../db.js?v=20261113161343-e1f21e7';
-import { esc, download, toast, todayISO, fmtDate, tip, modal, closeModal } from '../util.js?v=20261113161343-e1f21e7';
-import { exportKML } from '../exporters.js?v=20261113161343-e1f21e7';
-import { BC_WMS, BC_WFS, LEH_LAYER, LEH_TYPE_FIELD, MVPR_LAYER, WMU_LAYER } from '../config.js?v=20261113161343-e1f21e7';
-import { icon } from '../icons.js?v=20261113161343-e1f21e7';
-import * as LIC from '../licences.js?v=20261113161343-e1f21e7';
-import * as M from '../map.js?v=20261113161343-e1f21e7';
+import * as db from '../db.js?v=20261113162034-3095c13';
+import { store } from '../db.js?v=20261113162034-3095c13';
+import { esc, download, toast, todayISO, fmtDate, tip, modal, closeModal } from '../util.js?v=20261113162034-3095c13';
+import { exportKML } from '../exporters.js?v=20261113162034-3095c13';
+import { BC_WMS, BC_WFS, LEH_LAYER, LEH_TYPE_FIELD, MVPR_LAYER, WMU_LAYER } from '../config.js?v=20261113162034-3095c13';
+import { icon } from '../icons.js?v=20261113162034-3095c13';
+import * as LIC from '../licences.js?v=20261113162034-3095c13';
+import * as M from '../map.js?v=20261113162034-3095c13';
 
 const theme = () => { try { return localStorage.getItem('hunthq_theme') || 'system'; } catch { return 'system'; } };
 function setTheme(t) {
@@ -23,7 +23,8 @@ export function render(v) {
   <div class="list-group">
     <div class="list-row static"><span class="lr-ic">${icon('user', { size: 20 })}</span><span class="lr-t"><b>${mode === 'local' ? 'Local mode' : esc(u?.email || 'Signed in')}</b><span>${mode === 'local' ? 'Saved in this browser only' : 'Synced to your account'}</span></span><button class="small" id="signOut">${mode === 'local' ? 'Sign in' : 'Sign out'}</button></div>
   </div>
-  <div class="list-group" style="margin-top:8px"><label class="list-row static"><span class="lr-ic">${icon('tag', { size: 20 })}</span><span class="lr-t"><b class="tip-h">Your name in logs${tip('Kills logged under Me or this name count against your tags and bag limits. Separate several names with commas.')}</b><input id="myName" value="${esc(store.prefs.myName || '')}" placeholder="e.g. Andrew" style="margin-top:6px"></span></label></div>
+  <div class="list-group" style="margin-top:8px"><label class="list-row static"><span class="lr-ic">${icon('tag', { size: 20 })}</span><span class="lr-t"><b class="tip-h">Your name in logs${tip('Kills logged under Me or this name count against your tags and bag limits. Separate several names with commas.')}</b><input id="myName" value="${esc(store.prefs.myName || '')}" placeholder="e.g. Andrew" style="margin-top:6px"></span></label>
+    <label class="list-row static"><span class="lr-ic">${icon('user', { size: 20 })}</span><span class="lr-t"><b class="tip-h">FWID${tip('Your Fish and Wildlife ID. It never changes, and WILD asks for it whenever you buy licences or apply for LEH.')}</b><input id="fwid" value="${esc(store.prefs.fwid || '')}" placeholder="123 456 789" inputmode="numeric" autocomplete="off" style="margin-top:6px"></span></label></div>
   <div class="list-h-row"><h3 class="list-h tip-h">Licences${tip('Keep track of when your PAL and hunting licence expire. Ridgeline reminds you on the More tab when one is due, and you can add a calendar reminder to your phone.')}</h3>${lics.length ? '<button class="small" id="licAdd">' + icon('plus', { size: 16 }) + 'Add</button>' : ''}</div>
   ${lics.length ? `<div class="list-group">${lics.map((l) => { const st = LIC.status(l); return `<button class="list-row" data-lic="${l.id}"><span class="lr-ic">${icon(l.type === 'pal' ? 'target' : 'tag', { size: 20 })}</span>
       <span class="lr-t"><b>${esc(l.name || LIC.TYPES[l.type]?.name || 'Licence')}</b><span>${l.expires ? 'Expires ' + fmtD(l.expires) : 'No expiry date'}${l.number ? ' · ' + esc(l.number) : ''}</span></span><span class="lic-st ${st.cls}">${esc(st.label)}</span></button>`; }).join('')}</div>`
@@ -48,7 +49,8 @@ export function render(v) {
   <p class="muted">Checks that BC map services respond and lists the closure and LEH layers they return.</p>
   <button id="diag">Run check</button><pre id="diagOut" style="white-space:pre-wrap;font-size:12px"></pre></div></details>
   <p class="list-note tip-h">Data sources${tip('Seasons: 2026–2028 BC Hunting & Trapping Regulations Synopsis (general open seasons). Always confirm in the synopsis and in-season changes at gov.bc.ca/hunting. Map data © Province of BC, Esri, OpenTopoMap, OpenStreetMap contributors. Terrain © Mapzen / AWS. Weather © Open-Meteo.', 'Data sources')}</p>`;
-  v.querySelector('#goImport').onclick = () => import('../main.js?v=20261113161343-e1f21e7').then((m) => m.showTabPublic('import'));
+  v.querySelector('#goImport').onclick = () => import('../main.js?v=20261113162034-3095c13').then((m) => m.showTabPublic('import'));
+  v.querySelector('#fwid').onchange = async (e) => { await db.savePrefs({ fwid: e.target.value.trim() }); toast('Saved'); };
   v.querySelector('#myName').onchange = async (e) => { await db.savePrefs({ myName: e.target.value.trim() }); toast('Saved'); };
   v.querySelector('#signOut').onclick = async () => { await db.signOut(); location.reload(); };
   v.querySelector('#bExp').onclick = async () => { download(`ridgeline_backup_${todayISO()}.json`, db.backupJSON(), 'application/json'); await db.savePrefs({ lastBackup: new Date().toISOString() }).catch(() => {}); };
