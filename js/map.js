@@ -1,9 +1,9 @@
 // MapLibre map: base styles, 3D terrain, BC WMS overlays, identify, waypoints/tracks, open-WMU shading.
-import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261113075752-75055de';
-import { store } from './db.js?v=20261113075752-75055de';
-import { MODES, fmtKm } from './elevation.js?v=20261113075752-75055de';
-import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261113075752-75055de';
-import { esc, fmtDT } from './util.js?v=20261113075752-75055de';
+import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261113080048-b6e114f';
+import { store } from './db.js?v=20261113080048-b6e114f';
+import { MODES, fmtKm } from './elevation.js?v=20261113080048-b6e114f';
+import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261113080048-b6e114f';
+import { esc, fmtDT } from './util.js?v=20261113080048-b6e114f';
 
 export let map;
 const state = { base: 'sat', terrain: false, exag: 1.5, hillshade: false, ref: false, hiddenWmu: [], layers: {}, opacity: {}, shade: null, custom: [] };
@@ -281,7 +281,9 @@ function addDataLayers() {
   map.addSource('cursor', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
   map.addLayer({ id: 'draw-casing', type: 'line', source: 'draw', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': 'rgba(0,0,0,.6)', 'line-width': 7 } });
   map.addLayer({ id: 'draw-line', type: 'line', source: 'draw', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffd23f', 'line-width': 4, 'line-dasharray': [2, 1.2] } });
-  map.addLayer({ id: 'draw-pts', type: 'circle', source: 'draw-pts', paint: { 'circle-radius': ['case', ['==', ['get', 'end'], 1], 7, 5], 'circle-color': '#ffd23f', 'circle-stroke-color': '#111', 'circle-stroke-width': 2 } });
+  map.addSource('draw-mid', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+  map.addLayer({ id: 'draw-mid', type: 'circle', source: 'draw-mid', paint: { 'circle-radius': 4.5, 'circle-color': 'rgba(255,255,255,.85)', 'circle-stroke-color': '#111', 'circle-stroke-width': 1.5 } });
+  map.addLayer({ id: 'draw-pts', type: 'circle', source: 'draw-pts', paint: { 'circle-radius': ['case', ['==', ['get', 'sel'], 1], 10, ['==', ['get', 'end'], 1], 8, 6.5], 'circle-color': ['case', ['==', ['get', 'sel'], 1], '#ff7a1a', '#ffd23f'], 'circle-stroke-color': ['case', ['==', ['get', 'sel'], 1], '#fff', '#111'], 'circle-stroke-width': ['case', ['==', ['get', 'sel'], 1], 3, 2] } });
   map.addSource('spots', { type: 'geojson', data: spotsGeo() });
   // Waypoint badges: kind colour + animal/place silhouette, generated on demand (id 'hq|<kind>|<glyph>').
   map.on('styleimagemissing', (e) => {
@@ -325,7 +327,7 @@ function tracksMid() {
 }
 let trackFilter = () => true;
 export function setTrackFilter(fn) { trackFilter = fn || (() => true); refreshData(); }
-export function setDraw(line, pts) { map.getSource('draw')?.setData(line); map.getSource('draw-pts')?.setData(pts); }
+export function setDraw(line, pts, mids) { map.getSource('draw')?.setData(line); map.getSource('draw-pts')?.setData(pts); map.getSource('draw-mid')?.setData(mids || { type: 'FeatureCollection', features: [] }); }
 export function setCursor(lon, lat) {
   if (!map.getLayer('cursor-pt')) map.addLayer({ id: 'cursor-pt', type: 'circle', source: 'cursor', paint: { 'circle-radius': 8, 'circle-color': '#fff', 'circle-stroke-color': '#d4661c', 'circle-stroke-width': 4 } });
   map.getSource('cursor').setData(lon == null ? { type: 'FeatureCollection', features: [] } : { type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [lon, lat] } });

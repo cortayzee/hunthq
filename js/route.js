@@ -1,36 +1,96 @@
 // Draw a route by tapping the map: live distance / climb / time / difficulty, elevation profile, save as a track.
-import * as db from './db.js?v=20261113075752-75055de';
-import { store } from './db.js?v=20261113075752-75055de';
-import * as M from './map.js?v=20261113075752-75055de';
-import { esc, toast, haversineKm, fmtDate, tip } from './util.js?v=20261113075752-75055de';
-import { icon } from './icons.js?v=20261113075752-75055de';
-import { profile, stats, MODES, fmtHours, fmtKm } from './elevation.js?v=20261113075752-75055de';
-import * as V from './vis.js?v=20261113075752-75055de';
+import * as db from './db.js?v=20261113080048-b6e114f';
+import { store } from './db.js?v=20261113080048-b6e114f';
+import * as M from './map.js?v=20261113080048-b6e114f';
+import { esc, toast, haversineKm, fmtDate, tip } from './util.js?v=20261113080048-b6e114f';
+import { icon } from './icons.js?v=20261113080048-b6e114f';
+import { profile, stats, MODES, fmtHours, fmtKm } from './elevation.js?v=20261113080048-b6e114f';
+import * as V from './vis.js?v=20261113080048-b6e114f';
 
-const st = { on: false, pts: [], mode: 'trail', prof: [], seq: 0 };
+const st = { on: false, pts: [], mode: 'trail', prof: [], seq: 0, hist: [], sel: null, edit: null, eatClick: false };
 let bar = null;
 const lineFC = (pts) => ({ type: 'FeatureCollection', features: pts.length > 1 ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts } }] : [] });
-const ptsFC = (pts) => ({ type: 'FeatureCollection', features: pts.map((c, i) => ({ type: 'Feature', properties: { i, end: i === pts.length - 1 ? 1 : 0 }, geometry: { type: 'Point', coordinates: c } })) });
+const ptsFC = (pts) => ({ type: 'FeatureCollection', features: pts.map((c, i) => ({ type: 'Feature', properties: { i, end: i === pts.length - 1 ? 1 : 0, sel: i === st.sel ? 1 : 0 }, geometry: { type: 'Point', coordinates: c } })) });
+// Handles halfway along each segment: drag one to insert a point there.
+const midFC = (pts) => ({ type: 'FeatureCollection', features: pts.slice(1).map((c, i) => ({ type: 'Feature', properties: { i }, geometry: { type: 'Point', coordinates: [(pts[i][0] + c[0]) / 2, (pts[i][1] + c[1]) / 2] } })) });
 const flatKm = (pts) => pts.slice(1).reduce((a, c, i) => a + haversineKm(pts[i], c), 0);
+const round = (ll) => [+ll.lng.toFixed(6), +ll.lat.toFixed(6)];
 
 export const drawing = () => st.on;
-export function start(mode = st.mode) {
-  st.on = true; st.pts = []; st.prof = []; st.mode = mode;
+// start(mode, existing points, track being edited)
+export function start(mode = st.mode, pts = [], edit = null) {
+  st.on = true; st.pts = pts.map((c) => [c[0], c[1]]); st.prof = []; st.mode = mode; st.hist = []; st.sel = null; st.edit = edit;
   M.map.doubleClickZoom.disable();
   document.getElementById('app').classList.add('draw-mode');
   if (!bar) { bar = document.createElement('div'); bar.className = 'route-bar'; bar.setAttribute('role', 'region'); bar.setAttribute('aria-label', 'Route drawing'); document.getElementById('app').append(bar); }
+  wireDrag(true); addEventListener('keydown', onKey, true);
   drawBar(); redraw();
+  if (st.pts.length > 1) M.fitTo(st.pts);
 }
 export function stop() {
   st.on = false; M.map.doubleClickZoom.enable(); document.getElementById('app').classList.remove('draw-mode');
-  bar?.remove(); bar = null; M.setDraw(lineFC([]), ptsFC([]));
+  wireDrag(false); removeEventListener('keydown', onKey, true);
+  bar?.remove(); bar = null; M.setDraw(lineFC([]), ptsFC([]), midFC([]));
 }
-export function add(ll) { st.pts.push([+ll.lng.toFixed(6), +ll.lat.toFixed(6)]); redraw(); }
-function undo() { st.pts.pop(); redraw(); }
+const change = (pts, sel = null) => { st.hist.push(st.pts.map((c) => c.slice())); if (st.hist.length > 100) st.hist.shift(); st.pts = pts; st.sel = sel; redraw(); };
+export function add(ll) {
+  if (st.eatClick) { st.eatClick = false; return; } // the tap that ended a drag / selected a point
+  if (st.sel != null) { st.sel = null; redraw(); return; } // first tap elsewhere just deselects
+  change([...st.pts, round(ll)]);
+}
+function undo() { if (!st.hist.length) return; st.pts = st.hist.pop(); st.sel = null; redraw(); }
+function removePoint() {
+  if (!st.pts.length) return;
+  const i = st.sel ?? st.pts.length - 1;
+  change(st.pts.filter((_, j) => j !== i), null);
+}
+
+// Drag a vertex to move it; drag a midpoint handle to insert a vertex. Works with mouse and touch.
+let dragging = null;
+function onDown(e) {
+  const f = e.features?.[0]; if (!f) return;
+  e.preventDefault(); st.eatClick = true;
+  const before = st.pts.map((c) => c.slice());
+  let i = f.properties.i;
+  if (f.layer.id === 'draw-mid') { st.pts.splice(i + 1, 0, round(e.lngLat)); i += 1; }
+  dragging = { i, before, x: e.point.x, y: e.point.y, moved: f.layer.id === 'draw-mid', mid: f.layer.id === 'draw-mid' };
+  M.map.dragPan.disable(); M.map.getCanvas().style.cursor = 'grabbing';
+}
+function onMove(e) {
+  if (!dragging) return;
+  if (Math.abs(e.point.x - dragging.x) + Math.abs(e.point.y - dragging.y) > 3) dragging.moved = true;
+  if (!dragging.moved) return;
+  st.pts[dragging.i] = round(e.lngLat); st.sel = dragging.i;
+  M.setDraw(lineFC(st.pts), ptsFC(st.pts), midFC(st.pts));
+}
+function onUp() {
+  if (!dragging) return;
+  const d = dragging; dragging = null; M.map.dragPan.enable(); M.map.getCanvas().style.cursor = '';
+  if (d.moved) { st.hist.push(d.before); st.sel = d.i; redraw(); }
+  else { st.sel = st.sel === d.i ? null : d.i; redraw(); } // a plain tap selects / deselects the point
+  setTimeout(() => { st.eatClick = false; }, 350);
+}
+const hover = (on) => () => { if (!dragging) M.map.getCanvas().style.cursor = on ? 'grab' : ''; };
+function wireDrag(on) {
+  const m = M.map; const f = on ? 'on' : 'off';
+  for (const l of ['draw-pts', 'draw-mid']) {
+    m[f]('mousedown', l, onDown); m[f]('touchstart', l, onDown);
+    m[f]('mouseenter', l, hoverOn); m[f]('mouseleave', l, hoverOff);
+  }
+  m[f]('mousemove', onMove); m[f]('touchmove', onMove); m[f]('mouseup', onUp); m[f]('touchend', onUp);
+}
+const hoverOn = hover(true), hoverOff = hover(false);
+function onKey(e) {
+  if (!st.on || e.target.closest?.('input, textarea, select')) return;
+  if ((e.key === 'Backspace' || e.key === 'Delete') && st.pts.length) { e.preventDefault(); removePoint(); }
+  else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+  else if (e.key === 'Escape' && st.sel != null) { e.stopImmediatePropagation(); st.sel = null; redraw(); }
+  else if (e.key === 'Enter' && st.pts.length > 1) { e.preventDefault(); finish(); }
+}
 
 let profT;
 function redraw() {
-  M.setDraw(lineFC(st.pts), ptsFC(st.pts));
+  M.setDraw(lineFC(st.pts), ptsFC(st.pts), midFC(st.pts));
   drawBar();
   clearTimeout(profT); const seq = ++st.seq;
   if (st.pts.length > 1) profT = setTimeout(async () => { const p = await profile(st.pts); if (seq === st.seq) { st.prof = p; drawBar(); } }, 250);
@@ -42,33 +102,41 @@ function statLine(s, km) {
     <div><b class="tnum">${s ? fmtHours(s.hours) : '…'}</b><span>${MODES[st.mode].foot ? 'on foot' : 'driving'}</span></div>
     <div><b>${s ? esc(s.difficulty.split(',')[0]) : '…'}</b><span>difficulty</span></div></div>`;
 }
+async function finish() {
+  const pts = st.pts.slice(); const mode = st.mode; const prof = st.prof.length ? st.prof : await profile(pts); const edit = st.edit;
+  stop();
+  openRoute(edit ? { ...edit, coords: pts, extra: { ...(edit.extra || {}), mode }, _edited: true } : { coords: pts.map((c) => [c[0], c[1]]), extra: { mode } }, prof);
+}
 function drawBar() {
   if (!bar) return;
   const km = flatKm(st.pts); const s = st.prof.length ? stats(st.prof, st.mode) : null;
-  bar.innerHTML = `${st.pts.length < 2 ? `<div class="rb-hint">${icon('route', { size: 18 })}Tap the map to add points along the trail or road</div>` : statLine(s, km)}
-    <div class="rb-modes" role="radiogroup" aria-label="Travel mode">${Object.entries(MODES).map(([id, m]) => `<button role="radio" aria-checked="${st.mode === id}" data-mode="${id}" style="--k:${m.color}">${esc(m.name.split(' (')[0].replace(' / side-by-side', ''))}</button>`).join('')}</div>
-    <div class="rb-actions"><button id="rbUndo" ${st.pts.length ? '' : 'disabled'}>Undo</button><button id="rbCancel">Cancel</button>
-      <button class="primary" id="rbDone" ${st.pts.length > 1 ? '' : 'disabled'}>Done</button></div>`;
+  const help = 'Tap the map to add points. Drag a point to move it. Drag a small dot between two points to add one there. Tap a point to select it, then Delete point. Keys: Backspace deletes, Ctrl/Cmd+Z undoes, Enter finishes.';
+  bar.innerHTML = `${st.pts.length < 2 ? `<div class="rb-hint">${icon('route', { size: 18 })}<span>Tap the map to add points along the trail or road</span>${tip(help, 'How to edit the line')}</div>` : statLine(s, km)}
+    <div class="rb-modes" role="radiogroup" aria-label="Travel mode">${Object.entries(MODES).map(([id, m]) => `<button role="radio" aria-checked="${st.mode === id}" data-mode="${id}" style="--k:${m.color}">${esc(m.name.split(' (')[0].replace(' / side-by-side', ''))}</button>`).join('')}${st.pts.length >= 2 ? tip(help, 'How to edit the line') : ''}</div>
+    <div class="rb-actions">
+      <button id="rbUndo" ${st.hist.length ? '' : 'disabled'} aria-label="Undo">${icon('history', { size: 18 })}<span>Undo</span></button>
+      <button id="rbDel" ${st.pts.length ? '' : 'disabled'}>${icon('trash', { size: 18 })}<span>${st.sel != null ? 'Delete point' : 'Remove last'}</span></button>
+      <span style="flex:1"></span>
+      <button id="rbCancel">Cancel</button>
+      <button class="primary" id="rbDone" ${st.pts.length > 1 ? '' : 'disabled'}>${st.edit ? 'Done editing' : 'Done'}</button></div>`;
   bar.onclick = async (e) => {
     const m = e.target.closest('[data-mode]'); if (m) { st.mode = m.dataset.mode; drawBar(); return; }
     if (e.target.closest('#rbUndo')) undo();
-    if (e.target.closest('#rbCancel')) { if (st.pts.length < 3 || confirm('Discard this route?')) stop(); }
-    if (e.target.closest('#rbDone')) {
-      const pts = st.pts.slice(); const mode = st.mode; const prof = st.prof.length ? st.prof : await profile(pts);
-      stop(); openRoute({ coords: pts.map((c) => [c[0], c[1]]), extra: { mode } }, prof);
-    }
+    if (e.target.closest('#rbDel')) removePoint();
+    if (e.target.closest('#rbCancel')) { if (st.edit) { const t = st.edit; stop(); openRoute(t); } else if (st.pts.length < 3 || confirm('Discard this route?')) stop(); }
+    if (e.target.closest('#rbDone')) finish();
   };
 }
 
 // ---- Route detail (new or saved track) ----
 export async function openRoute(track, prof) {
-  const { openPanel } = await import('./main.js?v=20261113075752-75055de');
+  const { openPanel } = await import('./main.js?v=20261113080048-b6e114f');
   openPanel();
   const v = document.getElementById('view'); v.scrollTop = 0;
   document.querySelectorAll('#tabs button').forEach((b) => b.classList.remove('active'));
   const isNew = !track.id; const coords = (track.coords || []).map((c) => [c[0], c[1]]);
   let mode = track.extra?.mode || 'trail';
-  v.innerHTML = `<div class="detail-h"><button class="small" id="rBack">${icon('chevL', { size: 16 })}Back</button>${isNew ? '' : `<button class="small danger" id="rDel">Delete</button>`}</div>
+  v.innerHTML = `<div class="detail-h"><button class="small" id="rBack">${icon('chevL', { size: 16 })}Back</button>${isNew ? '' : `<div class="row">${(track.coords || []).length <= 600 ? `<button class="small" id="rEditLine">${icon('ruler', { size: 16 })}Edit line</button>` : ''}<button class="small danger" id="rDel">Delete</button></div>`}</div>
     <h2 style="margin-bottom:2px">${isNew ? 'New route' : esc(track.name || 'Route')}</h2>
     <div class="muted">${isNew ? 'Check the numbers, then save it to your map.' : esc([track.hunter, track.started_at && fmtDate(track.started_at), track.source && track.source !== 'drawn' ? 'imported' : ''].filter(Boolean).join(' · '))}</div>
     <div class="rb-modes" id="rModes" style="margin:14px 0 6px">${Object.entries(MODES).map(([id, m]) => `<button role="radio" aria-checked="${mode === id}" data-mode="${id}" style="--k:${m.color}">${esc(m.name)}</button>`).join('')}</div>
@@ -98,9 +166,10 @@ export async function openRoute(track, prof) {
   };
   draw();
   v.querySelector('#rModes').onclick = (e) => { const b = e.target.closest('[data-mode]'); if (!b) return; mode = b.dataset.mode; v.querySelectorAll('#rModes button').forEach((x) => x.setAttribute('aria-checked', String(x === b))); draw(); };
-  v.querySelector('#rBack').onclick = async () => { M.setCursor(null); (await import('./main.js?v=20261113075752-75055de')).rerender(); };
-  v.querySelector('#rFit').onclick = () => { M.fitTo(coords); if (innerWidth <= 760) import('./main.js?v=20261113075752-75055de').then((m) => m.closePanel()); };
-  v.querySelector('#rDel')?.addEventListener('click', async () => { if (!confirm('Delete this route?')) return; await db.remove('tracks', track.id); M.setCursor(null); (await import('./main.js?v=20261113075752-75055de')).rerender(); });
+  v.querySelector('#rBack').onclick = async () => { M.setCursor(null); (await import('./main.js?v=20261113080048-b6e114f')).rerender(); };
+  v.querySelector('#rFit').onclick = () => { M.fitTo(coords); if (innerWidth <= 760) import('./main.js?v=20261113080048-b6e114f').then((m) => m.closePanel()); };
+  v.querySelector('#rEditLine')?.addEventListener('click', async () => { if (innerWidth <= 760) (await import('./main.js?v=20261113080048-b6e114f')).closePanel(); start(mode, coords, track); });
+  v.querySelector('#rDel')?.addEventListener('click', async () => { if (!confirm('Delete this route?')) return; await db.remove('tracks', track.id); M.setCursor(null); (await import('./main.js?v=20261113080048-b6e114f')).rerender(); });
   v.querySelector('#rForm').onsubmit = async (e) => {
     e.preventDefault(); const f = e.target; const s = stats(prof, mode);
     const extra = { ...(track.extra || {}), mode, notes: f.notes.value || undefined, up: Math.round(s.up), down: Math.round(s.down), hours: +s.hours.toFixed(2), difficulty: s.difficulty };
@@ -108,7 +177,7 @@ export async function openRoute(track, prof) {
     const row = { name: f.name.value.trim(), extra, distance_km: +s.dist.toFixed(3) };
     try {
       if (isNew) { row.coords = prof.length ? sampleCoords(coords, prof) : coords; row.hunter = 'Me'; row.source = 'drawn'; row.started_at = null; const [saved] = await db.insert('tracks', row); track = saved; }
-      else await db.update('tracks', track.id, row);
+      else { if (track._edited) row.coords = prof.length ? sampleCoords(coords, prof) : coords; const saved = await db.update('tracks', track.id, row); track = { ...saved }; }
       toast('Route saved'); openRoute(track, prof);
     } catch (err) { toast('Save failed: ' + err.message, 5000); }
   };
