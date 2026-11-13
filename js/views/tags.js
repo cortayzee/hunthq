@@ -1,11 +1,12 @@
-import * as db from '../db.js?v=20261113155857-f37cc7b';
-import { store, hunters } from '../db.js?v=20261113155857-f37cc7b';
-import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261113155857-f37cc7b';
-import { hunterDatalist, speciesDatalist } from './log.js?v=20261113155857-f37cc7b';
-import { icon } from '../icons.js?v=20261113155857-f37cc7b';
-import * as M from '../map.js?v=20261113155857-f37cc7b';
-import * as L from '../limits.js?v=20261113155857-f37cc7b';
-import { muSort } from '../seasons.js?v=20261113155857-f37cc7b';
+import * as db from '../db.js?v=20261113160120-5c3f45d';
+import { store, hunters } from '../db.js?v=20261113160120-5c3f45d';
+import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261113160120-5c3f45d';
+import { hunterDatalist, speciesDatalist } from './log.js?v=20261113160120-5c3f45d';
+import { icon } from '../icons.js?v=20261113160120-5c3f45d';
+import * as M from '../map.js?v=20261113160120-5c3f45d';
+import * as L from '../limits.js?v=20261113160120-5c3f45d';
+import { SEASONS, openRange } from '../seasons.js?v=20261113160120-5c3f45d';
+import { muSort } from '../seasons.js?v=20261113160120-5c3f45d';
 
 // Tags & LEH. LEH hunts come from the 2026-2027 LEH synopsis (hunt-hq-handoff/data/leh_2026.json, scripts/parse_leh.py).
 const yr = new Date().getFullYear();
@@ -216,7 +217,7 @@ async function lehArea(h) {
   return areaCache.get(key);
 }
 export async function highlightHunt(h) {
-  const { selChip } = await import('../main.js?v=20261113155857-f37cc7b');
+  const { selChip } = await import('../main.js?v=20261113160120-5c3f45d');
   let fc = await lehArea(h); let exact = !!fc;
   if (!fc) fc = { type: 'FeatureCollection', features: (M.WMU_GEO?.features || []).filter((f) => h.mus.includes(f.properties.id)) };
   fc = { type: 'FeatureCollection', features: fc.features.map((f) => ({ ...f, properties: { stroke: '#ff8a00', fill: '#ff8a00', fillOpacity: 0.22 } })) };
@@ -232,6 +233,25 @@ const tui = { year: L.licenceYear(new Date()) };
 const sentence = (x) => x.charAt(0).toUpperCase() + x.slice(1).toLowerCase();
 const dots = (n, of) => `<span class="lim-dots" aria-hidden="true">${Array.from({ length: of }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
 const fmtD = (d) => d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+// Which deer classes have a general (adult) season open today somewhere in the region.
+function openFlags(region) {
+  const name = L.REGION_NAMES[region]; const iso = new Date().toISOString().slice(0, 10); const f = { wb: false, wa: false, mb: false, ma: false };
+  for (const r of SEASONS) {
+    if (r.r !== name || !/deer/i.test(r.sp) || /youth|senior/i.test(r.q || '') || !openRange(r, iso)) continue;
+    const k = /white/i.test(r.sp) ? 'w' : 'm'; const c = (r.c || '').toLowerCase();
+    if (/antlerless/.test(c)) f[k + 'a'] = true; else if (/either|any/.test(c) || !c) { f[k + 'a'] = true; f[k + 'b'] = true; } else f[k + 'b'] = true;
+  }
+  return f;
+}
+function leftRow(r, d, mine) {
+  if (!mine && !tui.allRegs) return '';
+  const o = openFlags(r);
+  // A class can't exceed its species' remaining total or the region total.
+  const cell = (n, open) => `<td class="n ${n ? '' : 'zero'}">${n ? `<b>${n}</b>` : '–'}${n && open ? '<i class="dot-open" title="Open today"></i>' : ''}</td>`;
+  return `<tr class="${mine ? 'mine' : ''}"><td class="reg">${esc(L.REGION_NAMES[r])}<span>Region ${r}${d.L.note ? tip(d.L.note) : ''}</span></td>
+    ${cell(d.wtBuck, o.wb)}${cell(d.wtAnl, o.wa)}${cell(d.muleBuck, o.mb)}${cell(d.muleAnl, o.ma)}
+    <td class="n tot ${d.all ? '' : 'zero'}">${d.all ? `<b>${d.all}</b>` : '–'}</td></tr>`;
+}
 function renderTags(body) {
   const cur = L.licenceYear(new Date());
   const years = [...new Set([cur, cur - 1, ...store.tags.map((t) => +t.year)])].filter((y) => y <= cur + 1).sort((a, b) => b - a).slice(0, 4);
@@ -247,16 +267,19 @@ function renderTags(body) {
     <div class="lim-h"><b class="tip-h">Deer${tip('BC allows 3 deer per licence year (not Haida Gwaii), and only 1 of them can be a mule deer buck from Regions 3 to 8 combined. Each region also caps mule deer and whitetail. Counts come from kills you logged as yours this licence year (April 1 to March 31).', 'About deer limits')}</b>
       <span class="lim-n tnum">${T.deer.total} of ${L.PROVINCIAL.Deer}</span></div>
     ${dots(T.deer.total, L.PROVINCIAL.Deer)}
+    <p class="lim-left">${L.PROVINCIAL.Deer - T.deer.total > 0 ? `You can take <b>${L.PROVINCIAL.Deer - T.deer.total} more deer</b> this licence year${T.deer.muleBuck38 >= L.MULE_BUCK_3_8 ? ', but no more mule deer bucks in Regions 3–8' : ''}.` : '<b>You have reached the provincial deer limit.</b>'}</p>
     <div class="lim-rows">
       <div><span>White-tailed deer</span><b class="tnum">${T.deer.wt} taken</b></div>
       <div><span>Mule deer</span><b class="tnum">${T.deer.mule} taken</b></div>
       <div><span>Mule deer buck, Regions 3–8</span><b class="tnum">${T.deer.muleBuck38} of ${L.MULE_BUCK_3_8}</b></div>
     </div>
-    <details class="lim-reg"><summary>Still allowed by region ${icon('chevR', { size: 16 })}</summary>
-      <table class="lim-table"><thead><tr><th>Region</th><th>Mule</th><th>Whitetail</th><th>Any deer</th></tr></thead><tbody>
-      ${regRows.map(({ r, d, mine }) => `<tr class="${mine ? 'mine' : ''}"><td>${r} <span class="muted">${esc(L.REGION_NAMES[r])}</span>${d.L.note ? tip(d.L.note) : ''}</td>
-        <td class="tnum">${d.mule}${d.mule && d.muleBuck < d.mule ? ` <span class="muted">(${d.muleBuck ? d.muleBuck + ' buck' : 'antlerless only'})</span>` : ''}</td><td class="tnum">${d.wt}${d.wt && d.wtBuck < d.wt ? ` <span class="muted">(${d.wtBuck ? d.wtBuck + ' buck' : 'antlerless only'})</span>` : ''}</td><td class="tnum">${d.all}</td></tr>`).join('')}
-      </tbody></table><p class="list-note">Bold rows are regions you've hunted. Numbers are what you can still take this licence year.</p></details>
+    <h4 class="lim-sub tip-h">Deer you can still take${tip("Each number is how many more you can take in that region this licence year, after your logged kills. A green dot means a general season for it is open today in at least some WMUs there (adult hunters). 'Total' is the most deer you can still take in that region, whatever the mix. Always check the unit you hunt.", 'How to read this table')}</h4>
+    <div class="table-wrap"><table class="left-table">
+      <thead><tr><th rowspan="2">Region</th><th colspan="2">Whitetail</th><th colspan="2">Mule deer</th><th rowspan="2">Total</th></tr>
+        <tr><th>Buck</th><th>Antl.</th><th>Buck</th><th>Antl.</th></tr></thead>
+      <tbody>${regRows.map(({ r, d, mine }) => leftRow(r, d, mine)).join('')}</tbody></table></div>
+    ${regRows.some((x) => !x.mine) ? `<button class="link small-link" id="allRegs">${tui.allRegs ? 'Show only my regions' : 'Show all regions'}</button>` : ''}
+    <p class="list-note"><span class="dot-open"></span> open today &nbsp;·&nbsp; Antl. = antlerless</p>
   </div>
   ${others.length ? `<div class="lim-grid">${others.map((sp) => { const lim = L.PROVINCIAL[sp]; const n = T.other[sp] || 0; return `<div class="lim-mini"><span>${esc(sp)}</span><b class="tnum">${n}${lim ? ` of ${lim}` : ' taken'}</b>${lim ? dots(n, lim) : ''}</div>`; }).join('')}</div>` : ''}
   <div class="list-h-row"><h3 class="list-h">Tags ${L.yearLabel(y)}</h3><button class="small primary" id="addTags">${icon('plus', { size: 16 })}Add tags</button></div>
@@ -270,6 +293,7 @@ function renderTags(body) {
   body.onclick = async (e) => {
     const yb = e.target.closest('[data-ly]'); if (yb) { tui.year = +yb.dataset.ly; renderTags(body); return; }
     if (e.target.closest('#addTags')) { addTagsSheet(y); return; }
+    if (e.target.closest('#allRegs')) { tui.allRegs = !tui.allRegs; renderTags(body); return; }
     if (e.target.closest('#tagKills')) { for (const k of S.untagged) await db.insert('tags', { year: y, species: k.s.species, tag_type: 'General', hunter: 'Me' }); toast('Tags added'); return; }
     const r = e.target.closest('[data-tag]'); if (r) tagForm(store.tags.find((x) => x.id === r.dataset.tag));
   };
