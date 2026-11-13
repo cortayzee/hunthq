@@ -3,14 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#141a14">
+<meta name="theme-color" content="#17211a">
+<meta name="apple-mobile-web-app-title" content="Ridgeline">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Hunt HQ</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23141a14'/%3E%3Ccircle cx='32' cy='32' r='16' fill='none' stroke='%23e0893a' stroke-width='5'/%3E%3Cpath d='M32 8v14M32 42v14M8 32h14M42 32h14' stroke='%23e0893a' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+<title>Ridgeline</title>
+<link rel="icon" type="image/svg+xml" href="brand/ridgeline-icon.svg">
+<link rel="apple-touch-icon" href="brand/ridgeline-icon.png">
 <script>try { const t = localStorage.getItem('hunthq_theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="css/app.css?v=20261113080048-b6e114f">
+<link rel="stylesheet" href="css/app.css?v=20261113080403-f924e16">
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/supabase.js"></script>
 <script src="vendor/suncalc.js"></script>
@@ -20,14 +22,14 @@
 <body>
 <div id="auth" class="auth hidden">
   <form id="authForm" class="auth-card">
-    <h1>Hunt HQ <small>BC</small></h1>
+    <h1 class="auth-brand"><svg class="brand-mark" width="44" height="33" viewBox="0 0 120 90" aria-hidden="true"><circle cx="86" cy="20" r="10" fill="#e8742c"/><path d="M6 70 L30 44 L44 56 L62 30 L78 48 L90 40 L114 66" fill="none" stroke="currentColor" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/></svg><span style="text-transform:uppercase">Ridgeline</span></h1><p class="auth-tag">Scout · Hunt · Log</p>
     <label>Email <input name="email" type="email" autocomplete="username" required></label>
     <label>Password <input name="password" type="password" autocomplete="current-password" required minlength="6"></label>
     <div class="row">
       <button type="submit" class="primary">Sign in</button>
       <button type="button" id="signupBtn">Create account</button>
     </div>
-    <p class="muted">Data syncs to your Supabase project. No connection? <a href="#" id="localModeBtn">Use local mode</a> (stored only in this browser).</p>
+    <p class="muted">Your hunts sync to all your devices. No connection? <a href="#" id="localModeBtn">Use local mode</a> to save in this browser only.</p>
     <p id="authMsg" class="err"></p>
   </form>
 </div>
@@ -66,7 +68,7 @@
     <div class="panel-head">
       <div class="panel-top">
         <div class="sheet-grip" id="sheetGrip" aria-hidden="true"><span></span></div>
-        <span class="brand">Hunt HQ</span>
+        <span class="brand"><svg class="brand-mark" width="30" height="22" viewBox="0 0 120 90" aria-hidden="true"><circle cx="86" cy="20" r="10" fill="#e8742c"/><path d="M6 70 L30 44 L44 56 L62 30 L78 48 L90 40 L114 66" fill="none" stroke="currentColor" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/></svg><span>Ridgeline</span></span>
         <button id="panelX" class="icon-btn" aria-label="Close panel"><i data-icon="x" data-size="20"></i></button>
       </div>
       <nav id="tabs" class="tabs" aria-label="Sections">
@@ -86,6 +88,6 @@
 <div id="modal" class="modal hidden"><div class="modal-card" role="dialog" aria-modal="true"><button class="modal-x icon-btn" aria-label="Close"><i data-icon="x"></i></button><div id="modalBody"></div></div></div>
 <div id="toast" class="toast off" role="status" aria-live="polite"></div>
 
-<script type="module" src="js/main.js?v=20261113080048-b6e114f"></script>
+<script type="module" src="js/main.js?v=20261113080403-f924e16"></script>
 </body>
 </html>
