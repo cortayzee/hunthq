@@ -537,3 +537,11 @@ details.lyr-sec[open] > summary { border-bottom: 1px solid var(--line); backgrou
 .w-ticks { display: grid; grid-template-columns: repeat(5, 1fr); font-size: .72em; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
 .hv-table td, .hv-table th { padding: 6px 4px; } .hv-table td:not(:first-child), .hv-table th:not(:first-child) { text-align: right; }
 .trend-up { color: var(--ok); } .trend-down { color: var(--bad); }
+
+/* Load failure banner */
+.sync-banner { position: fixed; z-index: 60; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 64px);
+  width: min(560px, calc(100% - 32px)); display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 12px;
+  background: #3a1d1a; color: #ffd9d2; border: 1px solid #8a3a2e; box-shadow: 0 8px 24px rgba(0,0,0,.35); font-size: 14px; }
+.sync-banner .t { flex: 1; }
+.local-note { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 10px 12px; margin: 8px 0 12px;
+  border-radius: 10px; background: rgba(224,137,58,.12); border: 1px solid rgba(224,137,58,.4); font-size: 13.5px; }

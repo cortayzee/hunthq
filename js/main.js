@@ -1,20 +1,20 @@
-import * as db from './db.js?v=20261113054105-48b1474';
-import { store } from './db.js?v=20261113054105-48b1474';
-import * as M from './map.js?v=20261113054105-48b1474';
-import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261113054105-48b1474';
-import { $, $$, esc, toast, closeModal, requestClose, todayISO, earthLink } from './util.js?v=20261113054105-48b1474';
-import { REGS_URL, BASES } from './config.js?v=20261113054105-48b1474';
-import { sunInfo } from './views/sun.js?v=20261113054105-48b1474';
-import { mvprSummary, mvprStatus } from './mvpr.js?v=20261113054105-48b1474';
-import { icon, hydrateIcons } from './icons.js?v=20261113054105-48b1474';
-import * as R from './route.js?v=20261113054105-48b1474';
-import * as V from './vis.js?v=20261113054105-48b1474';
+import * as db from './db.js?v=20261113055324-718ddfe';
+import { store } from './db.js?v=20261113055324-718ddfe';
+import * as M from './map.js?v=20261113055324-718ddfe';
+import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261113055324-718ddfe';
+import { $, $$, esc, toast, closeModal, requestClose, todayISO, earthLink } from './util.js?v=20261113055324-718ddfe';
+import { REGS_URL, BASES } from './config.js?v=20261113055324-718ddfe';
+import { sunInfo } from './views/sun.js?v=20261113055324-718ddfe';
+import { mvprSummary, mvprStatus } from './mvpr.js?v=20261113055324-718ddfe';
+import { icon, hydrateIcons } from './icons.js?v=20261113055324-718ddfe';
+import * as R from './route.js?v=20261113055324-718ddfe';
+import * as V from './vis.js?v=20261113055324-718ddfe';
 
 const views = {};
 const viewModules = {
-  layers: () => import('./views/layers.js?v=20261113054105-48b1474'), open: () => import('./views/open.js?v=20261113054105-48b1474'), log: () => import('./views/log.js?v=20261113054105-48b1474'),
-  trips: () => import('./views/trips.js?v=20261113054105-48b1474'), tags: () => import('./views/tags.js?v=20261113054105-48b1474'), insights: () => import('./views/insights.js?v=20261113054105-48b1474'),
-  import: () => import('./views/import.js?v=20261113054105-48b1474'), sun: () => import('./views/sun.js?v=20261113054105-48b1474'), more: () => import('./views/more.js?v=20261113054105-48b1474'),
+  layers: () => import('./views/layers.js?v=20261113055324-718ddfe'), open: () => import('./views/open.js?v=20261113055324-718ddfe'), log: () => import('./views/log.js?v=20261113055324-718ddfe'),
+  trips: () => import('./views/trips.js?v=20261113055324-718ddfe'), tags: () => import('./views/tags.js?v=20261113055324-718ddfe'), insights: () => import('./views/insights.js?v=20261113055324-718ddfe'),
+  import: () => import('./views/import.js?v=20261113055324-718ddfe'), sun: () => import('./views/sun.js?v=20261113055324-718ddfe'), more: () => import('./views/more.js?v=20261113055324-718ddfe'),
 };
 export const app = { tab: 'layers', date: todayISO(), dropMode: false };
 const isPhone = () => innerWidth <= 760;
@@ -64,7 +64,7 @@ export function selChip(label) {
 }
 export function clearSelection() { M.setSelection?.(null); selChip(null); }
 export async function openWmu(mu, region) {
-  const { showWmu } = await import('./views/wmu.js?v=20261113054105-48b1474');
+  const { showWmu } = await import('./views/wmu.js?v=20261113055324-718ddfe');
   $$('#tabs button').forEach((b) => b.classList.remove('active'));
   openPanel(); const v = $('#view'); v.scrollTop = 0; v.onclick = v.onchange = v.oninput = v.onkeydown = null;
   await showWmu(v, mu, { region, date: app.date, onBack: () => showTab(app.tab) });
@@ -94,15 +94,44 @@ async function boot() {
   if (await db.restoreSession()) start(); else $('#auth').classList.remove('hidden');
 }
 
+// Load everything; on failure keep a banner up (with Retry) instead of silently showing an empty app.
+async function loadData() {
+  try { await db.loadAll(); syncBanner(null); return true; }
+  catch (e) { console.error(e); syncBanner('Couldn\u2019t load your hunts (' + (e.message || 'network error') + '). Your data is safe in your account.'); return false; }
+}
+function syncBanner(msg) {
+  let b = document.getElementById('syncBanner');
+  if (!msg) { b?.remove(); return; }
+  if (!b) {
+    b = document.createElement('div'); b.id = 'syncBanner'; b.className = 'sync-banner'; b.setAttribute('role', 'alert');
+    b.innerHTML = '<span class="t"></span><button class="primary">Retry</button>';
+    b.querySelector('button').onclick = async () => { b.querySelector('button').disabled = true; if (await loadData()) { V.apply(); views[app.tab]?.onData?.('all'); toast('Hunts loaded'); } else b.querySelector('button').disabled = false; };
+    document.getElementById('app').append(b);
+  }
+  b.querySelector('.t').textContent = msg;
+}
+// Coming back to a tab that sat open: pull fresh data so it never shows (or saves over) an old copy.
+document.addEventListener('click', async (e) => { if (e.target.closest('[data-signin]')) { await db.signOut(); location.reload(); } });
+function watchFreshness() {
+  if (db.getMode() !== 'remote') return;
+  let hiddenAt = 0;
+  document.addEventListener('visibilitychange', async () => {
+    if (document.hidden) { hiddenAt = Date.now(); return; }
+    if (Date.now() - hiddenAt < 60000 || document.querySelector('#modal:not(.hidden)')) return;
+    if (await loadData()) { V.apply(); if (panelOpen()) views[app.tab]?.onData?.('all'); }
+  });
+}
+
 let started = false;
 async function start() {
   if (started) return; started = true;
   $('#auth').classList.add('hidden'); $('#app').classList.remove('hidden');
-  try { await db.loadAll(); } catch (e) { toast('Could not load data: ' + e.message, 6000); console.error(e); }
+  await loadData();
+  watchFreshness();
   await loadSeasons();
   const saved = store.prefs.map || {};
   await M.initMap('map', store.prefs);
-  import('./wildlife.js?v=20261113054105-48b1474').then((W) => { const go = () => (M.map.getLayer('wmu-fill') ? W.restore() : setTimeout(go, 300)); go(); });
+  import('./wildlife.js?v=20261113055324-718ddfe').then((W) => { const go = () => (M.map.getLayer('wmu-fill') ? W.restore() : setTimeout(go, 300)); go(); });
   if (saved.pitch && !saved.terrain) M.map.setPitch(0);
   V.apply();
   wireUI();
@@ -214,10 +243,10 @@ function wireUI() {
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const { act, id } = b.dataset;
-    if (act === 'edit-spot') (await import('./views/log.js?v=20261113054105-48b1474')).openSpotForm(store.spots.find((s) => s.id === id));
-    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261113054105-48b1474')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'edit-spot') (await import('./views/log.js?v=20261113055324-718ddfe')).openSpotForm(store.spots.find((s) => s.id === id));
+    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261113055324-718ddfe')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
     if (act === 'wmu') { e.preventDefault(); popup?.remove(); M.selectWmu(b.dataset.mu); openWmu(b.dataset.mu, b.dataset.region); }
-    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261113054105-48b1474')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261113055324-718ddfe')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
   });
   document.addEventListener('submit', (e) => {
     if (!e.target.matches('[data-wmuform]')) return; e.preventDefault();
@@ -235,7 +264,7 @@ function wireUI() {
     }
     if (app.dropMode) {
       setDropMode(false);
-      const { openSpotForm } = await import('./views/log.js?v=20261113054105-48b1474');
+      const { openSpotForm } = await import('./views/log.js?v=20261113055324-718ddfe');
       const form = openSpotForm({ lat: e.lngLat.lat, lon: e.lngLat.lng });
       const res = await M.identify(e.lngLat, ['wmu']);
       const w = M.wmuFromIdentify(res); if (w && form?.wmu && !form.wmu.value) form.wmu.value = w;

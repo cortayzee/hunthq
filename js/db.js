@@ -1,6 +1,6 @@
 // Data layer: Supabase (synced) or local mode (localStorage). Everything is cached in `store`.
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=20261113054105-48b1474';
-import { uuid } from './util.js?v=20261113054105-48b1474';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=20261113055324-718ddfe';
+import { uuid } from './util.js?v=20261113055324-718ddfe';
 
 export const TABLES = { spots: 'hunt_spots', trips: 'hunt_trips', tracks: 'hunt_tracks', tags: 'hunt_tags', leh: 'hunt_leh' };
 export const store = { spots: [], trips: [], tracks: [], tags: [], leh: [], prefs: {} };
@@ -17,6 +17,8 @@ export function client() {
 }
 export const getMode = () => mode;
 export const getUser = () => user;
+// Shown on data pages in local mode so an empty list is never mistaken for lost data.
+export const localNote = () => (mode === 'local' ? `<div class="local-note"><span><b>Local mode.</b> Showing only what's saved in this browser — your synced hunts live in your account.</span><button class="small primary" data-signin>Sign in</button></div>` : '');
 
 export async function restoreSession() {
   if (localStorage.getItem('hunthq_mode') === 'local') { mode = 'local'; return true; }
@@ -121,7 +123,8 @@ export async function savePrefs(patch) {
   else {
     // Read-merge-write so a stale tab can't wipe keys another device (or Claude) saved.
     const { data: cur } = await client().from('hunt_prefs').select('data').maybeSingle();
-    store.prefs = { ...(cur?.data || {}), ...store.prefs, ...patch };
+    // Only the keys this call changes win; everything else comes from the server copy (stale tabs can't drop groups etc.).
+    store.prefs = { ...(cur?.data || {}), ...patch };
     const { error } = await client().from('hunt_prefs').upsert({ user_id: user.id, data: store.prefs, updated_at: new Date().toISOString() });
     if (error) throw error;
   }

@@ -1,7 +1,7 @@
-import { store, hunters } from '../db.js?v=20261113054105-48b1474';
-import { esc, opts, yearOf, groupBy } from '../util.js?v=20261113054105-48b1474';
-import * as M from '../map.js?v=20261113054105-48b1474';
-import { harvested } from '../vis.js?v=20261113054105-48b1474';
+import { store, hunters, localNote } from '../db.js?v=20261113055324-718ddfe';
+import { esc, opts, yearOf, groupBy } from '../util.js?v=20261113055324-718ddfe';
+import * as M from '../map.js?v=20261113055324-718ddfe';
+import { harvested } from '../vis.js?v=20261113055324-718ddfe';
 
 const f = { hunter: '', species: '', from: '', to: '' };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -13,7 +13,7 @@ const BUCKETS = ['Dawn (5–8)', 'Morning (8–11)', 'Midday (11–14)', 'Aftern
 export function render(v) {
   const sp = [...new Set([...store.trips, ...store.spots].map((x) => x.species).filter(Boolean))].sort();
   const years = [...new Set([...store.trips.map((t) => yearOf(t.date_start)), ...store.spots.map((s) => yearOf(s.observed_at))].filter(Boolean))].sort();
-  v.innerHTML = `<h2>Insights</h2>
+  v.innerHTML = `<h2>Insights</h2>${localNote()}
   <div class="grid2"><select id="ih"><option value="">All hunters</option>${opts(hunters(), f.hunter)}</select>
   <select id="is"><option value="">All species</option>${opts(sp, f.species)}</select>
   <select id="if"><option value="">From year</option>${opts(years.map(String), f.from)}</select>
@@ -21,7 +21,7 @@ export function render(v) {
   v.querySelectorAll('select').forEach((s) => (s.onchange = () => { Object.assign(f, { hunter: v.querySelector('#ih').value, species: v.querySelector('#is').value, from: v.querySelector('#if').value, to: v.querySelector('#it').value }); draw(v); }));
   draw(v); render.v = v;
 }
-export function onData() { if (render.v?.isConnected) draw(render.v); }
+export function onData() { if (render.v?.isConnected) render(render.v); }
 
 const okY = (y) => (!f.from || y >= +f.from) && (!f.to || y <= +f.to);
 function draw(v) {
@@ -29,6 +29,8 @@ function draw(v) {
   const spots = store.spots.filter((s) => (!f.hunter || s.hunter === f.hunter) && (!f.species || s.species === f.species) && (!s.observed_at || okY(yearOf(s.observed_at))));
   const kills = spots.filter((s) => s.kind === 'kill');
   const hrs = trips.reduce((a, t) => a + (+t.hours || 0), 0), harv = trips.filter((t) => harvested(t)).length;
+  const dayN = (t) => (t.date_end && t.date_end >= t.date_start ? Math.round((new Date(t.date_end) - new Date(t.date_start)) / 864e5) + 1 : 1);
+  const days = trips.reduce((a, t) => a + dayN(t), 0);
   const seen = trips.reduce((a, t) => a + (+t.animals_seen || 0), 0);
   const tripStats = (key) => {
     const g = groupBy(trips, key);
@@ -49,11 +51,11 @@ function draw(v) {
   const timed = spots.filter((s) => s.observed_at && !s.extra?.time_unknown && ['kill', 'sighting'].includes(s.kind));
   v.querySelector('#iOut').innerHTML = `
   <div class="kpis" style="margin:10px 0">
-    <div class="kpi"><b>${trips.length}</b><span>trips / days</span></div><div class="kpi"><b>${hrs.toFixed(0)}</b><span>hours</span></div>
-    <div class="kpi"><b>${harv}</b><span>trip harvests</span></div><div class="kpi"><b>${kills.length}</b><span>kill waypoints</span></div>
-    <div class="kpi"><b>${trips.length ? (harv / trips.length * 100).toFixed(0) + '%' : '—'}</b><span>success / trip</span></div>
-    <div class="kpi"><b>${harv ? (hrs / harv).toFixed(1) : '—'}</b><span>hours / harvest</span></div>
-    <div class="kpi"><b>${hrs ? (seen / hrs).toFixed(2) : '—'}</b><span>animals seen / hr</span></div>
+    <div class="kpi"><b>${trips.length}</b><span>hunts</span></div><div class="kpi"><b>${days}</b><span>days out</span></div>
+    <div class="kpi"><b>${kills.length}</b><span>animals taken</span></div>
+    <div class="kpi"><b>${trips.length ? (harv / trips.length * 100).toFixed(0) + '%' : '—'}</b><span>hunts with a harvest</span></div>
+    <div class="kpi"><b>${kills.length ? (days / kills.length).toFixed(1) : '—'}</b><span>days / animal</span></div>
+    ${hrs ? `<div class="kpi"><b>${hrs.toFixed(0)}</b><span>hours</span></div><div class="kpi"><b>${(seen / hrs).toFixed(2)}</b><span>animals seen / hr</span></div>` : ''}
   </div>
   ${!trips.length && !spots.length ? '<p class="muted">Log trips and waypoints (or bulk-enter past seasons) to see patterns here.</p>' : ''}
   ${table('Success by WMU', tripStats((t) => t.wmu || null))}

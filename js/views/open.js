@@ -1,11 +1,11 @@
 // Seasons: "Where can I hunt <species> on <date>?"  Pick a species → open WMUs shade on the map.
-import { SEASONS, openRange, fmtRange, outsideSynopsis, muSort } from '../seasons.js?v=20261113054105-48b1474';
-import * as M from '../map.js?v=20261113054105-48b1474';
-import { REGS_URL } from '../config.js?v=20261113054105-48b1474';
-import { esc, todayISO, pad } from '../util.js?v=20261113054105-48b1474';
-import { icon } from '../icons.js?v=20261113054105-48b1474';
-import { category } from './wmu.js?v=20261113054105-48b1474';
-import { app } from '../main.js?v=20261113054105-48b1474';
+import { SEASONS, openRange, fmtRange, outsideSynopsis, muSort } from '../seasons.js?v=20261113055324-718ddfe';
+import * as M from '../map.js?v=20261113055324-718ddfe';
+import { REGS_URL } from '../config.js?v=20261113055324-718ddfe';
+import { esc, todayISO, pad } from '../util.js?v=20261113055324-718ddfe';
+import { icon } from '../icons.js?v=20261113055324-718ddfe';
+import { category } from './wmu.js?v=20261113055324-718ddfe';
+import { app } from '../main.js?v=20261113055324-718ddfe';
 
 const st = { sp: '', weapon: 'any', youth: false };
 const CATS = [['big', 'Big game', 'deer'], ['pred', 'Bears & predators', 'paw'], ['bird', 'Birds & small game', 'bird']];

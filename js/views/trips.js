@@ -1,16 +1,16 @@
-import * as db from '../db.js?v=20261113054105-48b1474';
-import { store, hunters } from '../db.js?v=20261113054105-48b1474';
-import { WEAPONS, RESULTS, kindColor } from '../config.js?v=20261113054105-48b1474';
-import { esc, opts, modal, closeModal, requestClose, toast, formData, todayISO, num, parseCSV, yearOf } from '../util.js?v=20261113054105-48b1474';
-import { normMU } from '../seasons.js?v=20261113054105-48b1474';
-import { hunterDatalist, speciesDatalist, spotRow, dateSpan, openSpotForm } from './log.js?v=20261113054105-48b1474';
-import { exportCSV } from '../exporters.js?v=20261113054105-48b1474';
-import { pickOnMap, closePanel, openPanel } from '../main.js?v=20261113054105-48b1474';
-import * as M from '../map.js?v=20261113054105-48b1474';
-import * as V from '../vis.js?v=20261113054105-48b1474';
-import { tripTitle, tripSpots, harvested } from '../vis.js?v=20261113054105-48b1474';
-import { icon, hydrateIcons } from '../icons.js?v=20261113054105-48b1474';
-import { glyphSVG, animalFor } from '../animals.js?v=20261113054105-48b1474';
+import * as db from '../db.js?v=20261113055324-718ddfe';
+import { store, hunters } from '../db.js?v=20261113055324-718ddfe';
+import { WEAPONS, RESULTS, kindColor } from '../config.js?v=20261113055324-718ddfe';
+import { esc, opts, modal, closeModal, requestClose, toast, formData, todayISO, num, parseCSV, yearOf } from '../util.js?v=20261113055324-718ddfe';
+import { normMU } from '../seasons.js?v=20261113055324-718ddfe';
+import { hunterDatalist, speciesDatalist, spotRow, dateSpan, openSpotForm } from './log.js?v=20261113055324-718ddfe';
+import { exportCSV } from '../exporters.js?v=20261113055324-718ddfe';
+import { pickOnMap, closePanel, openPanel } from '../main.js?v=20261113055324-718ddfe';
+import * as M from '../map.js?v=20261113055324-718ddfe';
+import * as V from '../vis.js?v=20261113055324-718ddfe';
+import { tripTitle, tripSpots, harvested } from '../vis.js?v=20261113055324-718ddfe';
+import { icon, hydrateIcons } from '../icons.js?v=20261113055324-718ddfe';
+import { glyphSVG, animalFor } from '../animals.js?v=20261113055324-718ddfe';
 
 // A hunt = one outing (a day or a multi-day trip). Its kills & sightings are waypoints linked by extra.trip_id.
 const ui = { year: '' };
@@ -47,6 +47,7 @@ export function render(v) {
     <div class="row"><button class="primary" id="newTrip">${icon('plus', { size: 18 })}New hunt</button>
     <details class="menu"><summary class="icon-btn" aria-label="More">${icon('dots')}</summary><div class="menu-pop">
       <button data-m="bulk">${icon('list', { size: 18 })}Bulk entry (past seasons)</button><button data-m="csv">${icon('upload', { size: 18 })}Export CSV</button></div></details></div></div>
+  ${db.localNote()}
   ${years.length > 1 ? `<div class="seg" role="group" aria-label="Year" style="margin-bottom:12px"><button data-y="" class="${!ui.year ? 'on' : ''}">All</button>${years.map((y) => `<button data-y="${y}" class="${ui.year === y ? 'on' : ''}">${y}</button>`).join('')}</div>` : ''}
   ${list.length ? `<div class="kpis compact"><div class="kpi"><b>${list.length}</b><span>hunts</span></div><div class="kpi"><b>${dayCount}</b><span>days out</span></div>
     <div class="kpi"><b>${kills}</b><span>harvests</span></div><div class="kpi"><b>${Math.round((succ / list.length) * 100)}%</b><span>hunts with a harvest</span></div></div>` : ''}
