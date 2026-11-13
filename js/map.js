@@ -1,9 +1,9 @@
 // MapLibre map: base styles, 3D terrain, BC WMS overlays, identify, waypoints/tracks, open-WMU shading.
-import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261113010538-c99624f';
-import { store } from './db.js?v=20261113010538-c99624f';
-import { MODES, fmtKm } from './elevation.js?v=20261113010538-c99624f';
-import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261113010538-c99624f';
-import { esc, earthLink, fmtDT } from './util.js?v=20261113010538-c99624f';
+import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261113015250-f350ee7';
+import { store } from './db.js?v=20261113015250-f350ee7';
+import { MODES, fmtKm } from './elevation.js?v=20261113015250-f350ee7';
+import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261113015250-f350ee7';
+import { esc, earthLink, fmtDT } from './util.js?v=20261113015250-f350ee7';
 
 export let map;
 const state = { base: 'sat', terrain: false, exag: 1.5, hillshade: false, ref: false, hiddenWmu: [], layers: {}, opacity: {}, shade: null, custom: [] };
@@ -36,7 +36,7 @@ export function initMap(container, saved = {}) {
     container,
     style: { version: 8, glyphs: new URL(GLYPHS, location.href).href.replace('%7Bfontstack%7D', '{fontstack}').replace('%7Brange%7D', '{range}'), sources: {}, layers: [] },
     center: state.center || [-122.5, 53.5], zoom: state.zoom ?? 5, pitch: 0, maxPitch: 80,
-    attributionControl: { compact: true }, hash: false,
+    attributionControl: { compact: true }, hash: false, fadeDuration: 0, dragRotate: true, touchPitch: true,
   });
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showZoom: matchMedia('(pointer: fine)').matches }), 'top-right');
   geolocate = new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showAccuracyCircle: true });
@@ -268,7 +268,7 @@ function addDataLayers() {
     if (!map.hasImage(e.id)) map.addImage(e.id, image, { pixelRatio: ratio });
   });
   map.addLayer({ id: 'spots-dot', type: 'symbol', source: 'spots',
-    layout: { 'icon-image': ['get', 'icon'], 'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 0.65, 11, 0.95, 14, 1.12], 'icon-allow-overlap': true, 'icon-ignore-placement': false,
+    layout: { 'icon-image': ['get', 'icon'], 'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 0.65, 11, 0.95, 14, 1.12], 'icon-allow-overlap': true, 'icon-ignore-placement': true,
       'symbol-sort-key': ['get', 'z'],
       'text-field': ['step', ['zoom'], '', 12, ['get', 'name']], 'text-font': ['Open Sans Semibold'], 'text-size': 12, 'text-offset': [0, 1.7], 'text-anchor': 'top', 'text-optional': true, 'text-max-width': 9 },
     paint: { 'text-color': '#fff', 'text-halo-color': 'rgba(12,16,12,.9)', 'text-halo-width': 1.5 } });

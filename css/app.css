@@ -89,7 +89,8 @@ td input, td select { min-height: 34px; padding: 4px 6px; width: 100%; min-width
 
 /* ---------- Map + chrome ---------- */
 .app { position: fixed; inset: 0; overflow: hidden; overflow: clip; }
-#map { position: absolute; inset: 0; }
+#map { position: absolute; inset: 0; overflow: clip; touch-action: none; }
+.maplibregl-map, .maplibregl-canvas-container { overflow: clip !important; }
 .app.drop-mode #map canvas, .app.pick-mode #map canvas { cursor: crosshair; }
 .chrome { position: absolute; z-index: 4; display: flex; gap: 8px; }
 .chrome-tl { top: calc(12px + env(safe-area-inset-top)); left: 12px; transition: transform 260ms var(--ease-drawer); }
