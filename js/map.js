@@ -1,9 +1,9 @@
 // MapLibre map: base styles, 3D terrain, BC WMS overlays, identify, waypoints/tracks, open-WMU shading.
-import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261113062851-c4a0a29';
-import { store } from './db.js?v=20261113062851-c4a0a29';
-import { MODES, fmtKm } from './elevation.js?v=20261113062851-c4a0a29';
-import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261113062851-c4a0a29';
-import { esc, earthLink, fmtDT } from './util.js?v=20261113062851-c4a0a29';
+import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261113063751-a12a521';
+import { store } from './db.js?v=20261113063751-a12a521';
+import { MODES, fmtKm } from './elevation.js?v=20261113063751-a12a521';
+import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261113063751-a12a521';
+import { esc, earthLink, fmtDT } from './util.js?v=20261113063751-a12a521';
 
 export let map;
 const state = { base: 'sat', terrain: false, exag: 1.5, hillshade: false, ref: false, hiddenWmu: [], layers: {}, opacity: {}, shade: null, custom: [] };

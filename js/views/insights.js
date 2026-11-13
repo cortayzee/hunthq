@@ -1,8 +1,10 @@
-import { store, hunters, localNote } from '../db.js?v=20261113062851-c4a0a29';
-import { esc, opts, yearOf, groupBy, fmtTime } from '../util.js?v=20261113062851-c4a0a29';
-import * as M from '../map.js?v=20261113062851-c4a0a29';
-import { RUT, RUT_SPECIES, rutStatus, fmtMD, moonSVG, moonDay, MOON_TIPS } from '../rut.js?v=20261113062851-c4a0a29';
-import { harvested } from '../vis.js?v=20261113062851-c4a0a29';
+import { store, hunters, localNote } from '../db.js?v=20261113063751-a12a521';
+import { icon } from '../icons.js?v=20261113063751-a12a521';
+import { esc, opts, yearOf, groupBy, fmtTime } from '../util.js?v=20261113063751-a12a521';
+import * as M from '../map.js?v=20261113063751-a12a521';
+import { RUT, RUT_SPECIES, rutStatus, fmtMD, moonSVG, moonDay, MOON_TIPS } from '../rut.js?v=20261113063751-a12a521';
+import * as W from '../weather.js?v=20261113063751-a12a521';
+import { harvested } from '../vis.js?v=20261113063751-a12a521';
 
 const f = { hunter: '', species: '', from: '', to: '' };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -18,7 +20,7 @@ let pos = null;
 export function render(v) {
   render.v = v;
   v.innerHTML = `<h2>Insights</h2>${localNote()}
-  <div class="seg" role="tablist" style="margin-bottom:12px"><button data-sub="rut" class="${ui.sub === 'rut' ? 'on' : ''}">Rut &amp; moon</button><button data-sub="mine" class="${ui.sub === 'mine' ? 'on' : ''}">My hunts</button></div><div id="iBody"></div>`;
+  <div class="seg" role="tablist" style="margin-bottom:12px"><button data-sub="rut" class="${ui.sub === 'rut' ? 'on' : ''}">Forecast</button><button data-sub="mine" class="${ui.sub === 'mine' ? 'on' : ''}">My hunts</button></div><div id="iBody"></div>`;
   v.querySelector('.seg').onclick = (e) => { const b = e.target.closest('[data-sub]'); if (b) { ui.sub = b.dataset.sub; saveUi(); render(v); } };
   const body = v.querySelector('#iBody');
   if (ui.sub === 'rut') return renderRut(body);
@@ -61,6 +63,7 @@ function renderRut(body) {
     <span class="row" style="gap:6px"><button class="small" data-loc="center">Map centre</button><button class="small" data-loc="gps">GPS</button></span></div>
   <div class="rut-sps">${RUT_SPECIES.map((s) => { const st = rutStatus(s, now); const on = !!st.cur; const pk = st.cur === st.peak;
     return `<button class="rut-sp ${pk ? 'peak' : on ? 'on' : ''}" data-rsp="${esc(s)}" aria-pressed="${s === ui.sp}"><b>${esc(short(s))}</b><span>${on ? esc(st.cur.name) : 'Off season'}</span></button>`; }).join('')}</div>
+  <div class="card wx-card" id="wxCard"><div class="wx-load muted">Loading weather…</div></div>
   <div class="card rut-card">
     <div class="rut-head"><b>${esc(short(ui.sp))}</b><span>${esc(r.headline)}</span></div>
     <div class="rut-bar" role="list">${r.stages.map((s) => `<button role="listitem" class="seg-${s === r.peak ? 'peak' : 'x'} ${s === r.cur ? 'cur' : ''} ${s === sel ? 'sel' : ''}" data-stage="${s.i}" style="flex:${s.e - s.s + 1}" aria-label="${esc(s.name)}, ${fmtMD(s.a)} to ${fmtMD(s.b)}">
@@ -87,8 +90,12 @@ function renderRut(body) {
       <p class="muted fine">Solunar theory says animals move more when the moon is overhead, underfoot, rising or setting, and most around new and full moons. Evidence is mixed, so use it as a tiebreaker. The rut, weather and hunting pressure matter more.</p>
     </div>
   </div>`;
+  fillWx(body.querySelector('#wxCard'), c);
   body.onclick = (e) => {
     const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.wx) { ui.wx = b.dataset.wx; fillWx(body.querySelector('#wxCard'), c); return; }
+    if (b.dataset.wday != null) { ui.wday = ui.wday === +b.dataset.wday ? -1 : +b.dataset.wday; fillWx(body.querySelector('#wxCard'), c); return; }
+    if (b.dataset.hday != null) { ui.wx = 'hourly'; ui.hday = b.dataset.hday; fillWx(body.querySelector('#wxCard'), c, true); return; }
     if (b.dataset.rsp) { ui.sp = b.dataset.rsp; ui.stage = null; saveUi(); renderRut(body); }
     else if (b.dataset.stage != null) { ui.stage = +b.dataset.stage; renderRut(body); }
     else if (b.dataset.day != null) { ui.day = +b.dataset.day; renderRut(body); }
@@ -167,4 +174,64 @@ export function hotspots(trips, spots) {
 function hotGeo(cells) {
   const col = { productive: '#2f9e44', cold: '#c92a2a', 'under-scouted': '#f2c200', neutral: '#868e96' };
   return { type: 'FeatureCollection', features: cells.map((c) => ({ type: 'Feature', properties: { color: col[c.cls] }, geometry: { type: 'Polygon', coordinates: [[[c.j * DLON, c.i * DLAT], [(c.j + 1) * DLON, c.i * DLAT], [(c.j + 1) * DLON, (c.i + 1) * DLAT], [c.j * DLON, (c.i + 1) * DLAT], [c.j * DLON, c.i * DLAT]]] } })) };
+}
+
+// ---- Weather & movement ----
+async function fillWx(el, c, scrollHours = false) {
+  if (!el) return; ui.wx = ui.wx || 'week'; if (ui.wday == null) ui.wday = 0;
+  let wx; try { wx = await W.fetchWx(c.lat, c.lng); } catch (e) { el.innerHTML = `<p class="muted" style="margin:0">Weather unavailable right now (${esc(e.message)}).</p>`; return; }
+  if (!el.isConnected) return;
+  const tz = wx.tz, mv = W.movement(wx, ui.sp, c.lat, c.lng), best = W.bestByDay(mv, tz), now = Date.now();
+  const todayK = W.dayKey(new Date(), tz);
+  const nowH = mv.find((h) => h.t <= now && +h.t + 36e5 > now) || mv.find((h) => h.t > now);
+  const ring = (p, sz = 40) => { const r = sz / 2 - 3, L = 2 * Math.PI * r; return `<svg class="mv-ring ${W.levelCls(p)}" width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" aria-hidden="true"><circle cx="${sz / 2}" cy="${sz / 2}" r="${r}" class="bg"/><circle cx="${sz / 2}" cy="${sz / 2}" r="${r}" class="fg" stroke-dasharray="${(L * p) / 100} ${L}" transform="rotate(-90 ${sz / 2} ${sz / 2})"/></svg>`; };
+  const tf = (d) => W.tFmt(d, tz), th = (d) => W.tFmt(d, tz, { h: true });
+  const spName = short(ui.sp);
+  const days = wx.days.filter((d) => W.dayKey(d.t, tz) >= todayK);
+  const dayLabel = (d, i) => (i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : W.dFmt(d.t, tz, { weekday: 'long' }));
+  let body = '';
+  if (ui.wx === 'now') {
+    const n = wx.now, b0 = best.get(todayK);
+    const p3 = wx.hours.find((h) => Math.abs(h.t - (n.t - 3 * 36e5)) < 18e5)?.hpa; const dp = p3 != null ? n.hpa - p3 : 0;
+    body = `<div class="wx-now">${W.wxIcon(n.code, n.day, 56)}<div><div class="wx-big tnum">${Math.round(n.temp)}°</div><div>${W.wxName(n.code)} · feels ${Math.round(n.feels)}°</div></div>
+      ${nowH ? `<div class="wx-mvnow">${ring(nowH.pct, 52)}<div><b>${nowH.pct}% ${W.level(nowH.pct)}</b><span class="muted">${esc(spName)} movement now</span></div></div>` : ''}</div>
+      <div class="wx-grid">
+        <div><span class="muted">Wind</span><b class="row" style="gap:4px">${W.windArrow(n.dir)}${Math.round(n.wind)} km/h ${W.dirName(n.dir)}</b><small class="muted">gusts ${Math.round(n.gust)}</small></div>
+        <div><span class="muted">Pressure</span><b class="tnum">${Math.round(n.hpa)} hPa</b><small class="muted">${Math.abs(dp) < 0.6 ? 'steady' : dp > 0 ? 'rising' : 'falling'} (${dp > 0 ? '+' : ''}${dp.toFixed(1)} / 3 h)</small></div>
+        <div><span class="muted">Humidity</span><b class="tnum">${Math.round(n.rh)}%</b><small class="muted">cloud ${Math.round(n.cloud)}%</small></div>
+        <div><span class="muted">Precip</span><b class="tnum">${n.mm.toFixed(1)} mm</b><small class="muted">right now</small></div>
+      </div>
+      <p class="wx-tip"><b>Scent:</b> wind is coming <b>from the ${W.dirName(n.dir)}</b>. Approach and sit on the ${W.dirName((n.dir + 180) % 360)} side of where you expect animals${n.wind < 6 ? '; it is light and may swirl, especially in draws at dawn and dusk' : ''}.</p>
+      ${b0 ? `<p class="wx-why"><b>Best today ${th(b0.best.t)}:</b> ${esc(b0.why)}</p>` : ''}`;
+  } else if (ui.wx === 'hourly') {
+    const start = mv.findIndex((h) => +h.t + 36e5 > now);
+    const hrs = mv.slice(Math.max(0, start), start + 72); let last = '';
+    body = `<div class="wx-hours" id="wxHours">${hrs.map((h) => { const sep = h.dk !== last; last = h.dk;
+      return `<div class="wx-h ${h.legal ? '' : 'night'} ${sep ? 'first' : ''}" ${sep ? `data-dk="${h.dk}"` : ''}><span class="dd">${sep ? (h.dk === todayK ? 'Today' : W.dFmt(h.t, tz, { weekday: 'short', day: 'numeric' })) : '&nbsp;'}</span>
+        <span class="hh">${th(h.t)}</span>${W.wxIcon(h.code, h.day, 26)}<b class="tnum">${Math.round(h.temp)}°</b>
+        <span class="ww tnum">${W.windArrow(h.dir, 13)}${Math.round(h.wind)} ${W.dirName(h.dir)}</span>
+        <span class="pp tnum">${h.pop ? h.pop + '%' : '&nbsp;'}</span>
+        <span class="mv ${W.levelCls(h.pct)} tnum"><i style="height:${h.pct}%"></i>${h.pct}%</span></div>`; }).join('')}</div>
+      <p class="muted fine" style="margin:8px 0 0">Scroll sideways. Bars = ${esc(spName)} movement index. Dimmed hours are outside legal light. Rain/snow % under the wind.</p>`;
+  } else {
+    body = `<div class="wx-days">${days.map((d, i) => { const k = W.dayKey(d.t, tz), b = best.get(k); const open = ui.wday === i;
+      const moonT = SunCalc.getMoonTimes(new Date(d.t.getTime() + 12 * 36e5), c.lat, c.lng);
+      return `<div class="wx-day ${open ? 'open' : ''}"><button class="wx-dh" data-wday="${i}" aria-expanded="${open}">
+        ${W.wxIcon(d.code, true, 34)}<span class="dn"><b>${dayLabel(d, i)}</b><span class="muted">${W.dFmt(d.t, tz, { month: 'short', day: 'numeric' })}</span><span class="tnum hl">↑ ${Math.round(d.hi)}° <span class="muted">↓ ${Math.round(d.lo)}°</span></span></span>
+        ${b ? `<span class="mv-pill ${W.levelCls(b.best.pct)}">${ring(b.best.pct, 34)}<span><b>${b.best.pct}% ${W.level(b.best.pct)}</b><span>Best ${th(b.best.t)}</span></span></span>` : ''}
+        <span class="chev">${icon('chevR', { size: 16 })}</span></button>
+        ${open ? `<div class="wx-dd">
+          <div class="wx-dl"><span>${W.windArrow(d.dir)} Wind</span><b>${Math.round(d.wind)} km/h ${W.dirName(d.dir)} <span class="muted">· gusts ${Math.round(d.gust)}</span></b></div>
+          <div class="wx-dl"><span>Precip</span><b>${d.mm ? d.mm.toFixed(1) + ' mm' : 'None'}${d.snow ? ` <span class="muted">(${d.snow.toFixed(1)} cm snow)</span>` : ''} <span class="muted">· ${d.pop ?? 0}% chance</span></b></div>
+          ${b ? `<div class="wx-dl"><span>${esc(spName)} movement</span><b>${b.min}% to ${b.max}%</b></div><p class="wx-why"><b>Why ${th(b.best.t)}:</b> ${esc(b.why)}</p>` : ''}
+          <div class="wx-sun"><div><span class="muted">Sunrise</span><b>${tf(d.sunrise)}</b></div><div><span class="muted">Sunset</span><b>${tf(d.sunset)}</b></div>
+            <div><span class="muted">Moonrise</span><b>${moonT.rise ? tf(moonT.rise) : '—'}</b></div><div><span class="muted">Moonset</span><b>${moonT.set ? tf(moonT.set) : '—'}</b></div></div>
+          <button class="small" data-hday="${k}">Hour by hour ${icon('chevR', { size: 14 })}</button>
+        </div>` : ''}</div>`; }).join('')}</div>`;
+  }
+  el.innerHTML = `<div class="wx-top"><h3 style="margin:0">Weather &amp; movement</h3><span class="muted fine" style="margin:0">${Math.round(wx.elev)} m elevation</span></div>
+    <div class="seg wx-seg" role="tablist">${[['now', 'Now'], ['hourly', 'Hourly'], ['week', '7 days']].map(([k, n]) => `<button data-wx="${k}" class="${ui.wx === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+    ${body}
+    <details class="wx-how"><summary class="muted fine">How the movement index works</summary><p class="muted fine">A rule-based estimate for ${esc(spName)}, built from what's known to drive big-game movement: first and last light, the rut stage, temperature drops vs. the last few days, pressure changes around fronts, wind, rain and snow, and solunar periods. It isn't trained on trail-cam photos like onX's forecast, so treat it as a planning guide. Weather from Open-Meteo.</p></details>`;
+  if (scrollHours && ui.hday) { const sep = el.querySelector(`.wx-h[data-dk="${ui.hday}"]`); if (sep) el.querySelector('#wxHours').scrollLeft = sep.offsetLeft - 8; }
 }
