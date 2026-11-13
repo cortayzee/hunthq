@@ -1,10 +1,10 @@
-import { store, hunters, localNote } from '../db.js?v=20261113171124-d2b90e9';
-import { icon } from '../icons.js?v=20261113171124-d2b90e9';
-import { esc, opts, yearOf, groupBy, fmtTime, tip } from '../util.js?v=20261113171124-d2b90e9';
-import * as M from '../map.js?v=20261113171124-d2b90e9';
-import { RUT, RUT_SPECIES, rutStatus, fmtMD, moonSVG, moonDay, MOON_TIPS } from '../rut.js?v=20261113171124-d2b90e9';
-import * as W from '../weather.js?v=20261113171124-d2b90e9';
-import { harvested } from '../vis.js?v=20261113171124-d2b90e9';
+import { store, hunters, localNote } from '../db.js?v=20261113172831-3298ad6';
+import { icon } from '../icons.js?v=20261113172831-3298ad6';
+import { esc, opts, yearOf, groupBy, fmtTime, tip } from '../util.js?v=20261113172831-3298ad6';
+import * as M from '../map.js?v=20261113172831-3298ad6';
+import { RUT, RUT_SPECIES, rutStatus, fmtMD, moonSVG, moonDay, MOON_TIPS } from '../rut.js?v=20261113172831-3298ad6';
+import * as W from '../weather.js?v=20261113172831-3298ad6';
+import { harvested } from '../vis.js?v=20261113172831-3298ad6';
 
 const f = { hunter: '', species: '', from: '', to: '' };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -121,14 +121,14 @@ function renderRut(body) {
     if (b.dataset.wday != null) { ui.wday = ui.wday === +b.dataset.wday ? -1 : +b.dataset.wday; fillWx(body.querySelector('#wxCard'), c); return; }
     if (b.dataset.hday != null) { ui.wx = 'hourly'; ui.hday = b.dataset.hday; fillWx(body.querySelector('#wxCard'), c, true); return; }
     if (b.dataset.spot) { const x = spots.find((y) => y.v === b.dataset.spot); if (x) { setForecastPos({ lat: x.lat, lng: x.lng, label: x.label }); M.flyTo(x.lng, x.lat, 11); renderRut(body); } return; }
-    if (b.dataset.sun != null) { import('../main.js?v=20261113171124-d2b90e9').then((m) => m.showTabPublic('sun')); return; }
+    if (b.dataset.sun != null) { import('../main.js?v=20261113172831-3298ad6').then((m) => m.showTabPublic('sun')); return; }
     if (b.dataset.rsp) { ui.sp = b.dataset.rsp; ui.stage = null; saveUi(); renderRut(body); }
     else if (b.dataset.stage != null) { ui.stage = +b.dataset.stage; renderRut(body); }
     else if (b.dataset.day != null) { ui.day = +b.dataset.day; renderRut(body); }
     else if (b.dataset.loc === 'center') { const m = M.map.getCenter(); setForecastPos({ lat: m.lat, lng: m.lng, label: '' }); renderRut(body); }
     else if (b.dataset.loc === 'show') M.flyTo(c.lng, c.lat, 11);
     else if (b.dataset.loc === 'pick') {
-      import('../main.js?v=20261113171124-d2b90e9').then(async (mm) => { const ll = await mm.pickOnMap('Tap the map where you want the forecast'); setForecastPos({ lat: ll.lat, lng: ll.lng, label: '' }); mm.openPanel(); if (render.v?.isConnected) render(render.v); });
+      import('../main.js?v=20261113172831-3298ad6').then(async (mm) => { const ll = await mm.pickOnMap('Tap the map where you want the forecast'); setForecastPos({ lat: ll.lat, lng: ll.lng, label: '' }); mm.openPanel(); if (render.v?.isConnected) render(render.v); });
     }
     else if (b.dataset.loc === 'gps') navigator.geolocation?.getCurrentPosition((p) => { setForecastPos({ lat: p.coords.latitude, lng: p.coords.longitude, label: 'My location' }); renderRut(body); }, (er) => alert(er.message));
   };
@@ -211,7 +211,7 @@ async function fillWx(el, c, scrollHours = false) {
   let wx; try { wx = await W.fetchWx(c.lat, c.lng); } catch (e) { el.innerHTML = `<p class="muted" style="margin:0">Weather unavailable right now (${esc(e.message)}).</p>`; return; }
   if (!el.isConnected) return;
   const mu = wmuAt(c.lng, c.lat);
-  const hv = await import('../wildlife.js?v=20261113171124-d2b90e9').then((m) => m.harvest()).catch(() => null); if (!el.isConnected) return;
+  const hv = await import('../wildlife.js?v=20261113172831-3298ad6').then((m) => m.harvest()).catch(() => null); if (!el.isConnected) return;
   const ab = W.abundance(hv, ui.sp, mu);
   const tz = wx.tz, mv = W.movement(wx, ui.sp, c.lat, c.lng, ab), best = W.bestByDay(mv, tz), now = Date.now();
   const abLine = ab ? `<div class="wx-ab ${ab.f < 0.5 ? 'low' : ''}"><span>${esc(short(ui.sp))} here</span><b>${esc(ab.label)}</b>${tip(`From BC hunter survey harvest density in WMU ${mu}, compared with every other unit in BC. Fewer animals means a lower movement %.${ab.f < 0.5 ? ' Few or none are taken here, so you may not see any.' : ''}`, 'How local numbers are set')}</div>` : '';

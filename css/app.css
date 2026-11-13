@@ -1,7 +1,7 @@
 /* Ridgeline — map-first field tool. Restrained product UI: one sans, blaze-orange accent for actions/selection only,
    solid dark map chrome that reads over any imagery, panels that follow the device theme. */
 :root {
-  --build: "20261113171124-d2b90e9";
+  --build: "20261113172831-3298ad6";
   --bg: #f4f4ef; --panel: #ffffff; --panel-2: #f6f6f1; --ink: #1b211b; --muted: #5f675f; --line: #e1e2da; --line-2: #cfd1c6;
   --accent: #d4661c; --accent-strong: #b9540f; --accent-ink: #fff; --accent-soft: rgba(212,102,28,.12);
   --ok: #2c7a35; --ok-soft: rgba(44,122,53,.12); --warn: #9a6b00; --warn-soft: rgba(196,140,0,.16); --bad: #b3261e; --bad-soft: rgba(179,38,30,.11);
