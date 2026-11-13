@@ -1,10 +1,10 @@
-import * as db from '../db.js?v=20261113070753-5fc82d2';
-import { store, hunters } from '../db.js?v=20261113070753-5fc82d2';
-import { esc, opts, modal, closeModal, toast, formData, num } from '../util.js?v=20261113070753-5fc82d2';
-import { hunterDatalist, speciesDatalist } from './log.js?v=20261113070753-5fc82d2';
-import { icon } from '../icons.js?v=20261113070753-5fc82d2';
-import * as M from '../map.js?v=20261113070753-5fc82d2';
-import { muSort } from '../seasons.js?v=20261113070753-5fc82d2';
+import * as db from '../db.js?v=20261113071729-382c10f';
+import { store, hunters } from '../db.js?v=20261113071729-382c10f';
+import { esc, opts, modal, closeModal, toast, formData, num } from '../util.js?v=20261113071729-382c10f';
+import { hunterDatalist, speciesDatalist } from './log.js?v=20261113071729-382c10f';
+import { icon } from '../icons.js?v=20261113071729-382c10f';
+import * as M from '../map.js?v=20261113071729-382c10f';
+import { muSort } from '../seasons.js?v=20261113071729-382c10f';
 
 // Tags & LEH. LEH hunts come from the 2026-2027 LEH synopsis (hunt-hq-handoff/data/leh_2026.json, scripts/parse_leh.py).
 const yr = new Date().getFullYear();
@@ -49,14 +49,14 @@ const picked = (code) => store.leh.find((l) => String(l.year) === String(DRAW_YE
 
 export function huntCard(h, { compact = false } = {}) {
   const o = oddsText(h.odds); const p = picked(h.code);
-  return `<article class="leh-card" data-hl="${h.code}" tabindex="0" title="Tap to highlight on the map">
-    <div class="leh-top"><span class="leh-code tnum">${h.code}</span><div class="t"><b>${esc(h.sp || '')} · ${esc(h.class)}</b>
-      <span class="muted">${esc(h.area)} · <span class="nowrap">MU ${esc(h.mu.replace(/\*+/g, ''))}${h.zone ? ' zone ' + esc(h.zone) : ''}</span>${h.partial ? ' (part)' : ''}</span></div>
-      <div class="leh-odds ${o.cls}"><b>${o.big}</b><span>${esc(o.small)}</span></div></div>
-    <div class="leh-meta"><span>${icon('calendar', { size: 14 })}${esc(h.dates)}</span><span>${h.auth} tag${h.auth === 1 ? '' : 's'}</span>${h.tag ? `<span class="chip">${esc(h.tag)}</span>` : ''}</div>
-    ${o.pct != null ? `<div class="odds-bar"><span style="width:${Math.max(2, Math.min(100, o.pct))}%"></span></div>` : ''}
-    ${compact ? '' : `<div class="row leh-act"><button class="small" data-lehmap="${h.code}">${icon('pin', { size: 15 })}Map</button>
-      ${p ? `<button class="small" data-unpick="${p.id}">${icon('check', { size: 15 })}Choice ${p.choice || 1} · remove</button>` : `<button class="small primary" data-pick="${h.code}">${icon('plus', { size: 15 })}Add to my picks</button>`}</div>`}
+  const where = [h.area, `WMU ${h.mu.replace(/\*+/g, '')}${h.zone ? ' zone ' + h.zone : ''}${h.partial ? ' (part)' : ''}`].filter(Boolean).join(', ');
+  return `<article class="leh-card ${p ? 'picked' : ''}" data-hl="${h.code}" tabindex="0" title="Tap to show on the map">
+    <span class="leh-code tnum">${h.code}</span>
+    <div class="t"><b>${esc(h.sp || '')}, ${esc(h.class.toLowerCase())}</b><span class="muted">${esc(where)}</span>
+      <span class="leh-meta tnum">${esc(h.dates)} · ${h.auth} tag${h.auth === 1 ? '' : 's'}${h.tag ? ` · ${esc(h.tag.toLowerCase())}` : ''}</span></div>
+    <div class="leh-side"><span class="leh-odds ${o.cls}" title="${esc(o.small)}">${o.big}</span>
+      ${compact ? '' : p ? `<button class="pick-btn on" data-unpick="${p.id}" aria-label="Remove ${h.code} from my picks">${icon('check', { size: 16 })}${p.choice === 2 ? '2nd' : '1st'}</button>`
+        : `<button class="pick-btn" data-pick="${h.code}" aria-label="Add ${h.code} to my picks">${icon('plus', { size: 16 })}Pick</button>`}</div>
   </article>`;
 }
 
@@ -89,7 +89,7 @@ export async function render(v) {
     </ul><p class="muted fine">From the 2026–2027 LEH synopsis. Codes change every year, so confirm them there.</p></details>
   <div class="card picks">
     <div class="row" style="justify-content:space-between"><b>My ${DRAW_YEAR} picks</b><span class="muted fine" style="margin:0">${days > 0 ? `${days} days to apply` : 'Planning'}</span></div>
-    ${days <= 0 ? `<p class="notice" style="margin:8px 0 0">The 2026 draw closed June 23. Use these 2026 hunts to plan for ${DRAW_YEAR}: the new synopsis comes out in spring and <b>hunt codes can change</b>, so re-check each code before you apply.</p>` : ''}
+    ${days <= 0 ? `<p class="notice" style="margin:8px 0 0">The 2026 draw is closed. Plan with these hunts, then re-check the codes when the ${DRAW_YEAR} synopsis comes out in spring.</p>` : ''}
     ${picks.length ? picks.sort((a, b) => (a.species || '').localeCompare(b.species || '') || (a.choice || 1) - (b.choice || 1)).map((l) => {
       const h = hunts.find((x) => x.code === l.hunt_code); const o = oddsText(h?.odds);
       return `<div class="pick-row"><span class="pick-n">${l.choice === 2 ? '2nd' : '1st'}</span><div class="t"><b>${esc(l.hunt_code)} · ${esc(l.species || '')} ${esc(l.class || '')}</b><span class="muted">${esc(h ? `${h.area} · ${h.dates}` : l.zone || '')} · ${esc(o.big)}</span></div>
@@ -215,7 +215,7 @@ async function lehArea(h) {
   return areaCache.get(key);
 }
 export async function highlightHunt(h) {
-  const { selChip } = await import('../main.js?v=20261113070753-5fc82d2');
+  const { selChip } = await import('../main.js?v=20261113071729-382c10f');
   let fc = await lehArea(h); let exact = !!fc;
   if (!fc) fc = { type: 'FeatureCollection', features: (M.WMU_GEO?.features || []).filter((f) => h.mus.includes(f.properties.id)) };
   fc = { type: 'FeatureCollection', features: fc.features.map((f) => ({ ...f, properties: { stroke: '#ff8a00', fill: '#ff8a00', fillOpacity: 0.22 } })) };

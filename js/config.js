@@ -43,7 +43,7 @@ const leh = (sp, pat, color) => ({ id: 'leh_' + sp.toLowerCase().replace(/\W+/g,
 export const BC_LAYERS = [
   { id: 'wmu', name: 'Wildlife Management Units', layer: WMU_LAYER, color: '#e0a100', group: 'Boundaries', identify: true, on: true },
   { id: 'gmz', name: 'Game Management Zones', layer: 'WHSE_WILDLIFE_MANAGEMENT.WAA_GAME_MANAGEMENT_ZONES_SVW', color: '#c78b00', group: 'Boundaries', identify: true },
-  { id: 'leh_all', name: 'LEH zones – all (current year)', layer: LEH_LAYER, color: '#7b3fb5', group: 'LEH', identify: true },
+  { id: 'leh_all', name: 'LEH zones – All species', layer: LEH_LAYER, color: '#7b3fb5', group: 'LEH', identify: true },
   leh('Moose', 'MOOSE', '#8a4b08'),
   leh('Elk', 'ELK', '#a0522d'),
   leh('Mule deer', 'MULE DEER', '#6b8e23'),

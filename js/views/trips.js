@@ -1,16 +1,16 @@
-import * as db from '../db.js?v=20261113070753-5fc82d2';
-import { store, hunters } from '../db.js?v=20261113070753-5fc82d2';
-import { WEAPONS, RESULTS, kindColor } from '../config.js?v=20261113070753-5fc82d2';
-import { esc, opts, modal, closeModal, requestClose, toast, formData, todayISO, num, parseCSV, yearOf } from '../util.js?v=20261113070753-5fc82d2';
-import { normMU } from '../seasons.js?v=20261113070753-5fc82d2';
-import { hunterDatalist, speciesDatalist, spotRow, dateSpan, openSpotForm } from './log.js?v=20261113070753-5fc82d2';
-import { exportCSV } from '../exporters.js?v=20261113070753-5fc82d2';
-import { pickOnMap, closePanel, openPanel } from '../main.js?v=20261113070753-5fc82d2';
-import * as M from '../map.js?v=20261113070753-5fc82d2';
-import * as V from '../vis.js?v=20261113070753-5fc82d2';
-import { tripTitle, tripSpots, harvested } from '../vis.js?v=20261113070753-5fc82d2';
-import { icon, hydrateIcons } from '../icons.js?v=20261113070753-5fc82d2';
-import { glyphSVG, animalFor } from '../animals.js?v=20261113070753-5fc82d2';
+import * as db from '../db.js?v=20261113071729-382c10f';
+import { store, hunters } from '../db.js?v=20261113071729-382c10f';
+import { WEAPONS, RESULTS, kindColor } from '../config.js?v=20261113071729-382c10f';
+import { esc, opts, modal, closeModal, requestClose, toast, formData, todayISO, num, parseCSV, yearOf } from '../util.js?v=20261113071729-382c10f';
+import { normMU } from '../seasons.js?v=20261113071729-382c10f';
+import { hunterDatalist, speciesDatalist, spotRow, dateSpan, openSpotForm } from './log.js?v=20261113071729-382c10f';
+import { exportCSV } from '../exporters.js?v=20261113071729-382c10f';
+import { pickOnMap, closePanel, openPanel } from '../main.js?v=20261113071729-382c10f';
+import * as M from '../map.js?v=20261113071729-382c10f';
+import * as V from '../vis.js?v=20261113071729-382c10f';
+import { tripTitle, tripSpots, harvested } from '../vis.js?v=20261113071729-382c10f';
+import { icon, hydrateIcons } from '../icons.js?v=20261113071729-382c10f';
+import { glyphSVG, animalFor } from '../animals.js?v=20261113071729-382c10f';
 
 // A hunt = one outing (a day or a multi-day trip). Its kills & sightings are waypoints linked by extra.trip_id.
 const ui = { year: '' };
@@ -43,7 +43,7 @@ export function render(v) {
     v.innerHTML = `<div class="page-h"><h2>Hunts</h2></div>${db.localNote()}${viewSeg()}<div id="statsBody"></div>`;
     v.onclick = (e) => { const h = e.target.closest('[data-hv]'); if (h) { ui.view = h.dataset.hv; render(v); } };
     v.onchange = null;
-    import('./insights.js?v=20261113070753-5fc82d2').then((I) => { const el = v.querySelector('#statsBody'); if (el) I.renderStats(el); });
+    import('./insights.js?v=20261113071729-382c10f').then((I) => { const el = v.querySelector('#statsBody'); if (el) I.renderStats(el); });
     return;
   }
   const years = [...new Set(store.trips.map((t) => String(yearOf(t.date_start))))].sort((a, b) => b - a);
@@ -89,7 +89,7 @@ export async function openTrip(id) {
   const facts = [['Species', t.species], ['WMU', t.wmu], ['Area', t.area], ['Weapon', t.weapon], ['Hours', t.hours], ['Animals seen', t.animals_seen], ['Weather', t.weather], ['Wind', t.wind], ['Temp', t.temp_c != null ? t.temp_c + ' °C' : null]].filter(([, x]) => x != null && x !== '');
   const list = (title, arr) => (arr.length ? `<h3 class="sub-h">${title} <span class="muted tnum">${arr.length}</span></h3>${arr.map((s) => spotRow(s)).join('')}` : '');
   v.scrollTop = 0;
-  v.innerHTML = `<div class="detail-h"><button class="small" id="tBack">${icon('chevL', { size: 16 })}Hunts</button>
+  v.innerHTML = `<div class="detail-h"><button class="back-link" id="tBack">${icon('chevL', { size: 16 })}Hunts</button>
     <div class="row"><button class="small" id="tEdit">Edit</button></div></div>
   <h2 style="margin-bottom:2px">${esc(tripTitle(t))}</h2>
   <div class="muted">${esc(dateSpan(t))} · ${days(t)} day${days(t) > 1 ? 's' : ''} · ${party(t).map(esc).join(', ')}</div>

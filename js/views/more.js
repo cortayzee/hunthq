@@ -1,11 +1,16 @@
-import * as db from '../db.js?v=20261113070753-5fc82d2';
-import { store } from '../db.js?v=20261113070753-5fc82d2';
-import { esc, download, toast, todayISO, fmtDate } from '../util.js?v=20261113070753-5fc82d2';
-import { exportKML } from '../exporters.js?v=20261113070753-5fc82d2';
-import { BC_WMS, BC_WFS, LEH_LAYER, LEH_TYPE_FIELD, MVPR_LAYER, WMU_LAYER } from '../config.js?v=20261113070753-5fc82d2';
-import { icon } from '../icons.js?v=20261113070753-5fc82d2';
-import * as M from '../map.js?v=20261113070753-5fc82d2';
+import * as db from '../db.js?v=20261113071729-382c10f';
+import { store } from '../db.js?v=20261113071729-382c10f';
+import { esc, download, toast, todayISO, fmtDate } from '../util.js?v=20261113071729-382c10f';
+import { exportKML } from '../exporters.js?v=20261113071729-382c10f';
+import { BC_WMS, BC_WFS, LEH_LAYER, LEH_TYPE_FIELD, MVPR_LAYER, WMU_LAYER } from '../config.js?v=20261113071729-382c10f';
+import { icon } from '../icons.js?v=20261113071729-382c10f';
+import * as M from '../map.js?v=20261113071729-382c10f';
 
+const theme = () => { try { return localStorage.getItem('hunthq_theme') || 'system'; } catch { return 'system'; } };
+function setTheme(t) {
+  try { if (t === 'system') localStorage.removeItem('hunthq_theme'); else localStorage.setItem('hunthq_theme', t); } catch {}
+  if (t === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+}
 export function render(v) {
   const mode = db.getMode(); const u = db.getUser();
   const custom = store.prefs.customLayers || [];
@@ -14,6 +19,8 @@ export function render(v) {
   <div class="list-group">
     <div class="list-row static"><span class="lr-ic">${icon('user', { size: 20 })}</span><span class="lr-t"><b>${mode === 'local' ? 'Local mode' : esc(u?.email || 'Signed in')}</b><span>${mode === 'local' ? 'Saved in this browser only' : 'Synced to your account'}</span></span><button class="small" id="signOut">${mode === 'local' ? 'Sign in' : 'Sign out'}</button></div>
   </div>
+  <h3 class="list-h">Appearance</h3>
+  <div class="seg seg-full" role="radiogroup" aria-label="Appearance">${[['system', 'System'], ['light', 'Light'], ['dark', 'Dark']].map(([k, n]) => `<button role="radio" data-theme="${k}" aria-checked="${theme() === k}" class="${theme() === k ? 'on' : ''}">${n}</button>`).join('')}</div>
   <h3 class="list-h">Your data</h3>
   <div class="list-group">
     ${row('goImport', 'upload', 'Import from onX or iHunter', 'KML, KMZ, GPX, GeoJSON or CSV')}
@@ -33,7 +40,7 @@ export function render(v) {
   <p class="muted">Checks that BC map services respond and lists the closure and LEH layers they return.</p>
   <button id="diag">Run check</button><pre id="diagOut" style="white-space:pre-wrap;font-size:12px"></pre></div></details>
   <p class="list-note">Seasons from the 2026–2028 BC Hunting &amp; Trapping Regulations Synopsis (general open seasons). Always confirm in the synopsis and in-season changes at gov.bc.ca/hunting. Map data © Province of BC, Esri, OpenTopoMap, OpenStreetMap contributors; terrain © Mapzen / AWS; weather © Open-Meteo.</p>`;
-  v.querySelector('#goImport').onclick = () => import('../main.js?v=20261113070753-5fc82d2').then((m) => m.showTabPublic('import'));
+  v.querySelector('#goImport').onclick = () => import('../main.js?v=20261113071729-382c10f').then((m) => m.showTabPublic('import'));
   v.querySelector('#signOut').onclick = async () => { await db.signOut(); location.reload(); };
   v.querySelector('#bExp').onclick = async () => { download(`hunthq_backup_${todayISO()}.json`, db.backupJSON(), 'application/json'); await db.savePrefs({ lastBackup: new Date().toISOString() }).catch(() => {}); };
   v.querySelector('#bImp').onchange = async (e) => {
@@ -42,6 +49,7 @@ export function render(v) {
   };
   v.querySelector('#kmlAll').onclick = () => exportKML(store.spots, store.tracks);
   v.onclick = async (e) => {
+    const th = e.target.closest('[data-theme]'); if (th) { setTheme(th.dataset.theme); render(v); return; }
     const d = e.target.closest('button')?.dataset || {};
     if (d.zoom) { const t = store.tracks.find((x) => x.id === d.zoom); M.fitTo(t.coords.map((c) => [c[0], c[1]])); }
     if (d.del && confirm('Delete track?')) { await db.remove('tracks', d.del); render(v); }

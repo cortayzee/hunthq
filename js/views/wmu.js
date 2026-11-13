@@ -1,9 +1,9 @@
 // iHunter-style WMU detail: every general season in the WMU, Open/Closed for the chosen date, grouped by category.
-import { seasonsFor, openRange, fmtMD } from '../seasons.js?v=20261113070753-5fc82d2';
-import { REGS_URL, BC_WFS, WMU_LAYER, WMU_FIELD } from '../config.js?v=20261113070753-5fc82d2';
-import { esc, todayISO } from '../util.js?v=20261113070753-5fc82d2';
-import * as M from '../map.js?v=20261113070753-5fc82d2';
-import { icon } from '../icons.js?v=20261113070753-5fc82d2';
+import { seasonsFor, openRange, fmtMD } from '../seasons.js?v=20261113071729-382c10f';
+import { REGS_URL, BC_WFS, WMU_LAYER, WMU_FIELD } from '../config.js?v=20261113071729-382c10f';
+import { esc, todayISO } from '../util.js?v=20261113071729-382c10f';
+import * as M from '../map.js?v=20261113071729-382c10f';
+import { icon } from '../icons.js?v=20261113071729-382c10f';
 
 const BIG = /deer|moose|elk|goat|sheep|caribou|bison/i;
 const PRED = /bear|cougar|wolf|coyote|lynx|bobcat|wolverine|raccoon|skunk|fox|marten|fisher/i;
@@ -55,6 +55,13 @@ function restrictions(r, mu, notes) {
     ${other.length ? `<details class="r-other"><summary>Notes for other units (${other.length})</summary><ul>${li(other)}</ul></details>` : ''}`;
 }
 
+// "2027-09-01","2027-09-09" -> "Sep 1 – 9, 2027"; crosses months/years as needed.
+function shortRange(a, b) {
+  const A = new Date(a + 'T12:00'), B = new Date(b + 'T12:00');
+  const m = (d) => d.toLocaleDateString('en-CA', { month: 'short' });
+  if (A.getFullYear() !== B.getFullYear()) return `${m(A)} ${A.getDate()}, ${A.getFullYear()} – ${m(B)} ${B.getDate()}, ${B.getFullYear()}`;
+  return A.getMonth() === B.getMonth() ? `${m(A)} ${A.getDate()} – ${B.getDate()}, ${B.getFullYear()}` : `${m(A)} ${A.getDate()} – ${m(B)} ${B.getDate()}, ${B.getFullYear()}`;
+}
 export async function showWmu(view, mu, { region, date = todayISO(), onBack } = {}) {
   const rows = seasonsFor(mu);
   const notes = await loadNotes();
@@ -65,11 +72,12 @@ export async function showWmu(view, mu, { region, date = todayISO(), onBack } = 
   if (!counts[cat].length) cat = CATS.find(([k]) => counts[k].length)?.[0] || 'big';
   const openNow = rows.filter((r) => openRange(r, date)).length;
   view.innerHTML = `<div class="wmu-head">
-    <div class="row" style="justify-content:space-between"><button class="small" id="wBack">${icon('chevL', { size: 16 })}Back</button>
-      <div class="row"><button class="small" id="wHide">${icon(M.wmuHidden(mu) ? 'eye' : 'eyeOff', { size: 16 })}${M.wmuHidden(mu) ? 'Show on map' : 'Hide on map'}</button>
-      <button class="small primary" id="wJump">${icon('pin', { size: 16 })}Jump to boundary</button></div></div>
-    <h2>WMU ${esc(mu)}</h2><div class="muted">${esc(region)} · ${openNow} season${openNow === 1 ? '' : 's'} open${date === todayISO() ? ' today' : ''}</div>
-    <label style="margin-top:8px;max-width:220px">Date <input type="date" id="wDate" value="${date}"></label></div>
+    <button class="back-link" id="wBack">${icon('chevL', { size: 16 })}Back</button>
+    <div class="page-h" style="margin-bottom:2px"><h2>WMU ${esc(mu)}</h2>
+      <div class="row"><button class="icon-btn" id="wJump" aria-label="Zoom to boundary" title="Zoom to boundary">${icon('target', { size: 20 })}</button>
+      <button class="icon-btn" id="wHide" aria-label="${M.wmuHidden(mu) ? 'Show on map' : 'Hide on map'}" title="${M.wmuHidden(mu) ? 'Show on map' : 'Hide on map'}">${icon(M.wmuHidden(mu) ? 'eyeOff' : 'eye', { size: 20 })}</button></div></div>
+    <div class="muted">${esc(region)}, ${openNow} season${openNow === 1 ? '' : 's'} open${date === todayISO() ? ' today' : ''}</div>
+    <label class="date-inline">On <input type="date" id="wDate" value="${date}" aria-label="Date"></label></div>
   <div class="cat-tabs" role="tablist">${CATS.map(([k, n, ic]) => `<button role="tab" data-cat="${k}" class="${k === cat ? 'active' : ''}" aria-selected="${k === cat}">${icon(ic, { size: 22 })}<span>${n}</span><span class="n tnum">${counts[k].length}</span></button>`).join('')}</div>
   <div id="wList"></div>
   <details class="card hv-here" open><summary><b>Hunting results here</b> <span class="muted" id="wHvY"></span></summary><div id="wHv"><p class="muted">Loading…</p></div></details>
@@ -83,10 +91,12 @@ export async function showWmu(view, mu, { region, date = todayISO(), onBack } = 
     view.querySelector('#wList').innerHTML = list.length ? list.map((r, i) => {
       const on = openRange(r, d);
       const ranges = r.d.filter((x) => x[0].length !== 10 || occurrence(x, d)[1] >= d).slice(0, 2);
+      const sent = (x) => x.charAt(0).toUpperCase() + x.slice(1).toLowerCase();
+      const sub = [r.q && sent(r.q), r.b && `limit ${r.b}`].filter(Boolean).join(', ');
       return `<div class="season">
-        <div class="s-main"><div class="s-sp">${esc(r.sp)}</div>${r.c ? `<div>${esc(r.c)}</div>` : ''}${r.b ? `<div class="muted">Limit: ${esc(r.b)}</div>` : ''}${r.q ? `<div><b>${esc(r.q)}</b></div>` : ''}</div>
-        <div class="s-when"><div class="status ${on ? 'ok' : 'err'}">${on ? 'Open' : 'Closed'}</div>${(ranges.length ? ranges : r.d.slice(-1)).map((x) => { const o = occurrence(x, d); return `<div class="muted">${fmtFull(o[0])} –<br>${fmtFull(o[1])}</div>`; }).join('')}</div>
-        <details class="s-more"><summary>View restrictions</summary>
+        <div class="s-main"><div class="s-sp">${esc(r.sp)}${r.c ? `<span class="s-cls">${esc(r.c)}</span>` : ''}</div>${sub ? `<div class="muted">${esc(sub)}</div>` : ''}</div>
+        <div class="s-when"><div class="status ${on ? 'ok' : 'off'}">${on ? 'Open' : 'Closed'}</div>${(ranges.length ? ranges : r.d.slice(-1)).map((x) => { const o = occurrence(x, d); return `<div class="muted">${shortRange(o[0], o[1])}</div>`; }).join('')}</div>
+        <details class="s-more"><summary>Restrictions</summary>
           ${restrictions(r, mu, notes)}
           ${!r.c && BIG.test(r.sp) ? '<div class="notice">Class not listed here. Check the synopsis table.</div>' : ''}
           <div class="muted fine">${esc(r.r)} table, synopsis page ${r.p}. Same season covers ${r.mu.length} MUs.${r.b ? '' : ' Bag limit: see regional bag limits.'}</div>
@@ -100,7 +110,7 @@ export async function showWmu(view, mu, { region, date = todayISO(), onBack } = 
   view.querySelector('#wBack').onclick = () => onBack?.();
   view.querySelector('#wJump').onclick = () => outline(mu, true);
   M.selectWmu(mu); outline(mu, false);
-  import('../wildlife.js?v=20261113070753-5fc82d2').then(async (W) => {
+  import('../wildlife.js?v=20261113071729-382c10f').then(async (W) => {
     const { years, rows } = await W.statsFor(mu); const el = view.querySelector('#wHv'); if (!el) return;
     view.querySelector('#wHvY').textContent = `· ${years[0]}–${years[1]} avg / year`;
     el.innerHTML = rows.length ? `<table class="hv-table"><thead><tr><th>Species</th><th>Hunters</th><th>Kills</th><th>Success</th><th>Days/kill</th><th>vs 2010–14</th></tr></thead><tbody>
@@ -109,7 +119,7 @@ export async function showWmu(view, mu, { region, date = todayISO(), onBack } = 
       <p class="muted fine">Resident hunter survey estimates, general and LEH combined. Trend compares with the 2010–2014 average.</p>`
       : '<p class="muted">No hunter survey results recorded for this unit.</p>';
   });
-  import('./tags.js?v=20261113070753-5fc82d2').then(async (T) => {
+  import('./tags.js?v=20261113071729-382c10f').then(async (T) => {
     const hs = await T.lehForMu(mu); const el = view.querySelector('#wLeh'); if (!el) return;
     view.querySelector('#wLehN').textContent = `· ${hs.length}`;
     el.innerHTML = hs.length ? `<p class="muted fine">Odds are last year's first-choice odds.</p>${hs.map((h) => T.huntCard(h)).join('')}` : '<p class="muted">No LEH hunts list this unit.</p>';

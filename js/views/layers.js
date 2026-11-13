@@ -1,16 +1,16 @@
-import * as M from '../map.js?v=20261113070753-5fc82d2';
-import { esc } from '../util.js?v=20261113070753-5fc82d2';
-import { icon } from '../icons.js?v=20261113070753-5fc82d2';
-import { saveMapPrefs, showTabPublic } from '../main.js?v=20261113070753-5fc82d2';
-import { muSort } from '../seasons.js?v=20261113070753-5fc82d2';
-import { store } from '../db.js?v=20261113070753-5fc82d2';
-import * as W from '../wildlife.js?v=20261113070753-5fc82d2';
+import * as M from '../map.js?v=20261113071729-382c10f';
+import { esc } from '../util.js?v=20261113071729-382c10f';
+import { icon } from '../icons.js?v=20261113071729-382c10f';
+import { saveMapPrefs, showTabPublic } from '../main.js?v=20261113071729-382c10f';
+import { muSort } from '../seasons.js?v=20261113071729-382c10f';
+import { store } from '../db.js?v=20261113071729-382c10f';
+import * as W from '../wildlife.js?v=20261113071729-382c10f';
 
 // Layers panel: "On now" chips, then collapsible sections. A row is swatch + name + switch; opacity only for layers that are on.
 const SECTIONS = [
-  ['Boundaries', 'Boundaries', 'Wildlife management units and zones'],
-  ['Access', 'Access & closures', 'Motor vehicle, ATV and snowmobile restrictions'],
-  ['LEH', 'LEH zones', 'Limited-entry hunting zones, current year'],
+  ['Boundaries', 'Boundaries', 'WMUs and game zones'],
+  ['Access', 'Access & closures', 'Vehicle, ATV and snowmobile closures'],
+  ['LEH', 'LEH zones', 'Limited-entry areas this year'],
   ['Land', 'Land', 'Parks, reserves and private land'],
   ['Custom', 'Custom layers', 'Layers you added in More'],
 ];
@@ -32,7 +32,7 @@ export function render(v) {
   v.innerHTML = `<div class="page-h"><h2>Layers</h2></div>
   <input id="lyrSearch" type="search" placeholder="Search layers or a WMU, like 4-24" style="width:100%" aria-label="Search layers">
   <div id="onNow" class="on-now"></div>
-  <div id="lyrSecs"></div>
+  <div id="lyrSecs" class="lyr-list"></div>
   <p class="muted fine" style="margin-top:14px">Map type, roads and 3D are under the map button on the right.</p>`;
   const q = () => (v.querySelector('#lyrSearch')?.value || '').trim().toLowerCase();
 
@@ -44,8 +44,9 @@ export function render(v) {
       <label class="lyr-main"><span class="swatch" style="background:${l.color || '#888'}"></span><span class="t"><b>${esc(shortName(l))}</b>${note(l) ? `<span class="muted">${esc(note(l))}</span>` : ''}</span>
       <span class="switch"><input type="checkbox" data-l="${l.id}" ${on ? 'checked' : ''} aria-label="${esc(shortName(l))}"></span></label>
       ${on ? `<div class="lyr-op"><span class="muted">Opacity</span><input type="range" min="0.15" max="1" step="0.05" value="${M.layerOpacity(l.id)}" data-o="${l.id}" aria-label="${esc(shortName(l))} opacity"></div>` : ''}</div>`; };
+  const SEC_IC = { Boundaries: 'grid', Access: 'ban', LEH: 'tag', Land: 'tree', Custom: 'layers', Wildlife: 'deer', Units: 'eye', Mine: 'pin' };
   const sec = (id, title, sub, body, count) => `<details class="lyr-sec" data-sec="${id}" ${open.has(id) || q() ? 'open' : ''}><summary>
-      <span class="t"><b>${title}</b><span class="muted">${sub}</span></span>${count ? `<span class="badge">${count} on</span>` : ''}${icon('chevR', { size: 18, cls: 'fold-chev' })}</summary><div class="lyr-body">${body}</div></details>`;
+      <span class="lr-ic">${icon(SEC_IC[id] || 'layers', { size: 18 })}</span><span class="t"><b>${title}</b><span class="muted">${sub}</span></span>${count ? `<span class="badge">${count} on</span>` : ''}${icon('chevR', { size: 18, cls: 'fold-chev' })}</summary><div class="lyr-body">${body}</div></details>`;
 
   const draw = () => {
     const s = q();
@@ -57,7 +58,7 @@ export function render(v) {
     // Wildlife & harvest
     if (!s || /wild|harvest|grizz|density|success|survey/.test(s)) {
       const st = W.state; const on = (st.sp && st.metric ? 1 : 0) + (st.griz ? 1 : 0) + (st.surv ? 1 : 0);
-      html += sec('Wildlife', 'Wildlife & harvest', 'Harvest, hunter success and grizzly density', `
+      html += sec('Wildlife', 'Wildlife & harvest', 'Harvest, success and grizzly density', `
         <div class="grid2" style="margin:8px 0 4px">
           <label>Species <select id="wSp"><option value="">Off</option>${['Moose', 'Elk', 'Mule Deer', 'White-tailed Deer', 'Black Bear', 'Mountain Goat', 'Mountain Sheep', 'Caribou', 'Cougar', 'Wolf', 'Turkey'].map((x) => `<option ${st.sp === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
           <label>Show <select id="wMet">${Object.entries(W.METRICS).map(([k, m]) => `<option value="${k}" ${(st.metric || 'kpa') === k ? 'selected' : ''}>${m.name}</option>`).join('')}</select></label>
@@ -78,9 +79,9 @@ export function render(v) {
         <span class="muted tnum">${list.length - hidden}/${list.length}</span><button class="small" data-region-all="${esc(r)}" data-show="${hidden ? 1 : 0}">${hidden ? 'Show all' : 'Hide all'}</button></summary>
         <div class="wmu-chips">${list.map((m) => `<button class="wmu-chip" data-mu="${m}" aria-pressed="${!M.wmuHidden(m)}">${m}</button>`).join('')}</div></details>`;
     }).join('');
-    if (!s || regions) html += sec('Units', 'Unit visibility', hiddenN ? `${hiddenN} unit${hiddenN > 1 ? 's' : ''} hidden` : 'Hide or show individual WMUs',
+    if (!s || regions) html += sec('Units', 'Unit visibility', hiddenN ? `${hiddenN} WMU${hiddenN > 1 ? 's' : ''} hidden` : 'Hide or show WMUs',
       groups.length ? `<div class="row" style="justify-content:space-between;margin:4px 0 6px"><span class="muted fine" style="margin:0">Tap a unit to hide or show it.</span>${hiddenN ? '<button class="small" id="wmuAll">Show all units</button>' : ''}</div>${regions}` : '<p class="muted">Loading units…</p>', 0);
-    if (!s) html += sec('Mine', 'My waypoints & routes', `${store.spots.length} waypoints · ${store.tracks.length} routes`,
+    if (!s) html += sec('Mine', 'My waypoints', `${store.spots.length} waypoints, ${store.tracks.length} routes`,
       `<p class="muted fine" style="margin:2px 0 8px">Hide or show by type, hunt, group, year or hunter on the Waypoints page.</p><button class="small" id="goWp">${icon('pin', { size: 16 })}Open Waypoints</button>`, 0);
     v.querySelector('#lyrSecs').innerHTML = html || '<p class="muted">No layer matches.</p>';
     drawOnNow();
