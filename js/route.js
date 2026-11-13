@@ -1,11 +1,11 @@
 // Draw a route by tapping the map: live distance / climb / time / difficulty, elevation profile, save as a track.
-import * as db from './db.js?v=20261113043853-c859292';
-import { store } from './db.js?v=20261113043853-c859292';
-import * as M from './map.js?v=20261113043853-c859292';
-import { esc, toast, haversineKm, fmtDate } from './util.js?v=20261113043853-c859292';
-import { icon } from './icons.js?v=20261113043853-c859292';
-import { profile, stats, MODES, fmtHours, fmtKm } from './elevation.js?v=20261113043853-c859292';
-import * as V from './vis.js?v=20261113043853-c859292';
+import * as db from './db.js?v=20261113044037-e97d428';
+import { store } from './db.js?v=20261113044037-e97d428';
+import * as M from './map.js?v=20261113044037-e97d428';
+import { esc, toast, haversineKm, fmtDate } from './util.js?v=20261113044037-e97d428';
+import { icon } from './icons.js?v=20261113044037-e97d428';
+import { profile, stats, MODES, fmtHours, fmtKm } from './elevation.js?v=20261113044037-e97d428';
+import * as V from './vis.js?v=20261113044037-e97d428';
 
 const st = { on: false, pts: [], mode: 'trail', prof: [], seq: 0 };
 let bar = null;
@@ -62,7 +62,7 @@ function drawBar() {
 
 // ---- Route detail (new or saved track) ----
 export async function openRoute(track, prof) {
-  const { openPanel } = await import('./main.js?v=20261113043853-c859292');
+  const { openPanel } = await import('./main.js?v=20261113044037-e97d428');
   openPanel();
   const v = document.getElementById('view'); v.scrollTop = 0;
   document.querySelectorAll('#tabs button').forEach((b) => b.classList.remove('active'));
@@ -98,9 +98,9 @@ export async function openRoute(track, prof) {
   };
   draw();
   v.querySelector('#rModes').onclick = (e) => { const b = e.target.closest('[data-mode]'); if (!b) return; mode = b.dataset.mode; v.querySelectorAll('#rModes button').forEach((x) => x.setAttribute('aria-checked', String(x === b))); draw(); };
-  v.querySelector('#rBack').onclick = async () => { M.setCursor(null); (await import('./main.js?v=20261113043853-c859292')).rerender(); };
-  v.querySelector('#rFit').onclick = () => { M.fitTo(coords); if (innerWidth <= 760) import('./main.js?v=20261113043853-c859292').then((m) => m.closePanel()); };
-  v.querySelector('#rDel')?.addEventListener('click', async () => { if (!confirm('Delete this route?')) return; await db.remove('tracks', track.id); M.setCursor(null); (await import('./main.js?v=20261113043853-c859292')).rerender(); });
+  v.querySelector('#rBack').onclick = async () => { M.setCursor(null); (await import('./main.js?v=20261113044037-e97d428')).rerender(); };
+  v.querySelector('#rFit').onclick = () => { M.fitTo(coords); if (innerWidth <= 760) import('./main.js?v=20261113044037-e97d428').then((m) => m.closePanel()); };
+  v.querySelector('#rDel')?.addEventListener('click', async () => { if (!confirm('Delete this route?')) return; await db.remove('tracks', track.id); M.setCursor(null); (await import('./main.js?v=20261113044037-e97d428')).rerender(); });
   v.querySelector('#rForm').onsubmit = async (e) => {
     e.preventDefault(); const f = e.target; const s = stats(prof, mode);
     const extra = { ...(track.extra || {}), mode, notes: f.notes.value || undefined, up: Math.round(s.up), down: Math.round(s.down), hours: +s.hours.toFixed(2), difficulty: s.difficulty };

@@ -1,8 +1,8 @@
-import * as db from '../db.js?v=20261113043853-c859292';
-import { store, hunters } from '../db.js?v=20261113043853-c859292';
-import { esc, opts, modal, closeModal, toast, formData, num, parseCSV } from '../util.js?v=20261113043853-c859292';
-import { hunterDatalist, speciesDatalist } from './log.js?v=20261113043853-c859292';
-import { allRegions } from '../seasons.js?v=20261113043853-c859292';
+import * as db from '../db.js?v=20261113044037-e97d428';
+import { store, hunters } from '../db.js?v=20261113044037-e97d428';
+import { esc, opts, modal, closeModal, toast, formData, num, parseCSV } from '../util.js?v=20261113044037-e97d428';
+import { hunterDatalist, speciesDatalist } from './log.js?v=20261113044037-e97d428';
+import { allRegions } from '../seasons.js?v=20261113044037-e97d428';
 
 const yr = new Date().getFullYear();
 let year = String(yr);
