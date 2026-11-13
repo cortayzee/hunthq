@@ -1,7 +1,7 @@
 // Licences that expire: PAL (firearms) and the BC hunting licence. Stored in prefs.licences. Reminders are in-app
 // (a dot on More, a once-a-day note) plus an optional calendar file, since a web page can't send notifications.
-import { store } from './db.js?v=20261113164139-93b0f19';
-import * as db from './db.js?v=20261113164139-93b0f19';
+import { store } from './db.js?v=20261113164651-0306e63';
+import * as db from './db.js?v=20261113164651-0306e63';
 
 export const TYPES = {
   pal: { name: 'Firearms licence (PAL)', warn: 180, help: 'Renew before it expires. If a PAL lapses you have to apply for a new one from scratch, and you can’t legally possess firearms until it’s issued. RCMP takes weeks to process a renewal, so start about 3–6 months ahead.' },

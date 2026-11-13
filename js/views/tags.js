@@ -1,13 +1,13 @@
-import * as db from '../db.js?v=20261113164139-93b0f19';
-import { store, hunters } from '../db.js?v=20261113164139-93b0f19';
-import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261113164139-93b0f19';
-import { hunterDatalist, speciesDatalist } from './log.js?v=20261113164139-93b0f19';
-import { icon } from '../icons.js?v=20261113164139-93b0f19';
-import * as M from '../map.js?v=20261113164139-93b0f19';
-import * as LIC from '../licences.js?v=20261113164139-93b0f19';
-import * as L from '../limits.js?v=20261113164139-93b0f19';
-import { SEASONS, openRange } from '../seasons.js?v=20261113164139-93b0f19';
-import { muSort } from '../seasons.js?v=20261113164139-93b0f19';
+import * as db from '../db.js?v=20261113164651-0306e63';
+import { store, hunters } from '../db.js?v=20261113164651-0306e63';
+import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261113164651-0306e63';
+import { hunterDatalist, speciesDatalist } from './log.js?v=20261113164651-0306e63';
+import { icon } from '../icons.js?v=20261113164651-0306e63';
+import * as M from '../map.js?v=20261113164651-0306e63';
+import * as LIC from '../licences.js?v=20261113164651-0306e63';
+import * as L from '../limits.js?v=20261113164651-0306e63';
+import { SEASONS, openRange } from '../seasons.js?v=20261113164651-0306e63';
+import { muSort } from '../seasons.js?v=20261113164651-0306e63';
 
 // Tags & LEH. LEH hunts come from the 2026-2027 LEH synopsis (hunt-hq-handoff/data/leh_2026.json, scripts/parse_leh.py).
 const yr = new Date().getFullYear();
@@ -95,7 +95,7 @@ export function huntCard(h, { compact = false } = {}) {
 // ---- Recommended LEH hunts ----
 // score = 45% odds + 20% hunter success in that unit + 20% familiarity (units/regions you hunt) + 15% timing (months you hunt)
 const REC_W = { odds: 0.45, succ: 0.2, fam: 0.2, time: 0.15 };
-let HV = null; const harvestData = () => HV || (HV = import('../wildlife.js?v=20261113164139-93b0f19').then((m) => m.harvest()).catch(() => null));
+let HV = null; const harvestData = () => HV || (HV = import('../wildlife.js?v=20261113164651-0306e63').then((m) => m.harvest()).catch(() => null));
 function recContext(H) {
   const mus = new Set([...store.trips.map((t) => t.wmu), ...store.spots.map((x) => x.wmu)].filter(Boolean));
   const regions = new Set([...mus].map((m) => String(m).split('-')[0]));
@@ -169,7 +169,7 @@ export async function render(v) {
       <label class="switch"><input type="checkbox" id="recRifle" ${ui.recRifle ? 'checked' : ''}><span>Skip archery-only hunts</span></label></div>
     <div id="recList"><p class="muted">Scoring hunts…</p></div></details>
   <h3 class="sub-h">Find hunts <span class="muted tnum">${hunts.length}</span></h3>
-  <div class="sp-filter">${['', ...species].map((s) => `<button class="f-chip" aria-pressed="${ui.sp === s}" data-sp="${esc(s)}">${esc(s || 'All')}</button>`).join('')}</div>
+  <div class="sp-filter" id="findSp">${['', ...species].map((s) => `<button class="f-chip" aria-pressed="${ui.sp === s}" data-sp="${esc(s)}">${esc(s || 'All')}</button>`).join('')}</div>
   <div class="grid2" style="margin:8px 0">
     <label>Region <select id="lReg"><option value="">All regions</option>${REGIONS.map(([id, n]) => `<option value="${id}" ${ui.region === id ? 'selected' : ''}>${id} · ${n}</option>`).join('')}</select></label>
     <label>When <select id="lWhen">${WHEN_OPTS.map(([v, n]) => `<option value="${v}" ${ui.when === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
@@ -202,7 +202,7 @@ export async function render(v) {
       ${list.length > shown.length ? '<button id="lMore" class="small" style="width:100%">Show more</button>' : ''}${!list.length ? '<div class="empty"><b>No hunts match</b><span class="muted">Try another species or region.</span></div>' : ''}`;
   };
   draw(); drawRec();
-  body.querySelector('.sp-filter').onclick = (e) => { const b = e.target.closest('[data-sp]'); if (!b) return; ui.sp = b.dataset.sp; ui.limit = 40; ui.pin = ''; fitNext = true; body.querySelectorAll('.sp-filter .f-chip').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); draw(); };
+  body.querySelector('#findSp').onclick = (e) => { const b = e.target.closest('[data-sp]'); if (!b) return; ui.sp = b.dataset.sp; ui.limit = 40; ui.pin = ''; fitNext = true; body.querySelectorAll('#findSp .f-chip').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); draw(); };
   body.querySelector('#lReg').onchange = (e) => { ui.region = e.target.value; ui.limit = 40; ui.pin = ''; fitNext = true; draw(); };
   body.querySelector('#lSort').onchange = (e) => { ui.sort = e.target.value; draw(); };
   body.querySelector('.rec-sp').onclick = (e) => { const b = e.target.closest('[data-rsp]'); if (!b) return; const set = recSp(); set.has(b.dataset.rsp) ? set.delete(b.dataset.rsp) : set.add(b.dataset.rsp); b.setAttribute('aria-pressed', String(set.has(b.dataset.rsp))); drawRec(); };
@@ -298,7 +298,7 @@ async function lehArea(h) {
   return areaCache.get(key);
 }
 export async function highlightHunt(h) {
-  const { selChip } = await import('../main.js?v=20261113164139-93b0f19');
+  const { selChip } = await import('../main.js?v=20261113164651-0306e63');
   let fc = await lehArea(h); let exact = !!fc;
   if (!fc) fc = { type: 'FeatureCollection', features: (M.WMU_GEO?.features || []).filter((f) => h.mus.includes(f.properties.id)) };
   fc = { type: 'FeatureCollection', features: fc.features.map((f) => ({ ...f, properties: { stroke: '#ff8a00', fill: '#ff8a00', fillOpacity: 0.22 } })) };
@@ -374,7 +374,7 @@ function renderTags(body) {
   ${S.untagged.length ? `<div class="notice tip-h">${S.untagged.length} kill${S.untagged.length === 1 ? '' : 's'} without a tag: ${S.untagged.map((k) => esc(`${k.s.species} ${fmtD(k.d)}`)).join(', ')}.&nbsp;<button class="link" id="tagKills">Add tag${S.untagged.length === 1 ? '' : 's'}</button></div>` : ''}`;
   body.onclick = async (e) => {
     const yb = e.target.closest('[data-ly]'); if (yb) { tui.year = +yb.dataset.ly; renderTags(body); return; }
-    if (e.target.closest('#goLic')) { import('../main.js?v=20261113164139-93b0f19').then((m) => m.showTabPublic('more')); return; }
+    if (e.target.closest('#goLic')) { import('../main.js?v=20261113164651-0306e63').then((m) => m.showTabPublic('more')); return; }
     if (e.target.closest('#addTags')) { addTagsSheet(y); return; }
     if (e.target.closest('#allRegs')) { tui.allRegs = !tui.allRegs; renderTags(body); return; }
     if (e.target.closest('#tagKills')) { for (const k of S.untagged) await db.insert('tags', { year: y, species: k.s.species, tag_type: 'General', hunter: 'Me' }); toast('Tags added'); return; }
