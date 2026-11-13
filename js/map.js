@@ -1,9 +1,9 @@
 // MapLibre map: base styles, 3D terrain, BC WMS overlays, identify, waypoints/tracks, open-WMU shading.
-import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261113080445-020ddbf';
-import { store } from './db.js?v=20261113080445-020ddbf';
-import { MODES, fmtKm } from './elevation.js?v=20261113080445-020ddbf';
-import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261113080445-020ddbf';
-import { esc, fmtDT } from './util.js?v=20261113080445-020ddbf';
+import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261113080841-f7d0de8';
+import { store } from './db.js?v=20261113080841-f7d0de8';
+import { MODES, fmtKm } from './elevation.js?v=20261113080841-f7d0de8';
+import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261113080841-f7d0de8';
+import { esc, fmtDT } from './util.js?v=20261113080841-f7d0de8';
 
 export let map;
 const state = { base: 'sat', terrain: false, exag: 1.5, hillshade: false, ref: false, hiddenWmu: [], layers: {}, opacity: {}, shade: null, custom: [] };
@@ -272,9 +272,13 @@ function addDataLayers() {
   map.addLayer({ id: 'tracks-line', type: 'line', source: 'tracks', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': 3.5 } });
   // Labels sit at each route's midpoint (line-placed labels drop out when a long name spans map tiles).
   map.addSource('tracks-mid', { type: 'geojson', data: tracksMid() });
-  map.addLayer({ id: 'tracks-label', type: 'symbol', source: 'tracks-mid', minzoom: 10.5,
-    layout: { 'text-field': ['get', 'label'], 'text-font': ['Open Sans Semibold'], 'text-size': 12, 'text-max-width': 12, 'text-offset': [0, -1.1], 'text-anchor': 'bottom', 'text-optional': true },
-    paint: { 'text-color': '#fff', 'text-halo-color': 'rgba(12,16,12,.9)', 'text-halo-width': 1.5 } });
+  addPillImage();
+  map.addLayer({ id: 'tracks-label', type: 'symbol', source: 'tracks-mid', minzoom: 9, layout: PILL_LAYOUT, paint: PILL_PAINT });
+  // Unsaved / being-reviewed route: its own layer so nothing else (selection, taps) can clear it.
+  map.addSource('route-prev', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+  map.addLayer({ id: 'route-prev-casing', type: 'line', source: 'route-prev', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': 'rgba(0,0,0,.6)', 'line-width': 7 } });
+  map.addLayer({ id: 'route-prev-line', type: 'line', source: 'route-prev', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': 4 } });
+  map.addLayer({ id: 'route-prev-label', type: 'symbol', source: 'route-prev', filter: ['==', ['geometry-type'], 'Point'], layout: PILL_LAYOUT, paint: PILL_PAINT });
   // Route drawing + elevation-profile cursor
   map.addSource('draw', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
   map.addSource('draw-pts', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
@@ -370,6 +374,31 @@ export function setForecastPin(c) {
       paint: { 'text-color': '#fff', 'text-halo-color': 'rgba(12,16,12,.9)', 'text-halo-width': 1.5 } });
   }
   map.getSource('fpin').setData(c ? { type: 'Feature', properties: { label: 'Forecast' + (c.label ? ': ' + c.label : '') }, geometry: { type: 'Point', coordinates: [c.lng, c.lat] } } : { type: 'FeatureCollection', features: [] });
+}
+// Route name + distance sit in a small dark pill centred on the line (the pill breaks the line under it).
+const PILL_LAYOUT = { 'text-field': ['get', 'label'], 'text-font': ['Open Sans Semibold'], 'text-size': 12, 'text-max-width': 14, 'text-anchor': 'center',
+  'icon-image': 'route-pill', 'icon-text-fit': 'both', 'icon-text-fit-padding': [3, 9, 3, 9], 'icon-allow-overlap': false, 'text-allow-overlap': false, 'symbol-sort-key': 1 };
+const PILL_PAINT = { 'text-color': '#fff' };
+function addPillImage() {
+  if (map.hasImage('route-pill')) return;
+  const r = 2, W = 40 * r, H = 28 * r, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+  g.fillStyle = 'rgba(16,22,16,0.92)'; g.strokeStyle = 'rgba(255,255,255,0.28)'; g.lineWidth = 1.5 * r;
+  g.beginPath(); g.roundRect(1.5 * r, 1.5 * r, W - 3 * r, H - 3 * r, 10 * r); g.fill(); g.stroke();
+  map.addImage('route-pill', g.getImageData(0, 0, W, H), { pixelRatio: r, stretchX: [[12 * r, 28 * r]], stretchY: [[11 * r, 17 * r]], content: [8 * r, 6 * r, 32 * r, 22 * r] });
+}
+function midOf(c) {
+  let total = 0; const seg = c.slice(1).map((p, i) => { const d = Math.hypot(p[0] - c[i][0], (p[1] - c[i][1]) * 1.5); total += d; return d; });
+  let acc = 0, i = 0; while (i < seg.length - 1 && acc + seg[i] < total / 2) acc += seg[i++];
+  const t = seg[i] ? (total / 2 - acc) / seg[i] : 0; const a = c[i], b = c[i + 1];
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+}
+export function setRoutePreview(coords, { color = '#ffd23f', label = '' } = {}) {
+  const src = map?.getSource('route-prev'); if (!src) return;
+  if (!coords || coords.length < 2) { src.setData({ type: 'FeatureCollection', features: [] }); return; }
+  src.setData({ type: 'FeatureCollection', features: [
+    { type: 'Feature', properties: { color }, geometry: { type: 'LineString', coordinates: coords } },
+    ...(label ? [{ type: 'Feature', properties: { label }, geometry: { type: 'Point', coordinates: midOf(coords) } }] : []),
+  ] });
 }
 export function setHotspots(fc) { map.getSource('hot')?.setData(fc || { type: 'FeatureCollection', features: [] }); }
 

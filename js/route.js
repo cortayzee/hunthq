@@ -1,11 +1,11 @@
 // Draw a route by tapping the map: live distance / climb / time / difficulty, elevation profile, save as a track.
-import * as db from './db.js?v=20261113080445-020ddbf';
-import { store } from './db.js?v=20261113080445-020ddbf';
-import * as M from './map.js?v=20261113080445-020ddbf';
-import { esc, toast, haversineKm, fmtDate, tip } from './util.js?v=20261113080445-020ddbf';
-import { icon } from './icons.js?v=20261113080445-020ddbf';
-import { profile, stats, MODES, fmtHours, fmtKm } from './elevation.js?v=20261113080445-020ddbf';
-import * as V from './vis.js?v=20261113080445-020ddbf';
+import * as db from './db.js?v=20261113080841-f7d0de8';
+import { store } from './db.js?v=20261113080841-f7d0de8';
+import * as M from './map.js?v=20261113080841-f7d0de8';
+import { esc, toast, haversineKm, fmtDate, tip } from './util.js?v=20261113080841-f7d0de8';
+import { icon } from './icons.js?v=20261113080841-f7d0de8';
+import { profile, stats, MODES, fmtHours, fmtKm } from './elevation.js?v=20261113080841-f7d0de8';
+import * as V from './vis.js?v=20261113080841-f7d0de8';
 
 const st = { on: false, pts: [], mode: 'trail', prof: [], seq: 0, hist: [], sel: null, edit: null, eatClick: false };
 let bar = null;
@@ -19,6 +19,7 @@ const round = (ll) => [+ll.lng.toFixed(6), +ll.lat.toFixed(6)];
 export const drawing = () => st.on;
 // start(mode, existing points, track being edited)
 export function start(mode = st.mode, pts = [], edit = null) {
+  M.setRoutePreview(null);
   st.on = true; st.pts = pts.map((c) => [c[0], c[1]]); st.prof = []; st.mode = mode; st.hist = []; st.sel = null; st.edit = edit;
   M.map.doubleClickZoom.disable();
   document.getElementById('app').classList.add('draw-mode');
@@ -130,13 +131,13 @@ function drawBar() {
 
 // ---- Route detail (new or saved track) ----
 export async function openRoute(track, prof) {
-  const { openPanel } = await import('./main.js?v=20261113080445-020ddbf');
+  const { openPanel } = await import('./main.js?v=20261113080841-f7d0de8');
   openPanel();
   const v = document.getElementById('view'); v.scrollTop = 0;
   document.querySelectorAll('#tabs button').forEach((b) => b.classList.remove('active'));
   const isNew = !track.id; const coords = (track.coords || []).map((c) => [c[0], c[1]]);
   let mode = track.extra?.mode || 'trail';
-  M.setSelection(null);
+  M.setRoutePreview(null);
   v.innerHTML = `<div class="detail-h"><button class="small" id="rBack">${icon('chevL', { size: 16 })}Back</button><div class="row"><button class="small" id="rEditLine">${icon('ruler', { size: 16 })}Edit line</button>${isNew ? '' : '<button class="small danger" id="rDel">Delete</button>'}</div></div>
     <h2 style="margin-bottom:2px">${isNew ? 'New route' : esc(track.name || 'Route')}</h2>
     <div class="muted">${isNew ? 'Check the numbers, then save it to your map.' : esc([track.hunter, track.started_at && fmtDate(track.started_at), track.source && track.source !== 'drawn' ? 'imported' : ''].filter(Boolean).join(' · '))}</div>
@@ -167,19 +168,21 @@ export async function openRoute(track, prof) {
   };
   draw();
   v.querySelector('#rModes').onclick = (e) => { const b = e.target.closest('[data-mode]'); if (!b) return; mode = b.dataset.mode; v.querySelectorAll('#rModes button').forEach((x) => x.setAttribute('aria-checked', String(x === b))); draw(); };
-  v.querySelector('#rBack').onclick = async () => { M.setCursor(null); (await import('./main.js?v=20261113080445-020ddbf')).rerender(); };
-  v.querySelector('#rFit').onclick = () => { M.fitTo(coords); if (innerWidth <= 760) import('./main.js?v=20261113080445-020ddbf').then((m) => m.closePanel()); };
+  v.querySelector('#rBack').onclick = async () => { M.setCursor(null); (await import('./main.js?v=20261113080841-f7d0de8')).rerender(); };
+  v.querySelector('#rFit').onclick = () => { M.fitTo(coords); if (innerWidth <= 760) import('./main.js?v=20261113080841-f7d0de8').then((m) => m.closePanel()); };
   // Edit the line any time: keeps the name / hunt / notes typed so far.
   v.querySelector('#rEditLine').addEventListener('click', async () => {
     const f = v.querySelector('#rForm');
     const draft = { ...track, name: f.name.value, extra: { ...(track.extra || {}), mode, notes: f.notes.value || undefined, trip_id: f.trip_id.value || undefined, group_id: f.group_id.value || undefined } };
-    M.setSelection(null);
-    if (innerWidth <= 760) (await import('./main.js?v=20261113080445-020ddbf')).closePanel();
+    M.setRoutePreview(null);
+    if (innerWidth <= 760) (await import('./main.js?v=20261113080841-f7d0de8')).closePanel();
     start(mode, coords, draft);
   });
   // Until it's saved (or while it differs from the saved copy), draw the line so you can see what you're about to save.
-  if (isNew || track._edited) M.setSelection({ type: 'FeatureCollection', features: coords.length > 1 ? [{ type: 'Feature', properties: { stroke: MODES[mode]?.color || '#ffd23f' }, geometry: { type: 'LineString', coordinates: coords } }] : [] });
-  v.querySelector('#rDel')?.addEventListener('click', async () => { if (!confirm('Delete this route?')) return; await db.remove('tracks', track.id); M.setCursor(null); (await import('./main.js?v=20261113080445-020ddbf')).rerender(); });
+  const showPrev = () => (isNew || track._edited) && M.setRoutePreview(coords, { color: MODES[mode]?.color || '#ffd23f', label: [v.querySelector('#rForm')?.name.value.trim() || (isNew ? 'New route' : track.name || 'Route'), fmtKm(flatKm(coords))].join(' · ') });
+  showPrev(); v.querySelector('#rForm [name=name]')?.addEventListener('input', showPrev);
+  v.querySelector('#rModes')?.addEventListener('click', () => setTimeout(showPrev, 0));
+  v.querySelector('#rDel')?.addEventListener('click', async () => { if (!confirm('Delete this route?')) return; await db.remove('tracks', track.id); M.setCursor(null); (await import('./main.js?v=20261113080841-f7d0de8')).rerender(); });
   v.querySelector('#rForm').onsubmit = async (e) => {
     e.preventDefault(); const f = e.target; const s = stats(prof, mode);
     const extra = { ...(track.extra || {}), mode, notes: f.notes.value || undefined, up: Math.round(s.up), down: Math.round(s.down), hours: +s.hours.toFixed(2), difficulty: s.difficulty };
