@@ -1,20 +1,20 @@
-import * as db from './db.js?v=20261113072907-6262054';
-import { store } from './db.js?v=20261113072907-6262054';
-import * as M from './map.js?v=20261113072907-6262054';
-import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261113072907-6262054';
-import { $, $$, esc, initTips, toast, closeModal, requestClose, todayISO, earthLink } from './util.js?v=20261113072907-6262054';
-import { REGS_URL, BASES } from './config.js?v=20261113072907-6262054';
-import { sunInfo } from './views/sun.js?v=20261113072907-6262054';
-import { mvprSummary, mvprStatus } from './mvpr.js?v=20261113072907-6262054';
-import { icon, hydrateIcons } from './icons.js?v=20261113072907-6262054';
-import * as R from './route.js?v=20261113072907-6262054';
-import * as V from './vis.js?v=20261113072907-6262054';
+import * as db from './db.js?v=20261113074749-ce63ffc';
+import { store } from './db.js?v=20261113074749-ce63ffc';
+import * as M from './map.js?v=20261113074749-ce63ffc';
+import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261113074749-ce63ffc';
+import { $, $$, esc, initTips, toast, closeModal, requestClose, todayISO } from './util.js?v=20261113074749-ce63ffc';
+import { REGS_URL, BASES } from './config.js?v=20261113074749-ce63ffc';
+import { sunInfo } from './views/sun.js?v=20261113074749-ce63ffc';
+import { mvprSummary, mvprStatus } from './mvpr.js?v=20261113074749-ce63ffc';
+import { icon, hydrateIcons } from './icons.js?v=20261113074749-ce63ffc';
+import * as R from './route.js?v=20261113074749-ce63ffc';
+import * as V from './vis.js?v=20261113074749-ce63ffc';
 
 const views = {};
 const viewModules = {
-  layers: () => import('./views/layers.js?v=20261113072907-6262054'), open: () => import('./views/open.js?v=20261113072907-6262054'), log: () => import('./views/log.js?v=20261113072907-6262054'),
-  trips: () => import('./views/trips.js?v=20261113072907-6262054'), tags: () => import('./views/tags.js?v=20261113072907-6262054'), insights: () => import('./views/insights.js?v=20261113072907-6262054'),
-  import: () => import('./views/import.js?v=20261113072907-6262054'), sun: () => import('./views/sun.js?v=20261113072907-6262054'), more: () => import('./views/more.js?v=20261113072907-6262054'),
+  layers: () => import('./views/layers.js?v=20261113074749-ce63ffc'), open: () => import('./views/open.js?v=20261113074749-ce63ffc'), log: () => import('./views/log.js?v=20261113074749-ce63ffc'),
+  trips: () => import('./views/trips.js?v=20261113074749-ce63ffc'), tags: () => import('./views/tags.js?v=20261113074749-ce63ffc'), insights: () => import('./views/insights.js?v=20261113074749-ce63ffc'),
+  import: () => import('./views/import.js?v=20261113074749-ce63ffc'), sun: () => import('./views/sun.js?v=20261113074749-ce63ffc'), more: () => import('./views/more.js?v=20261113074749-ce63ffc'),
 };
 export const app = { tab: 'layers', date: todayISO(), dropMode: false };
 const isPhone = () => innerWidth <= 760;
@@ -64,7 +64,7 @@ export function selChip(label) {
 }
 export function clearSelection() { M.setSelection?.(null); selChip(null); }
 export async function openWmu(mu, region) {
-  const { showWmu } = await import('./views/wmu.js?v=20261113072907-6262054');
+  const { showWmu } = await import('./views/wmu.js?v=20261113074749-ce63ffc');
   $$('#tabs button').forEach((b) => b.classList.remove('active'));
   openPanel(); const v = $('#view'); v.scrollTop = 0; v.onclick = v.onchange = v.oninput = v.onkeydown = null;
   await showWmu(v, mu, { region, date: app.date, onBack: () => showTab(app.tab) });
@@ -131,7 +131,7 @@ async function start() {
   await loadSeasons();
   const saved = store.prefs.map || {};
   await M.initMap('map', store.prefs);
-  import('./wildlife.js?v=20261113072907-6262054').then((W) => { const go = () => (M.map.getLayer('wmu-fill') ? W.restore() : setTimeout(go, 300)); go(); });
+  import('./wildlife.js?v=20261113074749-ce63ffc').then((W) => { const go = () => (M.map.getLayer('wmu-fill') ? W.restore() : setTimeout(go, 300)); go(); });
   if (saved.pitch && !saved.terrain) M.map.setPitch(0);
   V.apply();
   wireUI();
@@ -228,12 +228,12 @@ function wireUI() {
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const { act, id } = b.dataset;
-    if (act === 'edit-spot') (await import('./views/log.js?v=20261113072907-6262054')).openSpotForm(store.spots.find((s) => s.id === id));
-    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261113072907-6262054')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'edit-spot') (await import('./views/log.js?v=20261113074749-ce63ffc')).openSpotForm(store.spots.find((s) => s.id === id));
+    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261113074749-ce63ffc')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
     if (act === 'wmu') { e.preventDefault(); popup?.remove(); M.selectWmu(b.dataset.mu); openWmu(b.dataset.mu, b.dataset.region); }
     if (act === 'fc-here') { e.preventDefault(); popup?.remove(); popup = null; const I = views.insights || (views.insights = await viewModules.insights());
       I.openForecast({ lat: +b.dataset.lat, lng: +b.dataset.lon, label: b.dataset.label || '' }); await showTab('insights'); }
-    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261113072907-6262054')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261113074749-ce63ffc')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
   });
   document.addEventListener('submit', (e) => {
     if (!e.target.matches('[data-wmuform]')) return; e.preventDefault();
@@ -251,7 +251,7 @@ function wireUI() {
     }
     if (app.dropMode) {
       setDropMode(false);
-      const { openSpotForm } = await import('./views/log.js?v=20261113072907-6262054');
+      const { openSpotForm } = await import('./views/log.js?v=20261113074749-ce63ffc');
       const form = openSpotForm({ lat: e.lngLat.lat, lon: e.lngLat.lng });
       const res = await M.identify(e.lngLat, ['wmu']);
       const w = M.wmuFromIdentify(res); if (w && form?.wmu && !form.wmu.value) form.wmu.value = w;
@@ -363,12 +363,18 @@ async function identifyPopup(lngLat) {
   for (const f of res.results.parks?.feats || []) h += row('tree', esc(f.PROTECTED_LANDS_NAME || 'Park / protected area'), esc(f.PROTECTED_LANDS_DESIGNATION || 'Check park hunting rules'));
   for (const f of res.results.reserves?.feats || []) h += row('fence', esc(f.ENGLISH_NAME || 'First Nations reserve'), 'Reserve land: no hunting without permission', 'bad');
   for (const f of res.results.private?.feats || []) h += row('home', 'Private land', esc(f.PID_FORMATTED || f.PID || ''));
+  const cap = (x) => (x ? String(x).charAt(0).toUpperCase() + String(x).slice(1) : '');
+  for (const id of ['rd_main', 'rd_gravel', 'rd_rough', 'rd_over']) for (const f of (res.results[id]?.feats || []).slice(0, 2)) h += row('route', esc(f.ROAD_NAME_FULL || cap(f.ROAD_CLASS) + ' road'), esc([cap(f.ROAD_SURFACE), f.ROAD_CLASS && f.ROAD_NAME_FULL ? f.ROAD_CLASS : ''].filter(Boolean).join(', ')));
+  for (const f of (res.results.fsr?.feats || []).slice(0, 2)) h += row('route', esc(f.MAP_LABEL || f.ROAD_SECTION_NAME || 'Forest service road'), 'Forest service road' + (f.GEOGRAPHIC_DISTRICT_NAME ? ', ' + esc(f.GEOGRAPHIC_DISTRICT_NAME.replace(' Natural Resource District', '')) : ''));
+  for (const f of (res.results.rec_trails?.feats || []).slice(0, 2)) h += row('route', esc(f.PROJECT_NAME || 'Recreation trail'), 'Recreation trail');
+  for (const f of (res.results.rec_sites?.feats || []).slice(0, 2)) h += row('tree', esc(f.PROJECT_NAME || 'Recreation site'), esc([f.NUM_CAMP_SITES ? f.NUM_CAMP_SITES + ' campsites' : '', f.MAINTAIN_STD_DESC].filter(Boolean).join(', ')));
+  for (const f of (res.results.cutblocks?.feats || []).slice(0, 1)) h += row('tree', `Cutblock, logged ${esc(f.HARVEST_START_YEAR_CALENDAR || '')}`, f.AREA_HA ? `${Math.round(f.AREA_HA)} ha` : '');
+  for (const f of (res.results.burns?.feats || []).slice(0, 1)) h += row('alert', `Wildfire burn, ${esc(f.FIRE_YEAR || '')}`, f.FIRE_SIZE_HECTARES ? `${Math.round(f.FIRE_SIZE_HECTARES).toLocaleString('en-CA')} ha` : '');
   for (const f of res.results.gmz?.feats || []) h += row('grid', 'GMZ ' + esc(f.GAME_MANAGEMENT_ZONE_NAME || f.GAME_MANAGEMENT_ZONE_ID || ''), '');
   for (const [id, r] of Object.entries(res.results)) if (id.startsWith('custom_')) for (const f of r.feats) h += row('layers', esc(r.layer.name), esc(Object.entries(f).filter(([k]) => !/SHAPE|GEOMETRY|OBJECTID/i.test(k)).slice(0, 4).map(([k, v]) => `${k}: ${v}`).join(' · ')));
   const s = sunInfo(new Date(date + 'T12:00'), lat, lng);
   h += row('sun', `Legal light ${s.legalStart} – ${s.legalEnd}`, `Sunrise ${s.sunrise} · sunset ${s.sunset} · ${esc(s.moonName)} ${s.moonPct}%`);
   h += `<div class="pop-foot"><a href="#" data-act="fc-here" data-lat="${lat}" data-lon="${lng}">Forecast here</a><a href="#" data-act="trip-here" data-lat="${lat}" data-lon="${lng}" data-wmu="${esc(wmu)}">Log a hunt here</a>
-    <a href="${earthLink(lat, lng)}" target="_blank" rel="noopener">Google Earth</a>
     <a href="${REGS_URL}" target="_blank" rel="noopener">In-season changes</a></div></div>`;
   p.setHTML(h);
   fitPopup(p);
@@ -389,4 +395,18 @@ let lastTouch = 0;
 document.addEventListener('touchend', (e) => { const now = Date.now(); if (now - lastTouch < 300 && !e.target.closest('#map, input, textarea, select')) e.preventDefault(); lastTouch = now; }, { passive: false });
 // If the page did get zoomed or shifted (visual viewport offset), snap it back.
 window.visualViewport?.addEventListener('resize', () => { if (visualViewport.scale > 1.01) { const m = document.querySelector('meta[name=viewport]'); const c = m.content; m.content = c + ',x=1'; requestAnimationFrame(() => (m.content = c)); } });
+// GitHub Pages can serve an old copy of a file for a few minutes after a deploy, under the new URL.
+// That mixes versions (old CSS, a second copy of a module with empty data). Detect it and heal once.
+function checkFresh() {
+  const VER = new URL(import.meta.url).searchParams.get('v'); if (!VER) return;
+  const css = getComputedStyle(document.documentElement).getPropertyValue('--build').replace(/["']/g, '').trim();
+  const stale = performance.getEntriesByType('resource').map((r) => r.name).filter((u) => u.startsWith(location.origin) && /[?&]v=/.test(u) && new URL(u).searchParams.get('v') !== VER);
+  if (!stale.length && css === VER) { try { sessionStorage.removeItem('hunthq_heal'); } catch {} return; }
+  let tries = 0; try { tries = +sessionStorage.getItem('hunthq_heal') || 0; } catch {}
+  if (tries >= 2) { toast('A new version is still rolling out. Reload in a minute if anything looks off.', 6000); return; }
+  try { sessionStorage.setItem('hunthq_heal', tries + 1); } catch {}
+  const urls = [...new Set(performance.getEntriesByType('resource').map((r) => r.name).filter((u) => u.startsWith(location.origin) && /[?&]v=/.test(u))), location.href.split('#')[0]];
+  Promise.allSettled(urls.map((u) => fetch(u, { cache: 'reload' }))).then(() => location.reload());
+}
 boot();
+addEventListener('load', () => setTimeout(checkFresh, 2500));

@@ -24,5 +24,8 @@ for f in list((root / 'js').rglob('*.js')):
 idx = root / 'index.html'
 s = idx.read_text(); n = html_ref.sub(lambda m: f"{m.group(1)}{m.group(2)}?v={ver}{m.group(3)}", s)
 if n != s: idx.write_text(n); changed += 1
+css = root / 'css' / 'app.css'  # CSS sentinel so the app can tell a stale stylesheet from a fresh one
+s = css.read_text(); n = re.sub(r'--build: "[^"]*";', f'--build: "{ver}";', s)
+if n != s: css.write_text(n); changed += 1
 (root / 'js' / 'version.txt').write_text(ver + '\n')
 print(f'version {ver}: updated {changed} files')

@@ -1,16 +1,18 @@
-import * as M from '../map.js?v=20261113072907-6262054';
-import { esc, tip } from '../util.js?v=20261113072907-6262054';
-import { icon } from '../icons.js?v=20261113072907-6262054';
-import { saveMapPrefs, showTabPublic } from '../main.js?v=20261113072907-6262054';
-import { muSort } from '../seasons.js?v=20261113072907-6262054';
-import { store } from '../db.js?v=20261113072907-6262054';
-import * as W from '../wildlife.js?v=20261113072907-6262054';
+import * as M from '../map.js?v=20261113074749-ce63ffc';
+import { esc, tip } from '../util.js?v=20261113074749-ce63ffc';
+import { icon } from '../icons.js?v=20261113074749-ce63ffc';
+import { saveMapPrefs, showTabPublic } from '../main.js?v=20261113074749-ce63ffc';
+import { muSort } from '../seasons.js?v=20261113074749-ce63ffc';
+import { store } from '../db.js?v=20261113074749-ce63ffc';
+import * as W from '../wildlife.js?v=20261113074749-ce63ffc';
 
 // Layers panel: "On now" chips, then collapsible sections. A row is swatch + name + switch; opacity only for layers that are on.
 const SECTIONS = [
   ['Boundaries', 'Boundaries', 'WMUs and game zones'],
   ['Access', 'Access & closures', 'Vehicle, ATV and snowmobile closures'],
   ['LEH', 'LEH zones', 'Limited-entry areas this year'],
+  ['Roads', 'Roads & trails', 'Paved, gravel, 4x4, forest service roads, trails'],
+  ['Habitat', 'Habitat', 'Cutblocks and wildfire burns'],
   ['Land', 'Land', 'Parks, reserves and private land'],
   ['Custom', 'Custom layers', 'Layers you added in More'],
 ];
@@ -19,7 +21,7 @@ const OPEN_KEY = 'hunthq_lyr_open';
 const open = (() => { try { return new Set(JSON.parse(localStorage.getItem(OPEN_KEY)) || ['Boundaries']); } catch { return new Set(['Boundaries']); } })();
 const saveOpen = () => { try { localStorage.setItem(OPEN_KEY, JSON.stringify([...open])); } catch {} };
 const shortName = (l) => l.name.replace(/^LEH zones – /, '').replace(/^MVHCA – motor vehicle hunting closed$/, 'MVHCA (hunting closed)').replace(/ \(ParcelMap BC, zoom 12\+\)$/, '');
-const note = (l) => (l.minzoom ? `Shows from zoom ${l.minzoom}` : l.id === 'mv_hca' ? 'Motor vehicles closed for hunting' : l.id === 'wmu' ? 'Numbers + boundaries' : '');
+const note = (l) => (l.note ? l.note : l.minzoom >= 9 ? `Shows from zoom ${l.minzoom}` : l.id === 'mv_hca' ? 'Motor vehicles closed for hunting' : l.id === 'wmu' ? 'Numbers + boundaries' : '');
 
 function wmuByRegion() {
   const m = new Map();
@@ -43,7 +45,7 @@ export function render(v) {
       <label class="lyr-main"><span class="swatch" style="background:${l.color || '#888'}"></span><span class="t"><b>${esc(shortName(l))}</b>${note(l) ? `<span class="muted">${esc(note(l))}</span>` : ''}</span>
       <span class="switch"><input type="checkbox" data-l="${l.id}" ${on ? 'checked' : ''} aria-label="${esc(shortName(l))}"></span></label>
       ${on ? `<div class="lyr-op"><span class="muted">Opacity</span><input type="range" min="0.15" max="1" step="0.05" value="${M.layerOpacity(l.id)}" data-o="${l.id}" aria-label="${esc(shortName(l))} opacity"></div>` : ''}</div>`; };
-  const SEC_IC = { Boundaries: 'grid', Access: 'ban', LEH: 'tag', Land: 'tree', Custom: 'layers', Wildlife: 'deer', Units: 'eye', Mine: 'pin' };
+  const SEC_IC = { Roads: 'route', Habitat: 'tree', Boundaries: 'grid', Access: 'ban', LEH: 'tag', Land: 'tree', Custom: 'layers', Wildlife: 'deer', Units: 'eye', Mine: 'pin' };
   const sec = (id, title, sub, body, count) => `<details class="lyr-sec" data-sec="${id}" ${open.has(id) || q() ? 'open' : ''}><summary>
       <span class="lr-ic">${icon(SEC_IC[id] || 'layers', { size: 18 })}</span><span class="t"><b>${title}</b><span class="muted">${sub}</span></span>${count ? `<span class="badge">${count} on</span>` : ''}${icon('chevR', { size: 18, cls: 'fold-chev' })}</summary><div class="lyr-body">${body}</div></details>`;
 

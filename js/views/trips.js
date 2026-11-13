@@ -1,16 +1,16 @@
-import * as db from '../db.js?v=20261113072907-6262054';
-import { store, hunters } from '../db.js?v=20261113072907-6262054';
-import { WEAPONS, RESULTS, kindColor } from '../config.js?v=20261113072907-6262054';
-import { esc, opts, modal, closeModal, requestClose, toast, formData, todayISO, num, parseCSV, yearOf } from '../util.js?v=20261113072907-6262054';
-import { normMU } from '../seasons.js?v=20261113072907-6262054';
-import { hunterDatalist, speciesDatalist, spotRow, dateSpan, openSpotForm } from './log.js?v=20261113072907-6262054';
-import { exportCSV } from '../exporters.js?v=20261113072907-6262054';
-import { pickOnMap, closePanel, openPanel } from '../main.js?v=20261113072907-6262054';
-import * as M from '../map.js?v=20261113072907-6262054';
-import * as V from '../vis.js?v=20261113072907-6262054';
-import { tripTitle, tripSpots, harvested } from '../vis.js?v=20261113072907-6262054';
-import { icon, hydrateIcons } from '../icons.js?v=20261113072907-6262054';
-import { glyphSVG, animalFor } from '../animals.js?v=20261113072907-6262054';
+import * as db from '../db.js?v=20261113074749-ce63ffc';
+import { store, hunters } from '../db.js?v=20261113074749-ce63ffc';
+import { WEAPONS, RESULTS, kindColor } from '../config.js?v=20261113074749-ce63ffc';
+import { esc, opts, modal, closeModal, requestClose, toast, formData, todayISO, num, parseCSV, yearOf } from '../util.js?v=20261113074749-ce63ffc';
+import { normMU } from '../seasons.js?v=20261113074749-ce63ffc';
+import { hunterDatalist, speciesDatalist, spotRow, dateSpan, openSpotForm } from './log.js?v=20261113074749-ce63ffc';
+import { exportCSV } from '../exporters.js?v=20261113074749-ce63ffc';
+import { pickOnMap, closePanel, openPanel } from '../main.js?v=20261113074749-ce63ffc';
+import * as M from '../map.js?v=20261113074749-ce63ffc';
+import * as V from '../vis.js?v=20261113074749-ce63ffc';
+import { tripTitle, tripSpots, harvested } from '../vis.js?v=20261113074749-ce63ffc';
+import { icon, hydrateIcons } from '../icons.js?v=20261113074749-ce63ffc';
+import { glyphSVG, animalFor } from '../animals.js?v=20261113074749-ce63ffc';
 
 // A hunt = one outing (a day or a multi-day trip). Its kills & sightings are waypoints linked by extra.trip_id.
 const ui = { year: '' };
@@ -43,7 +43,7 @@ export function render(v) {
     v.innerHTML = `<div class="page-h"><h2>Hunts</h2></div>${db.localNote()}${viewSeg()}<div id="statsBody"></div>`;
     v.onclick = (e) => { const h = e.target.closest('[data-hv]'); if (h) { ui.view = h.dataset.hv; render(v); } };
     v.onchange = null;
-    import('./insights.js?v=20261113072907-6262054').then((I) => { const el = v.querySelector('#statsBody'); if (el) I.renderStats(el); });
+    import('./insights.js?v=20261113074749-ce63ffc').then((I) => { const el = v.querySelector('#statsBody'); if (el) I.renderStats(el); });
     return;
   }
   const years = [...new Set(store.trips.map((t) => String(yearOf(t.date_start))))].sort((a, b) => b - a);

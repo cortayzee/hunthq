@@ -1,10 +1,10 @@
-import { store, hunters, localNote } from '../db.js?v=20261113072907-6262054';
-import { icon } from '../icons.js?v=20261113072907-6262054';
-import { esc, opts, yearOf, groupBy, fmtTime, tip } from '../util.js?v=20261113072907-6262054';
-import * as M from '../map.js?v=20261113072907-6262054';
-import { RUT, RUT_SPECIES, rutStatus, fmtMD, moonSVG, moonDay, MOON_TIPS } from '../rut.js?v=20261113072907-6262054';
-import * as W from '../weather.js?v=20261113072907-6262054';
-import { harvested } from '../vis.js?v=20261113072907-6262054';
+import { store, hunters, localNote } from '../db.js?v=20261113074749-ce63ffc';
+import { icon } from '../icons.js?v=20261113074749-ce63ffc';
+import { esc, opts, yearOf, groupBy, fmtTime, tip } from '../util.js?v=20261113074749-ce63ffc';
+import * as M from '../map.js?v=20261113074749-ce63ffc';
+import { RUT, RUT_SPECIES, rutStatus, fmtMD, moonSVG, moonDay, MOON_TIPS } from '../rut.js?v=20261113074749-ce63ffc';
+import * as W from '../weather.js?v=20261113074749-ce63ffc';
+import { harvested } from '../vis.js?v=20261113074749-ce63ffc';
 
 const f = { hunter: '', species: '', from: '', to: '' };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -121,14 +121,14 @@ function renderRut(body) {
     if (b.dataset.wday != null) { ui.wday = ui.wday === +b.dataset.wday ? -1 : +b.dataset.wday; fillWx(body.querySelector('#wxCard'), c); return; }
     if (b.dataset.hday != null) { ui.wx = 'hourly'; ui.hday = b.dataset.hday; fillWx(body.querySelector('#wxCard'), c, true); return; }
     if (b.dataset.spot) { const x = spots.find((y) => y.v === b.dataset.spot); if (x) { setForecastPos({ lat: x.lat, lng: x.lng, label: x.label }); M.flyTo(x.lng, x.lat, 11); renderRut(body); } return; }
-    if (b.dataset.sun != null) { import('../main.js?v=20261113072907-6262054').then((m) => m.showTabPublic('sun')); return; }
+    if (b.dataset.sun != null) { import('../main.js?v=20261113074749-ce63ffc').then((m) => m.showTabPublic('sun')); return; }
     if (b.dataset.rsp) { ui.sp = b.dataset.rsp; ui.stage = null; saveUi(); renderRut(body); }
     else if (b.dataset.stage != null) { ui.stage = +b.dataset.stage; renderRut(body); }
     else if (b.dataset.day != null) { ui.day = +b.dataset.day; renderRut(body); }
     else if (b.dataset.loc === 'center') { const m = M.map.getCenter(); setForecastPos({ lat: m.lat, lng: m.lng, label: '' }); renderRut(body); }
     else if (b.dataset.loc === 'show') M.flyTo(c.lng, c.lat, 11);
     else if (b.dataset.loc === 'pick') {
-      import('../main.js?v=20261113072907-6262054').then(async (mm) => { const ll = await mm.pickOnMap('Tap the map where you want the forecast'); setForecastPos({ lat: ll.lat, lng: ll.lng, label: '' }); mm.openPanel(); if (render.v?.isConnected) render(render.v); });
+      import('../main.js?v=20261113074749-ce63ffc').then(async (mm) => { const ll = await mm.pickOnMap('Tap the map where you want the forecast'); setForecastPos({ lat: ll.lat, lng: ll.lng, label: '' }); mm.openPanel(); if (render.v?.isConnected) render(render.v); });
     }
     else if (b.dataset.loc === 'gps') navigator.geolocation?.getCurrentPosition((p) => { setForecastPos({ lat: p.coords.latitude, lng: p.coords.longitude, label: 'My location' }); renderRut(body); }, (er) => alert(er.message));
   };

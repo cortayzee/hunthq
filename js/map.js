@@ -1,9 +1,9 @@
 // MapLibre map: base styles, 3D terrain, BC WMS overlays, identify, waypoints/tracks, open-WMU shading.
-import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261113072907-6262054';
-import { store } from './db.js?v=20261113072907-6262054';
-import { MODES, fmtKm } from './elevation.js?v=20261113072907-6262054';
-import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261113072907-6262054';
-import { esc, earthLink, fmtDT } from './util.js?v=20261113072907-6262054';
+import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261113074749-ce63ffc';
+import { store } from './db.js?v=20261113074749-ce63ffc';
+import { MODES, fmtKm } from './elevation.js?v=20261113074749-ce63ffc';
+import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261113074749-ce63ffc';
+import { esc, fmtDT } from './util.js?v=20261113074749-ce63ffc';
 
 export let map;
 const state = { base: 'sat', terrain: false, exag: 1.5, hillshade: false, ref: false, hiddenWmu: [], layers: {}, opacity: {}, shade: null, custom: [] };
@@ -39,7 +39,9 @@ export async function updateLehLabels() {
 }
 const sldStyle = (l) => {
   const sym = l.geom === 'line'
-    ? `<LineSymbolizer><Stroke><CssParameter name="stroke">${l.color}</CssParameter><CssParameter name="stroke-width">3</CssParameter></Stroke></LineSymbolizer>`
+    ? `<LineSymbolizer><Stroke><CssParameter name="stroke">${l.color}</CssParameter><CssParameter name="stroke-width">${l.width || 3}</CssParameter><CssParameter name="stroke-linecap">round</CssParameter>${l.dash ? `<CssParameter name="stroke-dasharray">${l.dash}</CssParameter>` : ''}</Stroke></LineSymbolizer>`
+    : l.geom === 'point'
+    ? `<PointSymbolizer><Graphic><Mark><WellKnownName>circle</WellKnownName><Fill><CssParameter name="fill">${l.color}</CssParameter></Fill><Stroke><CssParameter name="stroke">#ffffff</CssParameter><CssParameter name="stroke-width">2</CssParameter></Stroke></Mark><Size>12</Size></Graphic></PointSymbolizer>`
     : `<PolygonSymbolizer><Fill><CssParameter name="fill">${l.color}</CssParameter><CssParameter name="fill-opacity">0.12</CssParameter></Fill><Stroke><CssParameter name="stroke">${l.color}</CssParameter><CssParameter name="stroke-width">2</CssParameter></Stroke></PolygonSymbolizer>`;
   const label = '';
   return `<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld" xmlns:ogc="http://www.opengis.net/ogc"><NamedLayer><Name>pub:${l.layer}</Name><UserStyle><FeatureTypeStyle><Rule>${sym}</Rule>${label}</FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>`;
@@ -239,6 +241,7 @@ export async function identify(lngLat, layerIds) {
   // unit would return nothing. Send a filled style for every queried layer so any tap inside a polygon counts.
   params.set('SLD_BODY', `<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld">${[...byLayer].map(([n, ls]) => `<NamedLayer><Name>pub:${n}</Name><UserStyle><FeatureTypeStyle><Rule>${
     ls[0].geom === 'line' ? '<LineSymbolizer><Stroke><CssParameter name="stroke">#000</CssParameter><CssParameter name="stroke-width">9</CssParameter></Stroke></LineSymbolizer>'
+      : ls[0].geom === 'point' ? '<PointSymbolizer><Graphic><Mark><WellKnownName>circle</WellKnownName><Fill><CssParameter name="fill">#000</CssParameter></Fill></Mark><Size>18</Size></Graphic></PointSymbolizer>'
       : '<PolygonSymbolizer><Fill><CssParameter name="fill">#000</CssParameter></Fill></PolygonSymbolizer>'}</Rule></FeatureTypeStyle></UserStyle></NamedLayer>`).join('')}</StyledLayerDescriptor>`);
   try {
     const r = await fetch(`${BC_WMS}?${params}`);
@@ -376,8 +379,7 @@ export function spotPopupHTML(s) {
   ${s.wmu ? `<dt>WMU</dt><dd>${esc(s.wmu)}</dd>` : ''}${s.weapon ? `<dt>Weapon</dt><dd>${esc(s.weapon)}</dd>` : ''}
   <dt>Lat/Lon</dt><dd>${(+s.lat).toFixed(5)}, ${(+s.lon).toFixed(5)}</dd></dl>
   ${s.notes ? `<div class="muted">${esc(s.notes)}</div>` : ''}
-  <div class="row" style="margin-top:6px"><button class="small" data-act="edit-spot" data-id="${s.id}">Edit</button><button class="small" data-act="fc-here" data-lat="${s.lat}" data-lon="${s.lon}" data-label="${esc(spotLabel(s))}">Forecast</button>
-  <a class="small" href="${earthLink(s.lat, s.lon)}" target="_blank" rel="noopener">Open in Google Earth</a></div></div>`;
+  <div class="row" style="margin-top:6px"><button class="small" data-act="edit-spot" data-id="${s.id}">Edit</button><button class="small" data-act="fc-here" data-lat="${s.lat}" data-lon="${s.lon}" data-label="${esc(spotLabel(s))}">Forecast</button></div></div>`;
 }
 
 export function flyTo(lon, lat, zoom = 13) { map.flyTo({ center: [lon, lat], zoom: Math.max(map.getZoom(), zoom) }); }
