@@ -1,6 +1,6 @@
 // Data layer: Supabase (synced) or local mode (localStorage). Everything is cached in `store`.
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=20261113064556-c25363b';
-import { uuid } from './util.js?v=20261113064556-c25363b';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=20261113070753-5fc82d2';
+import { uuid } from './util.js?v=20261113070753-5fc82d2';
 
 export const TABLES = { spots: 'hunt_spots', trips: 'hunt_trips', tracks: 'hunt_tracks', tags: 'hunt_tags', leh: 'hunt_leh' };
 export const store = { spots: [], trips: [], tracks: [], tags: [], leh: [], prefs: {} };
@@ -18,7 +18,7 @@ export function client() {
 export const getMode = () => mode;
 export const getUser = () => user;
 // Shown on data pages in local mode so an empty list is never mistaken for lost data.
-export const localNote = () => (mode === 'local' ? `<div class="local-note"><span><b>Local mode.</b> Showing only what's saved in this browser — your synced hunts live in your account.</span><button class="small primary" data-signin>Sign in</button></div>` : '');
+export const localNote = () => (mode === 'local' ? `<div class="local-note" role="note"><span>Local mode: showing what's saved in this browser only.</span><button class="small" data-signin>Sign in</button></div>` : '');
 
 export async function restoreSession() {
   if (localStorage.getItem('hunthq_mode') === 'local') { mode = 'local'; return true; }

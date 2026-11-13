@@ -1,11 +1,11 @@
 // Seasons: "Where can I hunt <species> on <date>?"  Pick a species → open WMUs shade on the map.
-import { SEASONS, openRange, fmtRange, outsideSynopsis, muSort } from '../seasons.js?v=20261113064556-c25363b';
-import * as M from '../map.js?v=20261113064556-c25363b';
-import { REGS_URL } from '../config.js?v=20261113064556-c25363b';
-import { esc, todayISO, pad } from '../util.js?v=20261113064556-c25363b';
-import { icon } from '../icons.js?v=20261113064556-c25363b';
-import { category } from './wmu.js?v=20261113064556-c25363b';
-import { app } from '../main.js?v=20261113064556-c25363b';
+import { SEASONS, openRange, fmtRange, outsideSynopsis, muSort } from '../seasons.js?v=20261113070753-5fc82d2';
+import * as M from '../map.js?v=20261113070753-5fc82d2';
+import { REGS_URL } from '../config.js?v=20261113070753-5fc82d2';
+import { esc, todayISO, pad } from '../util.js?v=20261113070753-5fc82d2';
+import { icon } from '../icons.js?v=20261113070753-5fc82d2';
+import { category } from './wmu.js?v=20261113070753-5fc82d2';
+import { app } from '../main.js?v=20261113070753-5fc82d2';
 
 const st = { sp: '', weapon: 'any', youth: false };
 const CATS = [['big', 'Big game', 'deer'], ['pred', 'Bears & predators', 'paw'], ['bird', 'Birds & small game', 'bird']];
@@ -49,7 +49,7 @@ export function render(v) {
   const counts = Object.fromEntries(sps.map((s) => [s, muCount(rowsFor(s, date))]));
   const quick = [['Today', todayISO()], ['Sat', nextSat()]];
   v.innerHTML = `<h2>Seasons</h2>
-  <p class="muted" style="margin-top:0">Pick a species to see where it's open. Numbers = WMUs open that day.</p>
+  <p class="muted" style="margin-top:0">Pick a species to see where it's open. The number shows how many WMUs are open that day.</p>
   <div class="seg-row">
     <div class="seg" role="group" aria-label="Date">${quick.map(([l, d]) => `<button data-date="${d}" class="${d === date ? 'on' : ''}">${l}</button>`).join('')}
       <label class="seg-date ${quick.some(([, d]) => d === date) ? '' : 'on'}">${icon('calendar', { size: 16 })}<span>${pretty(date)}</span><input type="date" id="sDate" value="${date}" aria-label="Pick a date"></label></div>
@@ -66,7 +66,7 @@ export function render(v) {
         <span class="nm">${esc(s.replace(' (incl. Black-tailed)', ''))}</span><span class="ct tnum">${counts[s] || 'Closed'}</span></button>`).join('')}</div>`;
   }).join('')}
   <div id="sOut"></div>
-  <p class="muted" style="margin-top:18px">General open seasons from the 2026–2028 synopsis; LEH hunts aren't included. Always check the synopsis and <a href="${REGS_URL}" target="_blank" rel="noopener">in-season changes</a>.</p>`;
+  <p class="muted" style="margin-top:18px">General open seasons from the 2026–2028 synopsis, not LEH hunts. Check the synopsis and <a href="${REGS_URL}" target="_blank" rel="noopener">in-season changes</a>.</p>`;
 
   const out = v.querySelector('#sOut');
   if (st.sp) {
@@ -76,9 +76,9 @@ export function render(v) {
     const byR = new Map(); for (const r of rows) { if (!byR.has(r.r)) byR.set(r.r, []); byR.get(r.r).push(r); }
     out.innerHTML = !rows.length ? `<div class="empty">${icon('calendar', { size: 22 })}<b>${esc(st.sp)} isn't open ${date === todayISO() ? 'today' : 'on ' + pretty(date)}</b><span class="muted">${nextOpen(st.sp, date)}</span></div>` : `
       <div class="res-head"><b>${esc(st.sp.replace(' (incl. Black-tailed)', ''))}</b><span class="muted tnum">${muCount(rows)} WMUs · ${byR.size} region${byR.size > 1 ? 's' : ''}</span></div>
-      <div class="legend"><span><i style="background:#2fbf4a"></i>Open</span><span><i style="background:#f2c200"></i>Open with conditions — check the footnote</span></div>
+      <div class="legend"><span><i style="background:#2fbf4a"></i>Open</span><span><i style="background:#f2c200"></i>Open with conditions (read the notes)</span></div>
       ${[...byR].map(([reg, rs]) => `<div class="reg-card"><button class="reg-h" data-zoom="${esc(reg)}"><b>${esc(reg)}</b><span class="muted">Show on map</span>${icon('chevR', { size: 16 })}</button>
-        ${rs.map((r) => `<div class="s-line"><div><div class="cls">${r.c ? esc(r.c) : /deer|moose|elk|sheep|caribou/i.test(r.sp) ? '<span class="muted">Class — see synopsis p.' + r.p + '</span>' : 'Any'}${r.q ? ` <span class="chip">${esc(r.q)}</span>` : ''}${r.n ? ' <span class="chip warn">conditions</span>' : ''}</div>
+        ${rs.map((r) => `<div class="s-line"><div><div class="cls">${r.c ? esc(r.c) : /deer|moose|elk|sheep|caribou/i.test(r.sp) ? '<span class="muted">Class: see synopsis p.' + r.p + '</span>' : 'Any'}${r.q ? ` <span class="chip">${esc(r.q)}</span>` : ''}${r.n ? ' <span class="chip warn">conditions</span>' : ''}</div>
           <div class="muted tnum">${esc(fmtRange(openRange(r, date)))}${r.b ? ` · limit ${esc(r.b)}` : ''} · p.${r.p}</div>
           <div class="mus tnum">${esc(compactMUs(r.mu))}</div></div></div>`).join('')}</div>`).join('')}`;
   } else { M.clearShade(); setChip(''); }
@@ -104,7 +104,7 @@ function nextOpen(sp, date) {
     const d = new Date(date + 'T12:00'); d.setDate(d.getDate() + i); const s = iso(d);
     if (rowsFor(sp, s).length) return `Next opens ${pretty(s)}${d.getFullYear() !== new Date(date).getFullYear() ? ', ' + d.getFullYear() : ''}.`;
   }
-  return 'No general season found in the next year — likely LEH only.';
+  return 'No general season in the next year. It may be LEH only.';
 }
 
 // "3-12, 3-13, 3-14" -> "3-12 to 3-14"

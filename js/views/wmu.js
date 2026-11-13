@@ -1,9 +1,9 @@
 // iHunter-style WMU detail: every general season in the WMU, Open/Closed for the chosen date, grouped by category.
-import { seasonsFor, openRange, fmtMD } from '../seasons.js?v=20261113064556-c25363b';
-import { REGS_URL, BC_WFS, WMU_LAYER, WMU_FIELD } from '../config.js?v=20261113064556-c25363b';
-import { esc, todayISO } from '../util.js?v=20261113064556-c25363b';
-import * as M from '../map.js?v=20261113064556-c25363b';
-import { icon } from '../icons.js?v=20261113064556-c25363b';
+import { seasonsFor, openRange, fmtMD } from '../seasons.js?v=20261113070753-5fc82d2';
+import { REGS_URL, BC_WFS, WMU_LAYER, WMU_FIELD } from '../config.js?v=20261113070753-5fc82d2';
+import { esc, todayISO } from '../util.js?v=20261113070753-5fc82d2';
+import * as M from '../map.js?v=20261113070753-5fc82d2';
+import { icon } from '../icons.js?v=20261113070753-5fc82d2';
 
 const BIG = /deer|moose|elk|goat|sheep|caribou|bison/i;
 const PRED = /bear|cougar|wolf|coyote|lynx|bobcat|wolverine|raccoon|skunk|fox|marten|fisher/i;
@@ -74,9 +74,9 @@ export async function showWmu(view, mu, { region, date = todayISO(), onBack } = 
   <div id="wList"></div>
   <details class="card hv-here" open><summary><b>Hunting results here</b> <span class="muted" id="wHvY"></span></summary><div id="wHv"><p class="muted">Loading…</p></div></details>
   <details class="card leh-here"><summary><b>LEH draw hunts in this unit</b> <span class="muted" id="wLehN"></span></summary><div id="wLeh"><p class="muted">Loading…</p></div></details>
-  <details class="card"><summary><b>Motor vehicle closures in ${esc(region || 'this region')}</b> <span class="muted">(synopsis text)</span></summary><pre id="wMv" class="mv-text">Loading…</pre>
-  <p class="muted">Tap the map to see if a mapped closure (MVPR layer) covers a spot.</p></details>
-  <div class="notice">General open seasons only (LEH hunts not listed). Verify in the 2026–2028 synopsis and <a href="${REGS_URL}" target="_blank" rel="noopener">in-season changes</a>.</div>`;
+  <details class="card"><summary><b>Motor vehicle closures in ${esc(region || 'this region')}</b></summary><pre id="wMv" class="mv-text">Loading…</pre>
+  <p class="muted">Tap the map to check whether a mapped closure covers a spot.</p></details>
+  <div class="notice">General open seasons only, not LEH. Check the 2026–2028 synopsis and <a href="${REGS_URL}" target="_blank" rel="noopener">in-season changes</a>.</div>`;
   const draw = () => {
     const d = view.querySelector('#wDate').value || todayISO();
     const list = counts[cat].slice().sort((a, b) => a.sp.localeCompare(b.sp) || a.d[0][0].localeCompare(b.d[0][0]));
@@ -88,7 +88,7 @@ export async function showWmu(view, mu, { region, date = todayISO(), onBack } = 
         <div class="s-when"><div class="status ${on ? 'ok' : 'err'}">${on ? 'Open' : 'Closed'}</div>${(ranges.length ? ranges : r.d.slice(-1)).map((x) => { const o = occurrence(x, d); return `<div class="muted">${fmtFull(o[0])} –<br>${fmtFull(o[1])}</div>`; }).join('')}</div>
         <details class="s-more"><summary>View restrictions</summary>
           ${restrictions(r, mu, notes)}
-          ${!r.c && BIG.test(r.sp) ? '<div class="notice">Class not captured from the PDF — check the synopsis table.</div>' : ''}
+          ${!r.c && BIG.test(r.sp) ? '<div class="notice">Class not listed here. Check the synopsis table.</div>' : ''}
           <div class="muted fine">${esc(r.r)} table, synopsis page ${r.p}. Same season covers ${r.mu.length} MUs.${r.b ? '' : ' Bag limit: see regional bag limits.'}</div>
         </details></div>`;
     }).join('') : '<p class="muted">No general seasons for this category in this WMU.</p>';
@@ -100,22 +100,22 @@ export async function showWmu(view, mu, { region, date = todayISO(), onBack } = 
   view.querySelector('#wBack').onclick = () => onBack?.();
   view.querySelector('#wJump').onclick = () => outline(mu, true);
   M.selectWmu(mu); outline(mu, false);
-  import('../wildlife.js?v=20261113064556-c25363b').then(async (W) => {
+  import('../wildlife.js?v=20261113070753-5fc82d2').then(async (W) => {
     const { years, rows } = await W.statsFor(mu); const el = view.querySelector('#wHv'); if (!el) return;
     view.querySelector('#wHvY').textContent = `· ${years[0]}–${years[1]} avg / year`;
     el.innerHTML = rows.length ? `<table class="hv-table"><thead><tr><th>Species</th><th>Hunters</th><th>Kills</th><th>Success</th><th>Days/kill</th><th>vs 2010–14</th></tr></thead><tbody>
       ${rows.map((r) => `<tr><td>${esc(r.sp)}</td><td class="tnum">${r.h}</td><td class="tnum">${Math.round(r.k)}</td><td class="tnum"><b>${r.succ ?? '–'}%</b></td><td class="tnum">${r.dpk ?? '–'}</td>
         <td class="tnum ${r.trend > 10 ? 'trend-up' : r.trend < -10 ? 'trend-down' : ''}">${r.trend == null ? '–' : (r.trend > 0 ? '▲' : r.trend < 0 ? '▼' : '') + Math.abs(r.trend) + '%'}</td></tr>`).join('')}</tbody></table>
-      <p class="muted fine">BC resident Hunter Sample survey estimates (general and LEH combined). Kills trend compares with the 2010–2014 average.</p>`
+      <p class="muted fine">Resident hunter survey estimates, general and LEH combined. Trend compares with the 2010–2014 average.</p>`
       : '<p class="muted">No hunter survey results recorded for this unit.</p>';
   });
-  import('./tags.js?v=20261113064556-c25363b').then(async (T) => {
+  import('./tags.js?v=20261113070753-5fc82d2').then(async (T) => {
     const hs = await T.lehForMu(mu); const el = view.querySelector('#wLeh'); if (!el) return;
     view.querySelector('#wLehN').textContent = `· ${hs.length}`;
-    el.innerHTML = hs.length ? `<p class="muted fine">Odds are last year's first-choice odds. Apply by June 23, 2026 on WILD.</p>${hs.map((h) => T.huntCard(h)).join('')}` : '<p class="muted">No LEH hunts list this unit.</p>';
+    el.innerHTML = hs.length ? `<p class="muted fine">Odds are last year's first-choice odds.</p>${hs.map((h) => T.huntCard(h)).join('')}` : '<p class="muted">No LEH hunts list this unit.</p>';
     el.onclick = (e) => T.handleLehClick(e);
   });
-  regionClosures(region).then((t) => { const el = view.querySelector('#wMv'); if (el) el.textContent = t || 'Not found — see the synopsis.'; });
+  regionClosures(region).then((t) => { const el = view.querySelector('#wMv'); if (el) el.textContent = t || 'Not found. See the synopsis.'; });
 }
 
 export async function outline(mu, fit) {

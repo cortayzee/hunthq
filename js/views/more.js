@@ -1,42 +1,39 @@
-import * as db from '../db.js?v=20261113064556-c25363b';
-import { store } from '../db.js?v=20261113064556-c25363b';
-import { esc, download, toast, todayISO, fmtDate } from '../util.js?v=20261113064556-c25363b';
-import { exportKML } from '../exporters.js?v=20261113064556-c25363b';
-import { BC_WMS, BC_WFS, LEH_LAYER, LEH_TYPE_FIELD, MVPR_LAYER, WMU_LAYER } from '../config.js?v=20261113064556-c25363b';
-import * as M from '../map.js?v=20261113064556-c25363b';
+import * as db from '../db.js?v=20261113070753-5fc82d2';
+import { store } from '../db.js?v=20261113070753-5fc82d2';
+import { esc, download, toast, todayISO, fmtDate } from '../util.js?v=20261113070753-5fc82d2';
+import { exportKML } from '../exporters.js?v=20261113070753-5fc82d2';
+import { BC_WMS, BC_WFS, LEH_LAYER, LEH_TYPE_FIELD, MVPR_LAYER, WMU_LAYER } from '../config.js?v=20261113070753-5fc82d2';
+import { icon } from '../icons.js?v=20261113070753-5fc82d2';
+import * as M from '../map.js?v=20261113070753-5fc82d2';
 
 export function render(v) {
   const mode = db.getMode(); const u = db.getUser();
   const custom = store.prefs.customLayers || [];
-  v.innerHTML = `<h2>More</h2>
-  <div class="card"><h3 style="margin-top:0">Account</h3>
-  <p>${mode === 'local' ? '<span class="chip warn">Local mode</span> data lives only in this browser. Export a backup and restore it after signing in to sync.' : `Signed in as ${esc(u?.email || '')} <span class="chip ok">synced</span>`}</p>
-  <button id="signOut">${mode === 'local' ? 'Leave local mode' : 'Sign out'}</button></div>
-
-  <div class="card"><h3 style="margin-top:0">Backup</h3>
-  <p class="muted">Supabase free plan has no automatic backups and pauses after 7 idle days. Export regularly.</p>
-  <div class="row"><button class="primary" id="bExp">Export JSON backup</button><label class="row" style="color:var(--ink)">Restore <input type="file" id="bImp" accept=".json"></label></div>
-  <p class="muted">Last backup: ${store.prefs.lastBackup ? fmtDate(store.prefs.lastBackup) : 'never'}</p></div>
-
-  <div class="card"><h3 style="margin-top:0">Google Earth</h3>
-  <p class="muted">Export all waypoints &amp; tracks as KML (filtered exports are in Waypoints). Each waypoint popup has an “Open in Google Earth” link.</p>
-  <button id="kmlAll">Export all as KML</button></div>
-
-  <div class="card"><h3 style="margin-top:0">Tracks (${store.tracks.length})</h3>
-  <table><tbody>${store.tracks.map((t) => `<tr><td>${esc(t.name || 'Track')}<div class="muted">${esc(t.hunter || '')} · ${t.distance_km ?? '?'} km · ${esc(t.source || '')}</div></td><td><button class="small" data-zoom="${t.id}">Zoom</button> <button class="small danger" data-del="${t.id}">Delete</button></td></tr>`).join('') || '<tr><td class="muted">Import GPX/KML tracks in Import.</td></tr>'}</tbody></table></div>
-
-  <div class="card"><h3 style="margin-top:0">Custom BC layers</h3>
-  <p class="muted">Add any openmaps layer by name (e.g. <code>WHSE_FOREST_TENURE.FTEN_ROAD_SECTION_LINES_SVW</code> for resource roads).</p>
-  ${custom.map((c, i) => `<div class="row"><span>${esc(c.name)}</span><button class="small danger" data-rm="${i}">Remove</button></div>`).join('')}
-  <div class="row"><input id="cName" placeholder="Display name"><input id="cLayer" placeholder="SCHEMA.LAYER_NAME"><button id="cAdd">Add</button></div></div>
-
-  <div class="card"><h3 style="margin-top:0">Layer diagnostics</h3>
-  <p class="muted">Checks the BC layers respond, lists MVPR layer names and the actual LEH zone type values (used for the per-species LEH toggles).</p>
-  <button id="diag">Run diagnostics</button><pre id="diagOut" style="white-space:pre-wrap;font-size:12px"></pre></div>
-
-  <div class="card"><h3 style="margin-top:0">About the data</h3>
-  <p class="muted">Seasons: 2026–2028 BC Hunting &amp; Trapping Regulations Synopsis, general open seasons only (394 rows). Some rows have empty classes or footnotes; always check the synopsis and in-season changes at gov.bc.ca/hunting. Map layers © Province of BC, Esri, OpenTopoMap, OpenStreetMap; terrain © Mapzen/AWS Terrain Tiles.</p></div>`;
-
+  const row = (id, ic, title, sub, right = icon('chevR', { size: 18 })) => `<button class="list-row" id="${id}"><span class="lr-ic">${icon(ic, { size: 20 })}</span><span class="lr-t"><b>${title}</b>${sub ? `<span>${sub}</span>` : ''}</span>${right}</button>`;
+  v.innerHTML = `<div class="page-h"><h2>More</h2></div>
+  <div class="list-group">
+    <div class="list-row static"><span class="lr-ic">${icon('user', { size: 20 })}</span><span class="lr-t"><b>${mode === 'local' ? 'Local mode' : esc(u?.email || 'Signed in')}</b><span>${mode === 'local' ? 'Saved in this browser only' : 'Synced to your account'}</span></span><button class="small" id="signOut">${mode === 'local' ? 'Sign in' : 'Sign out'}</button></div>
+  </div>
+  <h3 class="list-h">Your data</h3>
+  <div class="list-group">
+    ${row('goImport', 'upload', 'Import from onX or iHunter', 'KML, KMZ, GPX, GeoJSON or CSV')}
+    ${row('bExp', 'download', 'Download a backup', store.prefs.lastBackup ? 'Last backup ' + fmtDate(store.prefs.lastBackup) : 'Never backed up', '')}
+    <label class="list-row" for="bImp"><span class="lr-ic">${icon('history', { size: 20 })}</span><span class="lr-t"><b>Restore a backup</b><span>From a Hunt HQ .json file</span></span><input type="file" id="bImp" accept=".json" class="visually-hidden"></label>
+    ${row('kmlAll', 'globe', 'Export to Google Earth', 'All waypoints and tracks as KML', '')}
+  </div>
+  <p class="list-note">The free database plan has no automatic backups, so download one now and then.</p>
+  <details class="list-more"><summary><h3 class="list-h">Tracks <span class="muted tnum">${store.tracks.length}</span></h3>${icon('chevR', { size: 16 })}</summary>
+  <div class="list-group">${store.tracks.map((t) => `<div class="list-row static"><span class="lr-t"><b>${esc(t.name || 'Track')}</b><span>${[t.hunter, t.distance_km != null ? t.distance_km + ' km' : '', t.source].filter(Boolean).map(esc).join(', ')}</span></span><button class="small" data-zoom="${t.id}">Show</button><button class="icon-btn" data-del="${t.id}" aria-label="Delete track">${icon('trash', { size: 18 })}</button></div>`).join('') || '<div class="list-row static"><span class="lr-t"><span>Routes you draw and tracks you import show up here.</span></span></div>'}</div></details>
+  <details class="list-more"><summary><h3 class="list-h">Advanced</h3>${icon('chevR', { size: 16 })}</summary>
+  <div class="card"><h4 style="margin-top:0">Custom BC map layers</h4>
+  <p class="muted">Add any BC openmaps layer by its name, e.g. <code>WHSE_FOREST_TENURE.FTEN_ROAD_SECTION_LINES_SVW</code> for resource roads.</p>
+  ${custom.map((c, i) => `<div class="row" style="justify-content:space-between"><span>${esc(c.name)}</span><button class="small danger" data-rm="${i}">Remove</button></div>`).join('')}
+  <div class="grid2"><input id="cName" placeholder="Display name" aria-label="Display name"><input id="cLayer" placeholder="SCHEMA.LAYER_NAME" aria-label="Layer name"></div><button id="cAdd" style="margin-top:8px">Add layer</button></div>
+  <div class="card"><h4 style="margin-top:0">Layer check</h4>
+  <p class="muted">Checks that BC map services respond and lists the closure and LEH layers they return.</p>
+  <button id="diag">Run check</button><pre id="diagOut" style="white-space:pre-wrap;font-size:12px"></pre></div></details>
+  <p class="list-note">Seasons from the 2026–2028 BC Hunting &amp; Trapping Regulations Synopsis (general open seasons). Always confirm in the synopsis and in-season changes at gov.bc.ca/hunting. Map data © Province of BC, Esri, OpenTopoMap, OpenStreetMap contributors; terrain © Mapzen / AWS; weather © Open-Meteo.</p>`;
+  v.querySelector('#goImport').onclick = () => import('../main.js?v=20261113070753-5fc82d2').then((m) => m.showTabPublic('import'));
   v.querySelector('#signOut').onclick = async () => { await db.signOut(); location.reload(); };
   v.querySelector('#bExp').onclick = async () => { download(`hunthq_backup_${todayISO()}.json`, db.backupJSON(), 'application/json'); await db.savePrefs({ lastBackup: new Date().toISOString() }).catch(() => {}); };
   v.querySelector('#bImp').onchange = async (e) => {
@@ -45,7 +42,7 @@ export function render(v) {
   };
   v.querySelector('#kmlAll').onclick = () => exportKML(store.spots, store.tracks);
   v.onclick = async (e) => {
-    const d = e.target.dataset;
+    const d = e.target.closest('button')?.dataset || {};
     if (d.zoom) { const t = store.tracks.find((x) => x.id === d.zoom); M.fitTo(t.coords.map((c) => [c[0], c[1]])); }
     if (d.del && confirm('Delete track?')) { await db.remove('tracks', d.del); render(v); }
     if (d.rm != null && e.target.matches('[data-rm]')) { const list = custom.filter((_, i) => i !== +d.rm); await db.savePrefs({ customLayers: list }); M.setCustomLayers(list); render(v); }
@@ -53,7 +50,7 @@ export function render(v) {
   v.querySelector('#cAdd').onclick = async () => {
     const layer = v.querySelector('#cLayer').value.trim().replace(/^pub:/, ''); if (!layer) return;
     const list = [...custom, { name: v.querySelector('#cName').value.trim() || layer, layer, color: '#00a0c8' }];
-    await db.savePrefs({ customLayers: list }); M.setCustomLayers(list); M.setLayer('custom_' + layer, true); toast('Layer added (see Layers)'); render(v);
+    await db.savePrefs({ customLayers: list }); M.setCustomLayers(list); M.setLayer('custom_' + layer, true); toast('Layer added to Layers'); render(v);
   };
   v.querySelector('#diag').onclick = () => diagnostics(v.querySelector('#diagOut'));
 }

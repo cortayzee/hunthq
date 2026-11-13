@@ -1,11 +1,11 @@
 // Draw a route by tapping the map: live distance / climb / time / difficulty, elevation profile, save as a track.
-import * as db from './db.js?v=20261113064556-c25363b';
-import { store } from './db.js?v=20261113064556-c25363b';
-import * as M from './map.js?v=20261113064556-c25363b';
-import { esc, toast, haversineKm, fmtDate } from './util.js?v=20261113064556-c25363b';
-import { icon } from './icons.js?v=20261113064556-c25363b';
-import { profile, stats, MODES, fmtHours, fmtKm } from './elevation.js?v=20261113064556-c25363b';
-import * as V from './vis.js?v=20261113064556-c25363b';
+import * as db from './db.js?v=20261113070753-5fc82d2';
+import { store } from './db.js?v=20261113070753-5fc82d2';
+import * as M from './map.js?v=20261113070753-5fc82d2';
+import { esc, toast, haversineKm, fmtDate } from './util.js?v=20261113070753-5fc82d2';
+import { icon } from './icons.js?v=20261113070753-5fc82d2';
+import { profile, stats, MODES, fmtHours, fmtKm } from './elevation.js?v=20261113070753-5fc82d2';
+import * as V from './vis.js?v=20261113070753-5fc82d2';
 
 const st = { on: false, pts: [], mode: 'trail', prof: [], seq: 0 };
 let bar = null;
@@ -40,7 +40,7 @@ function statLine(s, km) {
   return `<div class="rb-stats"><div><b class="tnum">${fmtKm(km)}</b><span>distance</span></div>
     <div><b class="tnum">${s ? '↑' + Math.round(s.up) + ' m' : '…'}</b><span>${s ? '↓' + Math.round(s.down) + ' m' : 'climb'}</span></div>
     <div><b class="tnum">${s ? fmtHours(s.hours) : '…'}</b><span>${MODES[st.mode].foot ? 'on foot' : 'driving'}</span></div>
-    <div><b>${s ? esc(s.difficulty.split(' —')[0]) : '…'}</b><span>difficulty</span></div></div>`;
+    <div><b>${s ? esc(s.difficulty.split(',')[0]) : '…'}</b><span>difficulty</span></div></div>`;
 }
 function drawBar() {
   if (!bar) return;
@@ -62,7 +62,7 @@ function drawBar() {
 
 // ---- Route detail (new or saved track) ----
 export async function openRoute(track, prof) {
-  const { openPanel } = await import('./main.js?v=20261113064556-c25363b');
+  const { openPanel } = await import('./main.js?v=20261113070753-5fc82d2');
   openPanel();
   const v = document.getElementById('view'); v.scrollTop = 0;
   document.querySelectorAll('#tabs button').forEach((b) => b.classList.remove('active'));
@@ -73,7 +73,7 @@ export async function openRoute(track, prof) {
     <div class="muted">${isNew ? 'Check the numbers, then save it to your map.' : esc([track.hunter, track.started_at && fmtDate(track.started_at), track.source && track.source !== 'drawn' ? 'imported' : ''].filter(Boolean).join(' · '))}</div>
     <div class="rb-modes" id="rModes" style="margin:14px 0 6px">${Object.entries(MODES).map(([id, m]) => `<button role="radio" aria-checked="${mode === id}" data-mode="${id}" style="--k:${m.color}">${esc(m.name)}</button>`).join('')}</div>
     <div id="rStats"><div class="skeleton" style="height:60px;border-radius:12px"></div></div>
-    <div class="prof-wrap"><svg id="rProf" class="prof" viewBox="0 0 600 170" role="img" aria-label="Elevation profile"></svg><div id="rRead" class="prof-read muted">Elevation profile · drag across it to see the spot on the map</div></div>
+    <div class="prof-wrap"><svg id="rProf" class="prof" viewBox="0 0 600 170" role="img" aria-label="Elevation profile"></svg><div id="rRead" class="prof-read muted">Elevation. Drag across it to find the spot on the map.</div></div>
     <form id="rForm" class="grid2" style="margin-top:14px">
       <label class="span2">Name <input name="name" value="${esc(track.name || '')}" placeholder="e.g. Ridge trail to glassing knob" required></label>
       <label>Hunt <select name="trip_id"><option value="">None</option>${[...store.trips].sort((a, b) => String(b.date_start).localeCompare(String(a.date_start))).map((t) => `<option value="${t.id}" ${track.extra?.trip_id === t.id ? 'selected' : ''}>${esc(V.tripTitle(t))}</option>`).join('')}</select></label>
@@ -98,9 +98,9 @@ export async function openRoute(track, prof) {
   };
   draw();
   v.querySelector('#rModes').onclick = (e) => { const b = e.target.closest('[data-mode]'); if (!b) return; mode = b.dataset.mode; v.querySelectorAll('#rModes button').forEach((x) => x.setAttribute('aria-checked', String(x === b))); draw(); };
-  v.querySelector('#rBack').onclick = async () => { M.setCursor(null); (await import('./main.js?v=20261113064556-c25363b')).rerender(); };
-  v.querySelector('#rFit').onclick = () => { M.fitTo(coords); if (innerWidth <= 760) import('./main.js?v=20261113064556-c25363b').then((m) => m.closePanel()); };
-  v.querySelector('#rDel')?.addEventListener('click', async () => { if (!confirm('Delete this route?')) return; await db.remove('tracks', track.id); M.setCursor(null); (await import('./main.js?v=20261113064556-c25363b')).rerender(); });
+  v.querySelector('#rBack').onclick = async () => { M.setCursor(null); (await import('./main.js?v=20261113070753-5fc82d2')).rerender(); };
+  v.querySelector('#rFit').onclick = () => { M.fitTo(coords); if (innerWidth <= 760) import('./main.js?v=20261113070753-5fc82d2').then((m) => m.closePanel()); };
+  v.querySelector('#rDel')?.addEventListener('click', async () => { if (!confirm('Delete this route?')) return; await db.remove('tracks', track.id); M.setCursor(null); (await import('./main.js?v=20261113070753-5fc82d2')).rerender(); });
   v.querySelector('#rForm').onsubmit = async (e) => {
     e.preventDefault(); const f = e.target; const s = stats(prof, mode);
     const extra = { ...(track.extra || {}), mode, notes: f.notes.value || undefined, up: Math.round(s.up), down: Math.round(s.down), hours: +s.hours.toFixed(2), difficulty: s.difficulty };

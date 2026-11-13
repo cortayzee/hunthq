@@ -1,10 +1,10 @@
-import { store, hunters, localNote } from '../db.js?v=20261113064556-c25363b';
-import { icon } from '../icons.js?v=20261113064556-c25363b';
-import { esc, opts, yearOf, groupBy, fmtTime } from '../util.js?v=20261113064556-c25363b';
-import * as M from '../map.js?v=20261113064556-c25363b';
-import { RUT, RUT_SPECIES, rutStatus, fmtMD, moonSVG, moonDay, MOON_TIPS } from '../rut.js?v=20261113064556-c25363b';
-import * as W from '../weather.js?v=20261113064556-c25363b';
-import { harvested } from '../vis.js?v=20261113064556-c25363b';
+import { store, hunters, localNote } from '../db.js?v=20261113070753-5fc82d2';
+import { icon } from '../icons.js?v=20261113070753-5fc82d2';
+import { esc, opts, yearOf, groupBy, fmtTime } from '../util.js?v=20261113070753-5fc82d2';
+import * as M from '../map.js?v=20261113070753-5fc82d2';
+import { RUT, RUT_SPECIES, rutStatus, fmtMD, moonSVG, moonDay, MOON_TIPS } from '../rut.js?v=20261113070753-5fc82d2';
+import * as W from '../weather.js?v=20261113070753-5fc82d2';
+import { harvested } from '../vis.js?v=20261113070753-5fc82d2';
 
 const f = { hunter: '', species: '', from: '', to: '' };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -14,12 +14,12 @@ const hourBucket = (h) => (h < 5 ? 'Night (0–5)' : h < 8 ? 'Dawn (5–8)' : h 
 const BUCKETS = ['Dawn (5–8)', 'Morning (8–11)', 'Midday (11–14)', 'Afternoon (14–17)', 'Dusk (17–21)', 'Night (21–24)', 'Night (0–5)'];
 
 const ui = (() => { try { return { sub: 'rut', ...JSON.parse(localStorage.getItem('hunthq_ins') || '{}'), stage: null, day: 0 }; } catch { return { sub: 'rut', stage: null, day: 0 }; } })();
-const saveUi = () => { try { localStorage.setItem('hunthq_ins', JSON.stringify({ sub: ui.sub, sp: ui.sp })); } catch {} };
+const saveUi = () => { try { localStorage.setItem('hunthq_ins', JSON.stringify({ sp: ui.sp })); } catch {} };
 // The forecast spot stays put (saved per browser) until you change it.
 const FKEY = 'hunthq_fpos';
 let pos = (() => { try { const p = JSON.parse(localStorage.getItem(FKEY)); return p && isFinite(p.lat) && isFinite(p.lng) ? p : null; } catch { return null; } })();
 export function setForecastPos(p) { pos = p; try { localStorage.setItem(FKEY, JSON.stringify(p)); } catch {} }
-export function openForecast(p) { if (p) setForecastPos(p); ui.sub = 'rut'; saveUi(); }
+export function openForecast(p) { if (p) setForecastPos(p); }
 export function onLeave() { M.setForecastPin(null); }
 const FC_KINDS = ['camp', 'stand', 'trailcam', 'glass', 'feed', 'water', 'bedding', 'wallow', 'trailhead', 'access'];
 function mySpots() {
@@ -29,22 +29,22 @@ function mySpots() {
   return out;
 }
 
+// Forecast page (weather, movement, rut, moon). Hunt stats live under Hunts > Stats (renderStats below).
 export function render(v) {
   render.v = v;
-  v.innerHTML = `<h2>Insights</h2>${localNote()}
-  <div class="seg" role="tablist" style="margin-bottom:12px"><button data-sub="rut" class="${ui.sub === 'rut' ? 'on' : ''}">Forecast</button><button data-sub="mine" class="${ui.sub === 'mine' ? 'on' : ''}">My hunts</button></div><div id="iBody"></div>`;
-  v.querySelector('.seg').onclick = (e) => { const b = e.target.closest('[data-sub]'); if (b) { ui.sub = b.dataset.sub; saveUi(); render(v); } };
-  const body = v.querySelector('#iBody');
-  if (ui.sub === 'rut') return renderRut(body);
-  M.setForecastPin(null);
+  v.innerHTML = `<div class="page-h"><h2>Forecast</h2></div><div id="iBody"></div>`;
+  renderRut(v.querySelector('#iBody'));
+}
+export function renderStats(body) {
+  renderStats.el = body;
   const sp = [...new Set([...store.trips, ...store.spots].map((x) => x.species).filter(Boolean))].sort();
   const years = [...new Set([...store.trips.map((t) => yearOf(t.date_start)), ...store.spots.map((s) => yearOf(s.observed_at))].filter(Boolean))].sort();
-  body.innerHTML = `<div class="grid2"><select id="ih"><option value="">All hunters</option>${opts(hunters(), f.hunter)}</select>
-  <select id="is"><option value="">All species</option>${opts(sp, f.species)}</select>
-  <select id="if"><option value="">From year</option>${opts(years.map(String), f.from)}</select>
-  <select id="it"><option value="">To year</option>${opts(years.map(String), f.to)}</select></div><div id="iOut"></div>`;
-  body.querySelectorAll('select').forEach((s) => (s.onchange = () => { Object.assign(f, { hunter: v.querySelector('#ih').value, species: v.querySelector('#is').value, from: v.querySelector('#if').value, to: v.querySelector('#it').value }); draw(v); }));
-  draw(v);
+  body.innerHTML = `<div class="filters"><select id="ih" aria-label="Hunter"><option value="">All hunters</option>${opts(hunters(), f.hunter)}</select>
+  <select id="is" aria-label="Species"><option value="">All species</option>${opts(sp, f.species)}</select>
+  <select id="if" aria-label="From year"><option value="">From year</option>${opts(years.map(String), f.from)}</select>
+  <select id="it" aria-label="To year"><option value="">To year</option>${opts(years.map(String), f.to)}</select></div><div id="iOut"></div>`;
+  body.querySelectorAll('select').forEach((s) => (s.onchange = () => { Object.assign(f, { hunter: body.querySelector('#ih').value, species: body.querySelector('#is').value, from: body.querySelector('#if').value, to: body.querySelector('#it').value }); draw(body); }));
+  draw(body);
 }
 
 // ---- Rut & moon ----
@@ -76,13 +76,16 @@ function renderRut(body) {
   const win = (w) => `${tm(w.s)}–${tm(w.e)}`;
   body.innerHTML = `
   <div class="fc-loc">
-    <button class="fc-where" data-loc="show" title="Show on map"><span class="fc-dot"></span><span class="t"><b>${esc(c.label || (mu ? `Pin in WMU ${mu}` : 'Dropped pin'))}</b><span class="muted tnum">${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}${mu && c.label ? ` · WMU ${esc(mu)}` : ''}</span></span><span class="muted fine" style="margin:0">Show</span></button>
-    <div class="fc-acts">
-      ${spots.length ? `<select id="fcSpot" aria-label="Forecast for one of my spots"><option value="">My spots…</option>${['Hunts', 'Waypoints'].map((g) => { const xs = spots.filter((x) => x.grp === g); return xs.length ? `<optgroup label="${g}">${xs.map((x) => `<option value="${x.v}">${esc(x.label)}${x.sub ? ' · ' + esc(x.sub) : ''}</option>`).join('')}</optgroup>` : ''; }).join('')}</select>` : ''}
-      <button class="small" data-loc="pick">${icon('pin', { size: 15 })}Pick on map</button><button class="small" data-loc="center">Map centre</button><button class="small" data-loc="gps">GPS</button>
-    </div>
+    <button class="fc-where" data-loc="show" title="Show on map"><span class="fc-dot"></span><span class="t"><b>${esc(c.label || (mu ? `Pin in WMU ${mu}` : 'Dropped pin'))}</b><span class="muted tnum">${mu && c.label ? `WMU ${esc(mu)}, ` : ''}${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}</span></span></button>
+    <details class="fc-change"><summary class="small-btn">Change</summary>
+      <div class="fc-menu" role="menu">
+        ${spots.length ? `<div class="fc-menu-h">My spots</div>${spots.map((x) => `<button role="menuitem" data-spot="${x.v}"><span>${esc(x.label)}</span>${x.sub ? `<span class="muted">${esc(x.sub)}</span>` : ''}</button>`).join('')}<div class="fc-menu-sep"></div>` : ''}
+        <button role="menuitem" data-loc="pick">${icon('pin', { size: 16 })}Pick on the map</button>
+        <button role="menuitem" data-loc="center">${icon('target', { size: 16 })}Use the map centre</button>
+        <button role="menuitem" data-loc="gps">${icon('globe', { size: 16 })}Use my location</button>
+      </div></details>
   </div>
-  <div class="rut-sps">${RUT_SPECIES.map((s) => { const st = rutStatus(s, now); const on = !!st.cur; const pk = st.cur === st.peak;
+  <div class="rut-sps" role="group" aria-label="Species">${RUT_SPECIES.map((s) => { const st = rutStatus(s, now); const on = !!st.cur; const pk = st.cur === st.peak;
     return `<button class="rut-sp ${pk ? 'peak' : on ? 'on' : ''}" data-rsp="${esc(s)}" aria-pressed="${s === ui.sp}"><b>${esc(short(s))}</b><span>${on ? esc(st.cur.name) : 'Off season'}</span></button>`; }).join('')}</div>
   <div class="card wx-card" id="wxCard"><div class="wx-load muted">Loading weather…</div></div>
   <div class="card rut-card">
@@ -98,7 +101,7 @@ function renderRut(body) {
     </div>
   </div>
   <div class="card">
-    <h3 style="margin:0 0 2px">Moon &amp; solunar</h3><p class="muted fine" style="margin:0 0 10px">Next 7 days. Best window = a solunar period during legal light, favouring dawn and dusk.</p>
+    <h3 style="margin:0 0 2px">Moon &amp; solunar</h3><p class="muted fine" style="margin:0 0 10px">Best window: a solunar period in legal light, ideally near dawn or dusk.</p>
     <div class="moon-days">${days.map(({ d, m }, i) => `<button class="moon-day ${i === ui.day ? 'sel' : ''}" data-day="${i}">
       <span class="dn">${i === 0 ? 'Today' : d.toLocaleDateString('en-CA', { weekday: 'short' })}</span>${moonSVG(m.phase, 34)}<b class="tnum">${m.pct}%</b>
       <span class="stars" aria-label="Rating ${m.score} of 4">${'●'.repeat(m.score)}<i>${'●'.repeat(4 - m.score)}</i></span>
@@ -108,29 +111,31 @@ function renderRut(body) {
       ${md.m.best ? `<p style="margin:10px 0 6px"><b>Best window ${win(md.m.best)}</b> <span class="muted">(${md.m.best.what})</span></p>` : '<p style="margin:10px 0 6px"><b>No solunar period in legal light.</b> <span class="muted">Hunt first and last light as usual.</span></p>'}
       ${md.m.wins.length > 1 ? `<p class="muted fine" style="margin:0 0 8px">Also: ${md.m.wins.filter((w) => w !== md.m.best).map((w) => `${win(w)} ${w.what}`).join(' · ')}</p>` : ''}
       <ul class="moon-tips">${MOON_TIPS[md.m.name].map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
-      <p class="muted fine">Solunar theory says animals move more when the moon is overhead, underfoot, rising or setting, and most around new and full moons. Evidence is mixed, so use it as a tiebreaker. The rut, weather and hunting pressure matter more.</p>
-    </div>
+      <p class="muted fine">Solunar theory says animals move more when the moon is overhead, underfoot, rising or setting, and around new and full moons. The evidence is mixed. Treat it as a tiebreaker: the rut, weather and pressure matter more.</p>
+    <button class="small" data-sun style="margin-top:4px">${icon('sun', { size: 15 })}Sun &amp; moon times, 14 days</button></div>
   </div>`;
   fillWx(body.querySelector('#wxCard'), c);
-  const sel2 = body.querySelector('#fcSpot');
-  if (sel2) sel2.onchange = () => { const x = spots.find((y) => y.v === sel2.value); if (x) { setForecastPos({ lat: x.lat, lng: x.lng, label: x.label }); M.flyTo(x.lng, x.lat, 11); renderRut(body); } };
+  const curSp = body.querySelector('.rut-sp[aria-pressed="true"]'); if (curSp) { const box = curSp.parentElement; box.scrollLeft = Math.max(0, curSp.offsetLeft - box.offsetLeft - 16); }
   body.onclick = (e) => {
+    const dd = body.querySelector('.fc-change'); if (dd?.open && (!e.target.closest('.fc-change') || e.target.closest('.fc-menu button'))) dd.removeAttribute('open');
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.wx) { ui.wx = b.dataset.wx; fillWx(body.querySelector('#wxCard'), c); return; }
     if (b.dataset.wday != null) { ui.wday = ui.wday === +b.dataset.wday ? -1 : +b.dataset.wday; fillWx(body.querySelector('#wxCard'), c); return; }
     if (b.dataset.hday != null) { ui.wx = 'hourly'; ui.hday = b.dataset.hday; fillWx(body.querySelector('#wxCard'), c, true); return; }
+    if (b.dataset.spot) { const x = spots.find((y) => y.v === b.dataset.spot); if (x) { setForecastPos({ lat: x.lat, lng: x.lng, label: x.label }); M.flyTo(x.lng, x.lat, 11); renderRut(body); } return; }
+    if (b.dataset.sun != null) { import('../main.js?v=20261113070753-5fc82d2').then((m) => m.showTabPublic('sun')); return; }
     if (b.dataset.rsp) { ui.sp = b.dataset.rsp; ui.stage = null; saveUi(); renderRut(body); }
     else if (b.dataset.stage != null) { ui.stage = +b.dataset.stage; renderRut(body); }
     else if (b.dataset.day != null) { ui.day = +b.dataset.day; renderRut(body); }
     else if (b.dataset.loc === 'center') { const m = M.map.getCenter(); setForecastPos({ lat: m.lat, lng: m.lng, label: '' }); renderRut(body); }
     else if (b.dataset.loc === 'show') M.flyTo(c.lng, c.lat, 11);
     else if (b.dataset.loc === 'pick') {
-      import('../main.js?v=20261113064556-c25363b').then(async (mm) => { const ll = await mm.pickOnMap('Tap the map where you want the forecast'); setForecastPos({ lat: ll.lat, lng: ll.lng, label: '' }); mm.openPanel(); if (render.v?.isConnected) render(render.v); });
+      import('../main.js?v=20261113070753-5fc82d2').then(async (mm) => { const ll = await mm.pickOnMap('Tap the map where you want the forecast'); setForecastPos({ lat: ll.lat, lng: ll.lng, label: '' }); mm.openPanel(); if (render.v?.isConnected) render(render.v); });
     }
     else if (b.dataset.loc === 'gps') navigator.geolocation?.getCurrentPosition((p) => { setForecastPos({ lat: p.coords.latitude, lng: p.coords.longitude, label: 'My location' }); renderRut(body); }, (er) => alert(er.message));
   };
 }
-export function onData() { if (render.v?.isConnected && ui.sub === 'mine') render(render.v); }
+export function onData() { if (renderStats.el?.isConnected) renderStats(renderStats.el); }
 
 const okY = (y) => (!f.from || y >= +f.from) && (!f.to || y <= +f.to);
 function draw(v) {
@@ -166,7 +171,7 @@ function draw(v) {
     <div class="kpi"><b>${kills.length ? (days / kills.length).toFixed(1) : '—'}</b><span>days / animal</span></div>
     ${hrs ? `<div class="kpi"><b>${hrs.toFixed(0)}</b><span>hours</span></div><div class="kpi"><b>${(seen / hrs).toFixed(2)}</b><span>animals seen / hr</span></div>` : ''}
   </div>
-  ${!trips.length && !spots.length ? '<p class="muted">Log trips and waypoints (or bulk-enter past seasons) to see patterns here.</p>' : ''}
+  ${!trips.length && !spots.length ? '<p class="muted">Log hunts and waypoints to see your patterns here.</p>' : ''}
   ${table('Success by WMU', tripStats((t) => t.wmu || null))}
   ${table('Success by species', tripStats((t) => t.species || null))}
   ${table('Success by month', tripStats((t) => MONTHS[+t.date_start.slice(5, 7) - 1]), MONTHS)}
@@ -176,10 +181,9 @@ function draw(v) {
   ${countBars('Kills & sightings by time of day', groupBy(timed, (s) => hourBucket(new Date(s.observed_at).getHours())), BUCKETS, `<p class="muted">${timed.filter((s) => s.kind === 'kill').length} kills, ${timed.filter((s) => s.kind === 'sighting').length} sightings with known times.</p>`)}
   ${countBars('Kills by moon phase', groupBy(kills.filter((s) => s.observed_at), (s) => PHASES[phaseIdx(new Date(s.observed_at))]), PHASES)}
   ${countBars('Kills by WMU', groupBy(kills, (s) => s.wmu || null))}
-  <div class="card"><h3 style="margin-top:0">Hotspot grid (~5 km cells)</h3>
+  <div class="card"><h3 style="margin-top:0">Hotspots (5 km grid)</h3>
   <p class="muted"><span class="chip ok">productive</span> kills · <span class="chip bad">cold</span> ≥10 h hunted, no kills · <span class="chip warn">under-scouted</span> sightings but &lt;5 h hunted</p>
-  <div class="row"><button id="hotOn" class="primary">Show on map</button><button id="hotOff">Hide</button></div><div id="hotT"></div></div>
-  <p class="muted">For deeper “where should I hunt next” analysis, ask Claude to read the hunt_* tables via the Supabase MCP.</p>`;
+  <div class="row"><button id="hotOn" class="primary">Show on map</button><button id="hotOff">Hide</button></div><div id="hotT"></div></div>`;
   const cells = hotspots(trips, spots);
   v.querySelector('#hotT').innerHTML = `<table><thead><tr><th>Cell</th><th>Kills</th><th>Sightings</th><th>Hours</th><th>Class</th></tr></thead><tbody>${cells.slice(0, 25).map((c) => `<tr><td><a href="#" data-c="${c.lon},${c.lat}">${c.lat.toFixed(2)}, ${c.lon.toFixed(2)}</a>${c.wmu ? `<div class="muted">${esc(c.wmu)}</div>` : ''}</td><td>${c.kills}</td><td>${c.sight}</td><td>${c.hours.toFixed(0)}</td><td><span class="chip ${c.cls === 'productive' ? 'ok' : c.cls === 'cold' ? 'bad' : c.cls === 'under-scouted' ? 'warn' : ''}">${c.cls}</span></td></tr>`).join('')}</tbody></table>`;
   v.querySelector('#hotT').onclick = (e) => { const c = e.target.dataset.c; if (c) { e.preventDefault(); const [lo, la] = c.split(',').map(Number); M.flyTo(lo, la, 12); } };

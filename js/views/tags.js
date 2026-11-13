@@ -1,10 +1,10 @@
-import * as db from '../db.js?v=20261113064556-c25363b';
-import { store, hunters } from '../db.js?v=20261113064556-c25363b';
-import { esc, opts, modal, closeModal, toast, formData, num } from '../util.js?v=20261113064556-c25363b';
-import { hunterDatalist, speciesDatalist } from './log.js?v=20261113064556-c25363b';
-import { icon } from '../icons.js?v=20261113064556-c25363b';
-import * as M from '../map.js?v=20261113064556-c25363b';
-import { muSort } from '../seasons.js?v=20261113064556-c25363b';
+import * as db from '../db.js?v=20261113070753-5fc82d2';
+import { store, hunters } from '../db.js?v=20261113070753-5fc82d2';
+import { esc, opts, modal, closeModal, toast, formData, num } from '../util.js?v=20261113070753-5fc82d2';
+import { hunterDatalist, speciesDatalist } from './log.js?v=20261113070753-5fc82d2';
+import { icon } from '../icons.js?v=20261113070753-5fc82d2';
+import * as M from '../map.js?v=20261113070753-5fc82d2';
+import { muSort } from '../seasons.js?v=20261113070753-5fc82d2';
 
 // Tags & LEH. LEH hunts come from the 2026-2027 LEH synopsis (hunt-hq-handoff/data/leh_2026.json, scripts/parse_leh.py).
 const yr = new Date().getFullYear();
@@ -62,7 +62,7 @@ export function huntCard(h, { compact = false } = {}) {
 
 export async function render(v) {
   render.v = v;
-  v.innerHTML = `<div class="page-h"><h2>Tags &amp; LEH</h2></div>
+  v.innerHTML = `<div class="page-h"><h2>LEH &amp; tags</h2></div>
   <div class="seg" role="tablist" style="margin-bottom:12px"><button data-t="leh" class="${ui.tab === 'leh' ? 'on' : ''}">LEH draw</button><button data-t="tags" class="${ui.tab === 'tags' ? 'on' : ''}">My tags</button><button data-t="hist" class="${ui.tab === 'hist' ? 'on' : ''}">History</button></div>
   <div id="tagBody"></div>`;
   v.querySelector('.seg').onclick = (e) => { const b = e.target.closest('[data-t]'); if (b) { ui.tab = b.dataset.t; render(v); } };
@@ -77,7 +77,7 @@ export async function render(v) {
   const days = Math.ceil((deadline - Date.now()) / 864e5);
   const picks = store.leh.filter((l) => String(l.year) === String(DRAW_YEAR));
   body.innerHTML = `
-  <details class="card how" ${store.prefs.lehHowSeen ? '' : 'open'}><summary><b>How the LEH draw works</b> <span class="muted">· 1 min read</span></summary>
+  <details class="card how" ${store.prefs.lehHowSeen ? '' : 'open'}><summary><b>How the LEH draw works</b></summary>
     <ul class="how-list">
       <li><b>It's a lottery.</b> Some hunts (bull moose, elk, sheep, goat, antlerless…) are only open to hunters drawn in the Limited Entry Hunting draw.</li>
       <li><b>Apply by ${deadline.toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Vancouver' })}, 11:59 pm</b> on WILD (gov.bc.ca/WILD) or at a Service BC / FrontCounter BC office. $6.30 per application, not refundable.</li>
@@ -86,7 +86,7 @@ export async function render(v) {
       <li><b>Win and your odds drop:</b> moose anywhere, or elk in Regions 1–2: odds cut 66% for 3 years. Other species (not deer, black bear, turkey): cut 50% for 1 year.</li>
       <li><b>If drawn</b> you still need a hunting licence and species licence. Check WILD after the draw; authorizations aren't mailed.</li>
       <li><b>Group / shared hunts:</b> apply as 2–4 people (not for moose groups, bison, black bear, or elk in R1–2; moose & bison use "shared" hunts where a group shares 1–2 animals).</li>
-    </ul><p class="muted fine">From the 2026-2027 LEH Regulations Synopsis. Always confirm codes there: codes change every year.</p></details>
+    </ul><p class="muted fine">From the 2026–2027 LEH synopsis. Codes change every year, so confirm them there.</p></details>
   <div class="card picks">
     <div class="row" style="justify-content:space-between"><b>My ${DRAW_YEAR} picks</b><span class="muted fine" style="margin:0">${days > 0 ? `${days} days to apply` : 'Planning'}</span></div>
     ${days <= 0 ? `<p class="notice" style="margin:8px 0 0">The 2026 draw closed June 23. Use these 2026 hunts to plan for ${DRAW_YEAR}: the new synopsis comes out in spring and <b>hunt codes can change</b>, so re-check each code before you apply.</p>` : ''}
@@ -94,7 +94,7 @@ export async function render(v) {
       const h = hunts.find((x) => x.code === l.hunt_code); const o = oddsText(h?.odds);
       return `<div class="pick-row"><span class="pick-n">${l.choice === 2 ? '2nd' : '1st'}</span><div class="t"><b>${esc(l.hunt_code)} · ${esc(l.species || '')} ${esc(l.class || '')}</b><span class="muted">${esc(h ? `${h.area} · ${h.dates}` : l.zone || '')} · ${esc(o.big)}</span></div>
         <button class="small" data-choice="${l.id}">${l.choice === 2 ? 'Make 1st' : 'Make 2nd'}</button><button class="icon-btn" data-unpick="${l.id}" aria-label="Remove">${icon('x', { size: 16 })}</button></div>`;
-    }).join('') : '<p class="muted" style="margin:6px 0 0">Add hunts below. You can pick a 1st and 2nd choice per species, then enter the codes in WILD.</p>'}
+    }).join('') : '<p class="muted" style="margin:6px 0 0">Add hunts from the list below, a 1st and 2nd choice per species. Then enter the codes in WILD.</p>'}
     ${picks.length ? `<p class="muted fine">Codes to enter: ${[...new Set(picks.map((l) => l.species))].map((s) => `${esc(s)}: ${picks.filter((l) => l.species === s).sort((a, b) => (a.choice || 1) - (b.choice || 1)).map((l) => l.hunt_code).join(' then ')}`).join(' · ')}</p>` : ''}
   </div>
   <h3 class="sub-h">Find hunts <span class="muted tnum">${hunts.length}</span></h3>
@@ -104,7 +104,7 @@ export async function render(v) {
     <label>When <select id="lWhen">${WHEN_OPTS.map(([v, n]) => `<option value="${v}" ${ui.when === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
     <label id="lDayWrap" class="${ui.when === 'day' ? '' : 'hidden'}">Date <input type="date" id="lDay" value="${ui.day}"></label>
     <label>Sort <select id="lSort">${opts([{ id: 'odds', name: 'Best odds' }, { id: 'tags', name: 'Most tags' }, { id: 'code', name: 'Hunt code' }, { id: 'date', name: 'Season start' }], ui.sort)}</select></label>
-    <input id="lQ" class="span2" type="search" placeholder="Search area, MU or class (e.g. 4-24, bull, archery)" value="${esc(ui.q)}">
+    <input id="lQ" class="span2" type="search" placeholder="Search area, WMU or class" value="${esc(ui.q)}">
   </div>
   <label class="switch"><input type="checkbox" id="lMine" ${ui.mine ? 'checked' : ''}><span>Only units I've hunted (${myMus().size})</span></label>
   <div id="lList"></div>`;
@@ -215,7 +215,7 @@ async function lehArea(h) {
   return areaCache.get(key);
 }
 export async function highlightHunt(h) {
-  const { selChip } = await import('../main.js?v=20261113064556-c25363b');
+  const { selChip } = await import('../main.js?v=20261113070753-5fc82d2');
   let fc = await lehArea(h); let exact = !!fc;
   if (!fc) fc = { type: 'FeatureCollection', features: (M.WMU_GEO?.features || []).filter((f) => h.mus.includes(f.properties.id)) };
   fc = { type: 'FeatureCollection', features: fc.features.map((f) => ({ ...f, properties: { stroke: '#ff8a00', fill: '#ff8a00', fillOpacity: 0.22 } })) };
@@ -239,9 +239,9 @@ function renderTags(body) {
 }
 function renderHist(body) {
   const rows = store.leh.slice().sort((a, b) => b.year - a.year || (a.choice || 1) - (b.choice || 1));
-  body.innerHTML = `<div class="row" style="justify-content:space-between"><span class="muted">Past applications and results (affects your odds)</span><button class="small primary" id="addLeh">${icon('plus', { size: 15 })}Add</button></div>
+  body.innerHTML = `<div class="row" style="justify-content:space-between"><span class="muted">Past draws. A win lowers your odds for that species.</span><button class="small primary" id="addLeh">${icon('plus', { size: 15 })}Add</button></div>
   ${rows.length ? rows.map((l) => `<div class="wp-row" data-leh="${l.id}"><span class="pick-n">${l.year}</span><div class="t"><b>${esc(l.hunt_code || '—')} · ${esc(l.species || '')} ${esc(l.class || '')}</b><span class="muted">${l.choice === 2 ? '2nd choice' : '1st choice'} · ${l.drawn == null ? 'pending' : l.drawn ? 'DRAWN' : 'not drawn'}</span></div>${icon('chevR', { size: 18 })}</div>`).join('')
-    : '<div class="empty"><b>No LEH history</b><span class="muted">Add past applications so you can track wins (winning lowers your odds for that species).</span></div>'}`;
+    : '<div class="empty"><b>No LEH history</b><span class="muted">Add past applications to keep track of your wins.</span></div>'}`;
   body.querySelector('#addLeh').onclick = () => lehForm({ year: yr });
   body.onclick = (e) => { const r = e.target.closest('[data-leh]'); if (r) lehForm(store.leh.find((x) => x.id === r.dataset.leh)); };
 }
@@ -268,7 +268,7 @@ function tagForm(t) {
 
 function lehForm(l) {
   const isNew = !l.id;
-  const b = modal(`<h3>${isNew ? 'New LEH application' : 'Edit LEH'}</h3><form class="grid2">
+  const b = modal(`<h3>${isNew ? 'New application' : 'Edit application'}</h3><form class="grid2">
   <label>Year <input type="number" name="year" required value="${l.year ?? yr}"></label>
   <label>Hunt code <input name="hunt_code" value="${esc(l.hunt_code || '')}"></label>
   <label>Species <input name="species" list="speciesList" value="${esc(l.species || '')}"></label>

@@ -9,7 +9,7 @@
 <title>Hunt HQ</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23141a14'/%3E%3Ccircle cx='32' cy='32' r='16' fill='none' stroke='%23e0893a' stroke-width='5'/%3E%3Cpath d='M32 8v14M32 42v14M8 32h14M42 32h14' stroke='%23e0893a' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="css/app.css?v=20261113064556-c25363b">
+<link rel="stylesheet" href="css/app.css?v=20261113070753-5fc82d2">
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/supabase.js"></script>
 <script src="vendor/suncalc.js"></script>
@@ -62,23 +62,21 @@
   <div id="dropHint" class="drop-hint hidden" role="status"><span class="msg">Tap the map to place a waypoint</span><button id="dropCancel" class="link-btn">Cancel</button></div>
 
   <aside id="panel" class="panel" aria-label="Tools">
-    <div class="sheet-grip" id="sheetGrip" aria-hidden="true"><span></span></div>
     <div class="panel-head">
+      <div class="panel-top">
+        <div class="sheet-grip" id="sheetGrip" aria-hidden="true"><span></span></div>
+        <span class="brand">Hunt HQ</span>
+        <button id="panelX" class="icon-btn" aria-label="Close panel"><i data-icon="x" data-size="20"></i></button>
+      </div>
       <nav id="tabs" class="tabs" aria-label="Sections">
-        <button data-tab="layers"><i data-icon="layers" data-size="18"></i><span>Layers</span></button>
-        <button data-tab="open"><i data-icon="calendar" data-size="18"></i><span>Seasons</span></button>
-        <button data-tab="log"><i data-icon="pin" data-size="18"></i><span>Waypoints</span></button>
-        <button data-tab="trips"><i data-icon="route" data-size="18"></i><span>Hunts</span></button>
-        <button data-tab="tags"><i data-icon="tag" data-size="18"></i><span>Tags &amp; LEH</span></button>
-        <button data-tab="insights"><i data-icon="chart" data-size="18"></i><span>Insights</span></button>
-        <button data-tab="import"><i data-icon="upload" data-size="18"></i><span>Import</span></button>
-        <button data-tab="sun"><i data-icon="sun" data-size="18"></i><span>Sun &amp; moon</span></button>
-        <button data-tab="more"><i data-icon="dots" data-size="18"></i><span>More</span></button>
+        <button data-tab="layers"><i data-icon="layers" data-size="20"></i><span>Layers</span></button>
+        <button data-tab="open"><i data-icon="calendar" data-size="20"></i><span>Seasons</span></button>
+        <button data-tab="log"><i data-icon="pin" data-size="20"></i><span>Waypoints</span></button>
+        <button data-tab="trips"><i data-icon="route" data-size="20"></i><span>Hunts</span></button>
+        <button data-tab="tags"><i data-icon="tag" data-size="20"></i><span>LEH</span></button>
+        <button data-tab="insights"><i data-icon="sun" data-size="20"></i><span>Forecast</span></button>
+        <button data-tab="more"><i data-icon="dots" data-size="20"></i><span>More</span></button>
       </nav>
-      <button id="panelX" class="icon-btn" aria-label="Close panel"><i data-icon="x"></i></button>
-      <button id="tabsLess" class="tabs-arrow left hidden" aria-label="Scroll sections left"><i data-icon="chevL" data-size="18"></i></button>
-      <button id="tabsMore" class="tabs-arrow hidden" aria-label="More sections"><i data-icon="chevR" data-size="18"></i></button>
-      <div id="tabsTrack" class="tabs-track" aria-hidden="true"><span id="tabsThumb"></span></div>
     </div>
     <div id="view" class="view"></div>
   </aside>
@@ -87,6 +85,6 @@
 <div id="modal" class="modal hidden"><div class="modal-card" role="dialog" aria-modal="true"><button class="modal-x icon-btn" aria-label="Close"><i data-icon="x"></i></button><div id="modalBody"></div></div></div>
 <div id="toast" class="toast off" role="status" aria-live="polite"></div>
 
-<script type="module" src="js/main.js?v=20261113064556-c25363b"></script>
+<script type="module" src="js/main.js?v=20261113070753-5fc82d2"></script>
 </body>
 </html>

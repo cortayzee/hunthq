@@ -1,6 +1,7 @@
-import { esc, fmtTime, todayISO } from '../util.js?v=20261113064556-c25363b';
-import { moonSVG } from '../rut.js?v=20261113064556-c25363b';
-import * as M from '../map.js?v=20261113064556-c25363b';
+import { esc, fmtTime, todayISO } from '../util.js?v=20261113070753-5fc82d2';
+import { moonSVG } from '../rut.js?v=20261113070753-5fc82d2';
+import { icon } from '../icons.js?v=20261113070753-5fc82d2';
+import * as M from '../map.js?v=20261113070753-5fc82d2';
 
 const PH = [[0.03, 'New moon', '🌑'], [0.22, 'Waxing crescent', '🌒'], [0.28, 'First quarter', '🌓'], [0.47, 'Waxing gibbous', '🌔'], [0.53, 'Full moon', '🌕'], [0.72, 'Waning gibbous', '🌖'], [0.78, 'Last quarter', '🌗'], [0.97, 'Waning crescent', '🌘'], [1.01, 'New moon', '🌑']];
 const add = (d, min) => (d && !isNaN(d) ? new Date(d.getTime() + min * 60000) : null);
@@ -15,27 +16,27 @@ export function sunInfo(date, lat, lon) {
 }
 
 let pos = null;
+const fpos = () => { try { const p = JSON.parse(localStorage.getItem('hunthq_fpos')); return p && isFinite(p.lat) ? p : null; } catch { return null; } };
 export function render(v) {
-  const c = pos || M.map.getCenter(); const date = render.date || todayISO();
-  v.innerHTML = `<h2>Sun &amp; moon</h2>
-  <div class="grid2"><label>Date <input type="date" id="sDate" value="${date}"></label>
-  <div style="align-self:end" class="row"><button id="sCenter">Use map centre</button><button id="sGps">GPS</button></div></div>
-  <p class="muted">Location ${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}</p><div id="sOut"></div>`;
+  const c = pos || fpos() || M.map.getCenter(); const date = render.date || todayISO();
+  v.innerHTML = `<button class="back-link" data-back>${icon('chevL', { size: 16 })}Forecast</button><div class="page-h"><h2>Sun &amp; moon times</h2></div>
+  <label>Starting <input type="date" id="sDate" value="${date}"></label>
+  <p class="list-note" style="margin:8px 4px 12px">For your forecast spot: ${esc(c.label || `${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}`)}. Change it on the Forecast page.</p><div id="sOut"></div>`;
   const draw = () => {
     const d = v.querySelector('#sDate').value || todayISO(); render.date = d;
     const s = sunInfo(new Date(d + 'T12:00'), c.lat, c.lng);
     let week = '';
     for (let i = 0; i < 14; i++) { const dd = new Date(d + 'T12:00'); dd.setDate(dd.getDate() + i); const x = sunInfo(dd, c.lat, c.lng);
-      week += `<tr><td>${dd.toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' })}</td><td>${x.legalStart}</td><td>${x.legalEnd}</td><td><span class="row" style="gap:6px;flex-wrap:nowrap">${x.moonIcon} ${x.moonPct}%</span></td><td class="muted">${x.moonrise} / ${x.moonset}</td></tr>`; }
-    v.querySelector('#sOut').innerHTML = `<div class="kpis">
-      <div class="kpi"><b>${s.legalStart}</b><span>legal light starts</span></div><div class="kpi"><b>${s.legalEnd}</b><span>legal light ends</span></div>
-      <div class="kpi"><b>${s.sunrise}</b><span>sunrise</span></div><div class="kpi"><b>${s.sunset}</b><span>sunset</span></div>
-      <div class="kpi"><b class="row" style="gap:6px">${moonSVG(SunCalc.getMoonIllumination(new Date(d + 'T12:00')).phase, 24)} ${s.moonPct}%</b><span>${esc(s.moonName)}</span></div><div class="kpi"><b>${s.moonrise}</b><span>moonrise · set ${s.moonset}</span></div></div>
-      <p class="muted">Civil dawn ${s.dawn} · solar noon ${s.noon} · civil dusk ${s.dusk}. Legal hours = ½ h before sunrise to ½ h after sunset (BC general rule; check synopsis for exceptions). Times in your device's time zone.</p>
-      <h3>Next 14 days</h3><table><thead><tr><th>Day</th><th>Legal start</th><th>Legal end</th><th>Moon</th><th>Rise / set</th></tr></thead><tbody>${week}</tbody></table>`;
+      week += `<tr><td>${dd.toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' })}</td><td class="tnum">${x.legalStart} – ${x.legalEnd}</td><td><span class="row" style="gap:6px;flex-wrap:nowrap">${x.moonIcon}<span class="tnum">${x.moonPct}%</span></span></td></tr>`; }
+    const r = (k, val) => `<div class="list-row static"><span class="lr-t"><span>${k}</span></span><b class="tnum">${val}</b></div>`;
+    v.querySelector('#sOut').innerHTML = `<div class="list-group">
+      ${r('Legal light', `${s.legalStart} – ${s.legalEnd}`)}${r('Sunrise and sunset', `${s.sunrise} – ${s.sunset}`)}
+      <div class="list-row static"><span class="lr-t"><span>Moon</span></span><b class="row" style="gap:8px">${moonSVG(SunCalc.getMoonIllumination(new Date(d + 'T12:00')).phase, 22)}${s.moonPct}% · ${esc(s.moonName.toLowerCase())}</b></div>
+      ${r('Moonrise and moonset', `${s.moonrise} – ${s.moonset}`)}</div>
+      <p class="list-note">Legal hunting hours in BC are half an hour before sunrise to half an hour after sunset; check the synopsis for exceptions. Civil dawn ${s.dawn}, civil dusk ${s.dusk}.</p>
+      <h3 class="list-h">Next 14 days</h3><div class="table-wrap"><table><thead><tr><th>Day</th><th>Legal light</th><th>Moon</th></tr></thead><tbody>${week}</tbody></table></div>`;
   };
+  v.querySelector('[data-back]').onclick = () => import('../main.js?v=20261113070753-5fc82d2').then((m) => m.showTabPublic('insights'));
   v.querySelector('#sDate').onchange = draw;
-  v.querySelector('#sCenter').onclick = () => { pos = null; render(v); };
-  v.querySelector('#sGps').onclick = () => navigator.geolocation?.getCurrentPosition((p) => { pos = { lat: p.coords.latitude, lng: p.coords.longitude }; render(v); }, (e) => alert(e.message));
   draw();
 }

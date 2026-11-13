@@ -1,19 +1,21 @@
-import * as db from '../db.js?v=20261113064556-c25363b';
-import { store } from '../db.js?v=20261113064556-c25363b';
-import { KINDS, SPECIES } from '../config.js?v=20261113064556-c25363b';
-import { esc, opts, toast, parseCSV, haversineKm, localDT } from '../util.js?v=20261113064556-c25363b';
-import { hunterDatalist, speciesDatalist } from './log.js?v=20261113064556-c25363b';
-import * as M from '../map.js?v=20261113064556-c25363b';
+import * as db from '../db.js?v=20261113070753-5fc82d2';
+import { store } from '../db.js?v=20261113070753-5fc82d2';
+import { KINDS, SPECIES } from '../config.js?v=20261113070753-5fc82d2';
+import { esc, opts, toast, parseCSV, haversineKm, localDT } from '../util.js?v=20261113070753-5fc82d2';
+import { hunterDatalist, speciesDatalist } from './log.js?v=20261113070753-5fc82d2';
+import { icon } from '../icons.js?v=20261113070753-5fc82d2';
+import * as M from '../map.js?v=20261113070753-5fc82d2';
 
 let items = []; let tracks = [];
 
 export function render(v) {
-  v.innerHTML = `<h2>Import</h2>
-  <p class="muted">KML, KMZ, GPX, GeoJSON or CSV from onX (web map: export KML/GPX; app: GPX) and iHunter (KML/KMZ). You'll preview and map items before anything is saved. Duplicates of existing waypoints are unticked.</p>
+  v.innerHTML = `<button class="back-link" data-back>${icon('chevL', { size: 16 })}More</button><div class="page-h"><h2>Import</h2></div>
+  <p class="lede">Add waypoints and tracks from onX (KML or GPX) or iHunter (KML or KMZ). You review everything before it's saved. Duplicates are skipped.</p>
   <div class="grid2"><label>Source <select id="iSrc"><option value="onx">onX</option><option value="ihunter">iHunter</option><option value="gps">GPS / other</option></select></label>
   <label>Hunter <input id="iHunter" list="hunterList" value="Me"></label></div>
-  <input type="file" id="iFile" multiple accept=".kml,.kmz,.gpx,.geojson,.json,.csv" style="margin-top:8px;width:100%">
+  <label class="drop-zone" for="iFile">${icon('upload', { size: 22 })}<b>Choose files</b><span>KML, KMZ, GPX, GeoJSON or CSV</span></label><input type="file" id="iFile" class="visually-hidden" multiple accept=".kml,.kmz,.gpx,.geojson,.json,.csv">
   <div id="iPrev"></div>${hunterDatalist()}${speciesDatalist()}`;
+  v.querySelector('[data-back]').onclick = () => import('../main.js?v=20261113070753-5fc82d2').then((m) => m.showTabPublic('more'));
   v.querySelector('#iFile').onchange = async (e) => {
     items = []; tracks = [];
     for (const file of e.target.files) {

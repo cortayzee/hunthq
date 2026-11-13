@@ -1,16 +1,16 @@
-import * as db from '../db.js?v=20261113064556-c25363b';
-import { store, hunters } from '../db.js?v=20261113064556-c25363b';
-import { WEAPONS, RESULTS, kindColor } from '../config.js?v=20261113064556-c25363b';
-import { esc, opts, modal, closeModal, requestClose, toast, formData, todayISO, num, parseCSV, yearOf } from '../util.js?v=20261113064556-c25363b';
-import { normMU } from '../seasons.js?v=20261113064556-c25363b';
-import { hunterDatalist, speciesDatalist, spotRow, dateSpan, openSpotForm } from './log.js?v=20261113064556-c25363b';
-import { exportCSV } from '../exporters.js?v=20261113064556-c25363b';
-import { pickOnMap, closePanel, openPanel } from '../main.js?v=20261113064556-c25363b';
-import * as M from '../map.js?v=20261113064556-c25363b';
-import * as V from '../vis.js?v=20261113064556-c25363b';
-import { tripTitle, tripSpots, harvested } from '../vis.js?v=20261113064556-c25363b';
-import { icon, hydrateIcons } from '../icons.js?v=20261113064556-c25363b';
-import { glyphSVG, animalFor } from '../animals.js?v=20261113064556-c25363b';
+import * as db from '../db.js?v=20261113070753-5fc82d2';
+import { store, hunters } from '../db.js?v=20261113070753-5fc82d2';
+import { WEAPONS, RESULTS, kindColor } from '../config.js?v=20261113070753-5fc82d2';
+import { esc, opts, modal, closeModal, requestClose, toast, formData, todayISO, num, parseCSV, yearOf } from '../util.js?v=20261113070753-5fc82d2';
+import { normMU } from '../seasons.js?v=20261113070753-5fc82d2';
+import { hunterDatalist, speciesDatalist, spotRow, dateSpan, openSpotForm } from './log.js?v=20261113070753-5fc82d2';
+import { exportCSV } from '../exporters.js?v=20261113070753-5fc82d2';
+import { pickOnMap, closePanel, openPanel } from '../main.js?v=20261113070753-5fc82d2';
+import * as M from '../map.js?v=20261113070753-5fc82d2';
+import * as V from '../vis.js?v=20261113070753-5fc82d2';
+import { tripTitle, tripSpots, harvested } from '../vis.js?v=20261113070753-5fc82d2';
+import { icon, hydrateIcons } from '../icons.js?v=20261113070753-5fc82d2';
+import { glyphSVG, animalFor } from '../animals.js?v=20261113070753-5fc82d2';
 
 // A hunt = one outing (a day or a multi-day trip). Its kills & sightings are waypoints linked by extra.trip_id.
 const ui = { year: '' };
@@ -36,8 +36,16 @@ function tripCard(t) {
   </article>`;
 }
 
+const viewSeg = () => `<div class="seg seg-full" role="tablist" aria-label="Hunts view"><button data-hv="list" role="tab" aria-selected="${ui.view !== 'stats'}" class="${ui.view !== 'stats' ? 'on' : ''}">Hunts</button><button data-hv="stats" role="tab" aria-selected="${ui.view === 'stats'}" class="${ui.view === 'stats' ? 'on' : ''}">Stats</button></div>`;
 export function render(v) {
   render.v = v; render.detail = null;
+  if (ui.view === 'stats') {
+    v.innerHTML = `<div class="page-h"><h2>Hunts</h2></div>${db.localNote()}${viewSeg()}<div id="statsBody"></div>`;
+    v.onclick = (e) => { const h = e.target.closest('[data-hv]'); if (h) { ui.view = h.dataset.hv; render(v); } };
+    v.onchange = null;
+    import('./insights.js?v=20261113070753-5fc82d2').then((I) => { const el = v.querySelector('#statsBody'); if (el) I.renderStats(el); });
+    return;
+  }
   const years = [...new Set(store.trips.map((t) => String(yearOf(t.date_start))))].sort((a, b) => b - a);
   if (ui.year && !years.includes(ui.year)) ui.year = '';
   const list = store.trips.filter((t) => !ui.year || String(yearOf(t.date_start)) === ui.year).sort((a, b) => String(b.date_start).localeCompare(String(a.date_start)));
@@ -46,15 +54,17 @@ export function render(v) {
   v.innerHTML = `<div class="page-h"><h2>Hunts</h2>
     <div class="row"><button class="primary" id="newTrip">${icon('plus', { size: 18 })}New hunt</button>
     <details class="menu"><summary class="icon-btn" aria-label="More">${icon('dots')}</summary><div class="menu-pop">
-      <button data-m="bulk">${icon('list', { size: 18 })}Bulk entry (past seasons)</button><button data-m="csv">${icon('upload', { size: 18 })}Export CSV</button></div></details></div></div>
+      <button data-m="bulk">${icon('list', { size: 18 })}Add past seasons</button><button data-m="csv">${icon('upload', { size: 18 })}Export CSV</button></div></details></div></div>
   ${db.localNote()}
+  ${viewSeg()}
   ${years.length > 1 ? `<div class="seg" role="group" aria-label="Year" style="margin-bottom:12px"><button data-y="" class="${!ui.year ? 'on' : ''}">All</button>${years.map((y) => `<button data-y="${y}" class="${ui.year === y ? 'on' : ''}">${y}</button>`).join('')}</div>` : ''}
   ${list.length ? `<div class="kpis compact"><div class="kpi"><b>${list.length}</b><span>hunts</span></div><div class="kpi"><b>${dayCount}</b><span>days out</span></div>
     <div class="kpi"><b>${kills}</b><span>harvests</span></div><div class="kpi"><b>${Math.round((succ / list.length) * 100)}%</b><span>hunts with a harvest</span></div></div>` : ''}
-  <div class="trip-list">${list.map(tripCard).join('') || `<div class="empty">${icon('route', { size: 22 })}<b>No hunts logged yet</b><span class="muted">Add one, or bulk-enter past seasons from the ⋯ menu.</span></div>`}</div>`;
+  <div class="trip-list">${list.map(tripCard).join('') || `<div class="empty">${icon('route', { size: 22 })}<b>No hunts logged yet</b><span class="muted">Add one, or add past seasons from the ⋯ menu.</span></div>`}</div>`;
   v.onchange = (e) => { const id = e.target.dataset.vtrip; if (id) { V.setShown('trips', id, e.target.checked); e.target.closest('.trip-card').classList.toggle('off', !e.target.checked); } };
   v.onclick = (e) => {
     if (e.target.closest('.switch')) return;
+    const hv = e.target.closest('[data-hv]'); if (hv) { ui.view = hv.dataset.hv; render(v); return; }
     const y = e.target.closest('[data-y]'); if (y) { ui.year = y.dataset.y; render(v); return; }
     const m = e.target.closest('[data-m]')?.dataset.m;
     if (m) { e.target.closest('details.menu')?.removeAttribute('open'); if (m === 'bulk') bulkTrips(); if (m === 'csv') exportCSV(list, 'hunts'); return; }
@@ -159,7 +169,7 @@ export function openTripForm(t = {}) {
 
 const COLS = ['date_start', 'date_end', 'hunter', 'species', 'wmu', 'area', 'weapon', 'hours', 'result', 'animals_seen', 'weather', 'notes'];
 function bulkTrips() {
-  const body = modal(`<h3>Bulk hunt entry</h3>
+  const body = modal(`<h3>Add past seasons</h3>
   <p class="muted">For past seasons from memory: one row per hunt day or trip. Blank cells carry down from the row above (except notes). Or paste CSV/TSV with these headers: ${COLS.join(', ')}.</p>
   <div class="row"><button id="b10">+10 rows</button><button id="bPaste">Paste CSV…</button></div>
   <div class="scroll-x" style="max-height:55vh;overflow:auto;margin-top:8px"><table><thead><tr>${COLS.map((c) => `<th>${c.replace('_', ' ')}</th>`).join('')}</tr></thead><tbody></tbody></table></div>

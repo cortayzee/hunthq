@@ -18,7 +18,7 @@ export const localDT = (d) => { d = new Date(d); return `${d.getFullYear()}-${pa
 export const TZ = 'America/Vancouver';
 export const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric', timeZone: TZ }) : '';
 export const fmtDT = (d) => d ? new Date(d).toLocaleString('en-CA', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: TZ }) : '';
-export const fmtTime = (d) => (d && !isNaN(d)) ? d.toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit', timeZone: TZ }) : '—';
+export const fmtTime = (d) => (d && !isNaN(d)) ? d.toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit', timeZone: TZ }) : '—';
 export const yearOf = (d) => d ? new Date(d).getFullYear() : null;
 export const num = (v) => (v === '' || v == null || isNaN(+v)) ? null : +v;
 
@@ -35,7 +35,7 @@ export function modal(content, { wide = false } = {}) {
   m.classList.remove('hidden'); m.classList.remove('dirty'); m.dataset.dirty = '';
   const mark = (e) => { if (e.target.closest('form')) markDirty(); };
   body.addEventListener('input', mark); body.addEventListener('change', mark);
-  import('./icons.js?v=20261113064556-c25363b').then((i) => i.hydrateIcons(body));
+  import('./icons.js?v=20261113070753-5fc82d2').then((i) => i.hydrateIcons(body));
   return body;
 }
 export function markDirty() { const m = $('#modal'); m.dataset.dirty = '1'; m.classList.add('dirty'); }

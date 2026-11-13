@@ -1,6 +1,6 @@
 // Elevation + route stats from the same free AWS Terrarium DEM tiles the 3D view uses (≈12 m pixels at BC latitudes).
-import { TERRAIN_TILES } from './config.js?v=20261113064556-c25363b';
-import { haversineKm } from './util.js?v=20261113064556-c25363b';
+import { TERRAIN_TILES } from './config.js?v=20261113070753-5fc82d2';
+import { haversineKm } from './util.js?v=20261113070753-5fc82d2';
 
 const Z = 13, TILE = 256;
 const cache = new Map();
@@ -77,7 +77,7 @@ export function stats(prof, modeId = 'trail') {
     let lvl = effort < 6 ? 0 : effort < 12 ? 1 : effort < 20 ? 2 : 3;
     if (maxGrade > 0.35 && lvl < 3) lvl++;
     difficulty = ['Easy', 'Moderate', 'Hard', 'Very hard'][lvl];
-  } else difficulty = maxGrade > 0.18 ? 'Steep road — check traction' : maxGrade > 0.1 ? 'Some steep pitches' : 'Easy grade';
+  } else difficulty = maxGrade > 0.18 ? 'Steep road, check traction' : maxGrade > 0.1 ? 'Some steep pitches' : 'Easy grade';
   return { dist, up, down, lo: valid.length ? lo : null, hi: valid.length ? hi : null, maxGrade, hours, difficulty, mode: modeId };
 }
 
