@@ -1,12 +1,12 @@
 // iHunter-style WMU detail: every general season in the WMU, Open/Closed for the chosen date, grouped by category.
-import * as A from '../access.js?v=20261113175850-e805291';
-import * as L from '../limits.js?v=20261113175850-e805291';
-import { store } from '../db.js?v=20261113175850-e805291';
-import { seasonsFor, openRange, fmtMD } from '../seasons.js?v=20261113175850-e805291';
-import { REGS_URL, BC_WFS, WMU_LAYER, WMU_FIELD } from '../config.js?v=20261113175850-e805291';
-import { esc, todayISO, tip } from '../util.js?v=20261113175850-e805291';
-import * as M from '../map.js?v=20261113175850-e805291';
-import { icon } from '../icons.js?v=20261113175850-e805291';
+import * as A from '../access.js?v=20261113181344-c6f16a5';
+import * as L from '../limits.js?v=20261113181344-c6f16a5';
+import { store } from '../db.js?v=20261113181344-c6f16a5';
+import { seasonsFor, openRange, fmtMD } from '../seasons.js?v=20261113181344-c6f16a5';
+import { REGS_URL, BC_WFS, WMU_LAYER, WMU_FIELD } from '../config.js?v=20261113181344-c6f16a5';
+import { esc, todayISO, tip } from '../util.js?v=20261113181344-c6f16a5';
+import * as M from '../map.js?v=20261113181344-c6f16a5';
+import { icon } from '../icons.js?v=20261113181344-c6f16a5';
 
 const BIG = /deer|moose|elk|goat|sheep|caribou|bison/i;
 const PRED = /bear|cougar|wolf|coyote|lynx|bobcat|wolverine|raccoon|skunk|fox|marten|fisher/i;
@@ -134,7 +134,7 @@ export async function showWmu(view, mu, { region, date = todayISO(), onBack } = 
   view.querySelector('#wBack').onclick = () => onBack?.();
   view.querySelector('#wJump').onclick = () => outline(mu, true);
   M.selectWmu(mu); outline(mu, false);
-  import('../wildlife.js?v=20261113175850-e805291').then(async (W) => {
+  import('../wildlife.js?v=20261113181344-c6f16a5').then(async (W) => {
     const { years, rows } = await W.statsFor(mu); const el = view.querySelector('#wHv'); if (!el) return;
     view.querySelector('#wHvY').textContent = `· ${years[0]}–${years[1]} avg / year`;
     el.innerHTML = rows.length ? `<table class="hv-table"><thead><tr><th>Species</th><th>Hunters</th><th>Kills</th><th>Success</th><th>Days/kill</th><th>vs 2010–14</th></tr></thead><tbody>
@@ -142,7 +142,7 @@ export async function showWmu(view, mu, { region, date = todayISO(), onBack } = 
         <td class="tnum ${r.trend > 10 ? 'trend-up' : r.trend < -10 ? 'trend-down' : ''}">${r.trend == null ? '–' : (r.trend > 0 ? '▲' : r.trend < 0 ? '▼' : '') + Math.abs(r.trend) + '%'}</td></tr>`).join('')}</tbody></table>`
       : '<p class="muted">No hunter survey results recorded for this unit.</p>';
   });
-  import('./tags.js?v=20261113175850-e805291').then(async (T) => {
+  import('./tags.js?v=20261113181344-c6f16a5').then(async (T) => {
     const hs = await T.lehForMu(mu); const el = view.querySelector('#wLeh'); if (!el) return;
     view.querySelector('#wLehN').textContent = `· ${hs.length}`;
     el.innerHTML = hs.length ? hs.map((h) => T.huntCard(h)).join('') : '<p class="muted">No LEH hunts list this unit.</p>';
