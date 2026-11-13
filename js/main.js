@@ -1,20 +1,20 @@
-import * as db from './db.js?v=20261113080403-f924e16';
-import { store } from './db.js?v=20261113080403-f924e16';
-import * as M from './map.js?v=20261113080403-f924e16';
-import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261113080403-f924e16';
-import { $, $$, esc, initTips, toast, closeModal, requestClose, todayISO } from './util.js?v=20261113080403-f924e16';
-import { REGS_URL, BASES } from './config.js?v=20261113080403-f924e16';
-import { sunInfo } from './views/sun.js?v=20261113080403-f924e16';
-import { mvprSummary, mvprStatus } from './mvpr.js?v=20261113080403-f924e16';
-import { icon, hydrateIcons } from './icons.js?v=20261113080403-f924e16';
-import * as R from './route.js?v=20261113080403-f924e16';
-import * as V from './vis.js?v=20261113080403-f924e16';
+import * as db from './db.js?v=20261113080445-020ddbf';
+import { store } from './db.js?v=20261113080445-020ddbf';
+import * as M from './map.js?v=20261113080445-020ddbf';
+import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261113080445-020ddbf';
+import { $, $$, esc, initTips, toast, closeModal, requestClose, todayISO } from './util.js?v=20261113080445-020ddbf';
+import { REGS_URL, BASES } from './config.js?v=20261113080445-020ddbf';
+import { sunInfo } from './views/sun.js?v=20261113080445-020ddbf';
+import { mvprSummary, mvprStatus } from './mvpr.js?v=20261113080445-020ddbf';
+import { icon, hydrateIcons } from './icons.js?v=20261113080445-020ddbf';
+import * as R from './route.js?v=20261113080445-020ddbf';
+import * as V from './vis.js?v=20261113080445-020ddbf';
 
 const views = {};
 const viewModules = {
-  layers: () => import('./views/layers.js?v=20261113080403-f924e16'), open: () => import('./views/open.js?v=20261113080403-f924e16'), log: () => import('./views/log.js?v=20261113080403-f924e16'),
-  trips: () => import('./views/trips.js?v=20261113080403-f924e16'), tags: () => import('./views/tags.js?v=20261113080403-f924e16'), insights: () => import('./views/insights.js?v=20261113080403-f924e16'),
-  import: () => import('./views/import.js?v=20261113080403-f924e16'), sun: () => import('./views/sun.js?v=20261113080403-f924e16'), more: () => import('./views/more.js?v=20261113080403-f924e16'),
+  layers: () => import('./views/layers.js?v=20261113080445-020ddbf'), open: () => import('./views/open.js?v=20261113080445-020ddbf'), log: () => import('./views/log.js?v=20261113080445-020ddbf'),
+  trips: () => import('./views/trips.js?v=20261113080445-020ddbf'), tags: () => import('./views/tags.js?v=20261113080445-020ddbf'), insights: () => import('./views/insights.js?v=20261113080445-020ddbf'),
+  import: () => import('./views/import.js?v=20261113080445-020ddbf'), sun: () => import('./views/sun.js?v=20261113080445-020ddbf'), more: () => import('./views/more.js?v=20261113080445-020ddbf'),
 };
 export const app = { tab: 'layers', date: todayISO(), dropMode: false };
 const isPhone = () => innerWidth <= 760;
@@ -64,7 +64,7 @@ export function selChip(label) {
 }
 export function clearSelection() { M.setSelection?.(null); selChip(null); }
 export async function openWmu(mu, region) {
-  const { showWmu } = await import('./views/wmu.js?v=20261113080403-f924e16');
+  const { showWmu } = await import('./views/wmu.js?v=20261113080445-020ddbf');
   $$('#tabs button').forEach((b) => b.classList.remove('active'));
   openPanel(); const v = $('#view'); v.scrollTop = 0; v.onclick = v.onchange = v.oninput = v.onkeydown = null;
   await showWmu(v, mu, { region, date: app.date, onBack: () => showTab(app.tab) });
@@ -131,7 +131,7 @@ async function start() {
   await loadSeasons();
   const saved = store.prefs.map || {};
   await M.initMap('map', store.prefs);
-  import('./wildlife.js?v=20261113080403-f924e16').then((W) => { const go = () => (M.map.getLayer('wmu-fill') ? W.restore() : setTimeout(go, 300)); go(); });
+  import('./wildlife.js?v=20261113080445-020ddbf').then((W) => { const go = () => (M.map.getLayer('wmu-fill') ? W.restore() : setTimeout(go, 300)); go(); });
   if (saved.pitch && !saved.terrain) M.map.setPitch(0);
   V.apply();
   wireUI();
@@ -228,12 +228,12 @@ function wireUI() {
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const { act, id } = b.dataset;
-    if (act === 'edit-spot') (await import('./views/log.js?v=20261113080403-f924e16')).openSpotForm(store.spots.find((s) => s.id === id));
-    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261113080403-f924e16')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'edit-spot') (await import('./views/log.js?v=20261113080445-020ddbf')).openSpotForm(store.spots.find((s) => s.id === id));
+    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261113080445-020ddbf')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
     if (act === 'wmu') { e.preventDefault(); popup?.remove(); M.selectWmu(b.dataset.mu); openWmu(b.dataset.mu, b.dataset.region); }
     if (act === 'fc-here') { e.preventDefault(); popup?.remove(); popup = null; const I = views.insights || (views.insights = await viewModules.insights());
       I.openForecast({ lat: +b.dataset.lat, lng: +b.dataset.lon, label: b.dataset.label || '' }); await showTab('insights'); }
-    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261113080403-f924e16')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261113080445-020ddbf')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
   });
   document.addEventListener('submit', (e) => {
     if (!e.target.matches('[data-wmuform]')) return; e.preventDefault();
@@ -251,7 +251,7 @@ function wireUI() {
     }
     if (app.dropMode) {
       setDropMode(false);
-      const { openSpotForm } = await import('./views/log.js?v=20261113080403-f924e16');
+      const { openSpotForm } = await import('./views/log.js?v=20261113080445-020ddbf');
       const form = openSpotForm({ lat: e.lngLat.lat, lon: e.lngLat.lng });
       const res = await M.identify(e.lngLat, ['wmu']);
       const w = M.wmuFromIdentify(res); if (w && form?.wmu && !form.wmu.value) form.wmu.value = w;

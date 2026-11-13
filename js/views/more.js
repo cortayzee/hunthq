@@ -1,10 +1,10 @@
-import * as db from '../db.js?v=20261113080403-f924e16';
-import { store } from '../db.js?v=20261113080403-f924e16';
-import { esc, download, toast, todayISO, fmtDate, tip } from '../util.js?v=20261113080403-f924e16';
-import { exportKML } from '../exporters.js?v=20261113080403-f924e16';
-import { BC_WMS, BC_WFS, LEH_LAYER, LEH_TYPE_FIELD, MVPR_LAYER, WMU_LAYER } from '../config.js?v=20261113080403-f924e16';
-import { icon } from '../icons.js?v=20261113080403-f924e16';
-import * as M from '../map.js?v=20261113080403-f924e16';
+import * as db from '../db.js?v=20261113080445-020ddbf';
+import { store } from '../db.js?v=20261113080445-020ddbf';
+import { esc, download, toast, todayISO, fmtDate, tip } from '../util.js?v=20261113080445-020ddbf';
+import { exportKML } from '../exporters.js?v=20261113080445-020ddbf';
+import { BC_WMS, BC_WFS, LEH_LAYER, LEH_TYPE_FIELD, MVPR_LAYER, WMU_LAYER } from '../config.js?v=20261113080445-020ddbf';
+import { icon } from '../icons.js?v=20261113080445-020ddbf';
+import * as M from '../map.js?v=20261113080445-020ddbf';
 
 const theme = () => { try { return localStorage.getItem('hunthq_theme') || 'system'; } catch { return 'system'; } };
 function setTheme(t) {
@@ -39,7 +39,7 @@ export function render(v) {
   <p class="muted">Checks that BC map services respond and lists the closure and LEH layers they return.</p>
   <button id="diag">Run check</button><pre id="diagOut" style="white-space:pre-wrap;font-size:12px"></pre></div></details>
   <p class="list-note tip-h">Data sources${tip('Seasons: 2026–2028 BC Hunting & Trapping Regulations Synopsis (general open seasons). Always confirm in the synopsis and in-season changes at gov.bc.ca/hunting. Map data © Province of BC, Esri, OpenTopoMap, OpenStreetMap contributors. Terrain © Mapzen / AWS. Weather © Open-Meteo.', 'Data sources')}</p>`;
-  v.querySelector('#goImport').onclick = () => import('../main.js?v=20261113080403-f924e16').then((m) => m.showTabPublic('import'));
+  v.querySelector('#goImport').onclick = () => import('../main.js?v=20261113080445-020ddbf').then((m) => m.showTabPublic('import'));
   v.querySelector('#signOut').onclick = async () => { await db.signOut(); location.reload(); };
   v.querySelector('#bExp').onclick = async () => { download(`ridgeline_backup_${todayISO()}.json`, db.backupJSON(), 'application/json'); await db.savePrefs({ lastBackup: new Date().toISOString() }).catch(() => {}); };
   v.querySelector('#bImp').onchange = async (e) => {
