@@ -1,16 +1,16 @@
-import * as db from '../db.js?v=20261112232336-49fa4b1';
-import { store, hunters } from '../db.js?v=20261112232336-49fa4b1';
-import { KINDS, KIND_GROUPS, SPECIES, WEAPONS, SEXES, kindColor } from '../config.js?v=20261112232336-49fa4b1';
-import { esc, opts, modal, closeModal, requestClose, markDirty, toast, formData, localDT, fmtDT, earthLink, parseLatLon, parseCSV, yearOf } from '../util.js?v=20261112232336-49fa4b1';
-import * as M from '../map.js?v=20261112232336-49fa4b1';
-import { normMU } from '../seasons.js?v=20261112232336-49fa4b1';
-import { pickOnMap, closePanel } from '../main.js?v=20261112232336-49fa4b1';
-import { exportKML, exportGPX, exportCSV } from '../exporters.js?v=20261112232336-49fa4b1';
-import { glyphSVG, glyphFor, animalFor, sexTerms, hasPoints, autoName, spotLabel } from '../animals.js?v=20261112232336-49fa4b1';
-import { MODES, fmtKm, fmtHours } from '../elevation.js?v=20261112232336-49fa4b1';
-import * as V from '../vis.js?v=20261112232336-49fa4b1';
-import { tripOf, groupOf, tripTitle, spotYear } from '../vis.js?v=20261112232336-49fa4b1';
-import { icon } from '../icons.js?v=20261112232336-49fa4b1';
+import * as db from '../db.js?v=20261113010538-c99624f';
+import { store, hunters } from '../db.js?v=20261113010538-c99624f';
+import { KINDS, KIND_GROUPS, SIGN_TYPES, SPECIES, WEAPONS, SEXES, kindColor } from '../config.js?v=20261113010538-c99624f';
+import { esc, opts, modal, closeModal, requestClose, markDirty, toast, formData, localDT, fmtDT, earthLink, parseLatLon, parseCSV, yearOf } from '../util.js?v=20261113010538-c99624f';
+import * as M from '../map.js?v=20261113010538-c99624f';
+import { normMU } from '../seasons.js?v=20261113010538-c99624f';
+import { pickOnMap, closePanel } from '../main.js?v=20261113010538-c99624f';
+import { exportKML, exportGPX, exportCSV } from '../exporters.js?v=20261113010538-c99624f';
+import { glyphSVG, glyphFor, animalFor, sexTerms, hasPoints, autoName, spotLabel } from '../animals.js?v=20261113010538-c99624f';
+import { MODES, fmtKm, fmtHours } from '../elevation.js?v=20261113010538-c99624f';
+import * as V from '../vis.js?v=20261113010538-c99624f';
+import { tripOf, groupOf, tripTitle, spotYear } from '../vis.js?v=20261113010538-c99624f';
+import { icon } from '../icons.js?v=20261113010538-c99624f';
 
 const PICK = [['Moose', 'moose'], ['Elk', 'elk'], ['Mule Deer', 'deer'], ['White-tailed Deer', 'deer'], ['Black Bear', 'bear'], ['Grizzly Bear', 'bear'],
   ['Bighorn Sheep', 'sheep'], ['Mountain Goat', 'goat'], ['Caribou', 'caribou'], ['Cougar', 'cougar'], ['Wolf', 'wolf'], ['Coyote', 'wolf'],
@@ -114,10 +114,10 @@ export function render(v) {
       if (a === 'DELETE') await V.deleteGroup(gm); else if (a?.trim() && a !== g.name) await V.renameGroup(gm, a.trim());
       render(v); return;
     }
-    const ot = e.target.closest('[data-open-trip]')?.dataset.openTrip; if (ot) { (await import('./trips.js?v=20261112232336-49fa4b1')).openTrip(ot); return; }
+    const ot = e.target.closest('[data-open-trip]')?.dataset.openTrip; if (ot) { (await import('./trips.js?v=20261113010538-c99624f')).openTrip(ot); return; }
     if (e.target.closest('[data-act]')) return;
     const tr = e.target.closest('[data-track]');
-    if (tr && !e.target.closest('.switch')) { const t = store.tracks.find((x) => x.id === tr.dataset.track); if (t) (await import('../route.js?v=20261112232336-49fa4b1')).openRoute(t); return; }
+    if (tr && !e.target.closest('.switch')) { const t = store.tracks.find((x) => x.id === tr.dataset.track); if (t) (await import('../route.js?v=20261113010538-c99624f')).openRoute(t); return; }
     const row = e.target.closest('[data-fly]');
     if (row) { const s = store.spots.find((x) => x.id === row.dataset.fly); if (s) { if (!V.isVisible(s)) toast('That waypoint is hidden by a filter above'); M.flyTo(s.lon, s.lat, 14); if (innerWidth <= 760) closePanel(); } }
   };
@@ -145,6 +145,8 @@ export function openSpotForm(s = {}, lookupWmu = false) {
     <div class="span2"><div class="pick-label">Animal</div><div class="animal-pick" role="radiogroup">${PICK.map(([sp, g]) => `<button type="button" role="radio" data-sp="${esc(sp)}" aria-checked="${(d.species || '') === sp}">${glyphSVG(g, { size: 34 })}<span>${esc(sp.replace(' Deer', ' deer').replace('White-tailed deer', 'Whitetail'))}</span></button>`).join('')}</div></div>
     <label>Species <input name="species" list="speciesList" value="${esc(d.species || '')}" placeholder="or type one"></label>
     <label>Sex <select name="sex"></select></label>
+    <div class="span2 sign-field"><div class="pick-label">What sign?</div><div class="kind-pick sign-pick" role="radiogroup">${SIGN_TYPES.map((t) => `<button type="button" role="radio" data-sign="${t}" aria-checked="${d.extra?.sign_type === t}" style="--k:#ef6c00">${t}</button>`).join('')}</div>
+      <input type="hidden" name="sign_type" value="${esc(d.extra?.sign_type || '')}"></div>
     <label class="pts-field">Points <input name="points" type="number" min="1" max="20" inputmode="numeric" value="${esc(d.extra?.points ?? '')}" placeholder="e.g. 4"></label>
     <label>Name <input name="name" value="${esc(d.name || '')}" placeholder="Filled in for you"></label>
     <label>Hunter <input name="hunter" list="hunterList" value="${esc(d.hunter || 'Me')}"></label>
@@ -173,15 +175,18 @@ export function openSpotForm(s = {}, lookupWmu = false) {
     form.querySelectorAll('[data-sp]').forEach((x) => x.setAttribute('aria-checked', String(x.dataset.sp.toLowerCase() === (form.species.value || '').toLowerCase())));
   };
   // Sex labels follow the species (Bull/Cow, Buck/Doe…); points only for antlered animals; name auto-fills until you type your own.
-  let auto = !d.name || d.name === autoName(d);
+  let auto = !d.name || d.name === autoName({ ...d, sign: d.extra?.sign_type });
   const refresh = () => {
     const [m, f] = sexTerms(form.species.value); const cur = form.sex.value || d.sex || '';
     form.sex.innerHTML = `<option value="">Unknown</option><option value="M">${m}</option><option value="F">${f}</option>`; form.sex.value = cur;
     form.querySelector('.pts-field').classList.toggle('hidden', !(hasPoints(form.species.value) && ['kill', 'sighting'].includes(form.kind.value) && form.sex.value !== 'F'));
-    if (auto) form.name.value = autoName({ kind: form.kind.value, species: form.species.value, sex: form.sex.value });
+    form.querySelector('.sign-field').classList.toggle('hidden', form.kind.value !== 'sign');
+    form.querySelectorAll('[data-sign]').forEach((x) => x.setAttribute('aria-checked', String(x.dataset.sign === form.sign_type.value)));
+    if (auto) form.name.value = autoName({ kind: form.kind.value, species: form.species.value, sex: form.sex.value, sign: form.sign_type.value });
   };
   form.name.addEventListener('input', () => { auto = !form.name.value; });
   form.addEventListener('click', (e) => {
+    const sg = e.target.closest('[data-sign]'); if (sg) { form.sign_type.value = form.sign_type.value === sg.dataset.sign ? '' : sg.dataset.sign; refresh(); markDirty(); return; }
     const k = e.target.closest('[data-kind]'); if (k) { form.kind.value = k.dataset.kind; syncPick(); refresh(); markDirty(); }
     const a = e.target.closest('[data-sp]'); if (a) { form.species.value = a.dataset.sp; if (KINDS.find((k) => k.id === form.kind.value)?.group === 'place') form.kind.value = 'sighting'; syncPick(); refresh(); markDirty(); }
   });
@@ -200,8 +205,9 @@ export function openSpotForm(s = {}, lookupWmu = false) {
     const o = formData(form); o.lat = +o.lat; o.lon = +o.lon; o.wmu = normMU(o.wmu) || null;
     const pts = form.querySelector('.pts-field').classList.contains('hidden') ? null : +o.points || null; delete o.points;
     o.extra = { ...(s.extra || {}), points: pts || undefined }; if (!pts) delete o.extra.points;
+    if (o.kind === 'sign' && o.sign_type) o.extra.sign_type = o.sign_type; else delete o.extra.sign_type; delete o.sign_type;
     for (const k of ['trip_id', 'group_id']) { if (o[k]) o.extra[k] = o[k]; else delete o.extra[k]; delete o[k]; }
-    if (!o.name) o.name = autoName(o);
+    if (!o.name) o.name = autoName({ ...o, sign: o.extra?.sign_type });
     o.observed_at = o.observed_at ? new Date(o.observed_at).toISOString() : null;
     try {
       if (isNew) { o.source = 'manual'; await db.insert('spots', o); lastDefaults = { hunter: o.hunter, kind: o.kind, species: o.species, weapon: o.weapon }; }

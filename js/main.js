@@ -1,20 +1,20 @@
-import * as db from './db.js?v=20261112232336-49fa4b1';
-import { store } from './db.js?v=20261112232336-49fa4b1';
-import * as M from './map.js?v=20261112232336-49fa4b1';
-import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261112232336-49fa4b1';
-import { $, $$, esc, toast, closeModal, requestClose, todayISO, earthLink } from './util.js?v=20261112232336-49fa4b1';
-import { REGS_URL, BASES } from './config.js?v=20261112232336-49fa4b1';
-import { sunInfo } from './views/sun.js?v=20261112232336-49fa4b1';
-import { mvprSummary, mvprStatus } from './mvpr.js?v=20261112232336-49fa4b1';
-import { icon, hydrateIcons } from './icons.js?v=20261112232336-49fa4b1';
-import * as R from './route.js?v=20261112232336-49fa4b1';
-import * as V from './vis.js?v=20261112232336-49fa4b1';
+import * as db from './db.js?v=20261113010538-c99624f';
+import { store } from './db.js?v=20261113010538-c99624f';
+import * as M from './map.js?v=20261113010538-c99624f';
+import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261113010538-c99624f';
+import { $, $$, esc, toast, closeModal, requestClose, todayISO, earthLink } from './util.js?v=20261113010538-c99624f';
+import { REGS_URL, BASES } from './config.js?v=20261113010538-c99624f';
+import { sunInfo } from './views/sun.js?v=20261113010538-c99624f';
+import { mvprSummary, mvprStatus } from './mvpr.js?v=20261113010538-c99624f';
+import { icon, hydrateIcons } from './icons.js?v=20261113010538-c99624f';
+import * as R from './route.js?v=20261113010538-c99624f';
+import * as V from './vis.js?v=20261113010538-c99624f';
 
 const views = {};
 const viewModules = {
-  layers: () => import('./views/layers.js?v=20261112232336-49fa4b1'), open: () => import('./views/open.js?v=20261112232336-49fa4b1'), log: () => import('./views/log.js?v=20261112232336-49fa4b1'),
-  trips: () => import('./views/trips.js?v=20261112232336-49fa4b1'), tags: () => import('./views/tags.js?v=20261112232336-49fa4b1'), insights: () => import('./views/insights.js?v=20261112232336-49fa4b1'),
-  import: () => import('./views/import.js?v=20261112232336-49fa4b1'), sun: () => import('./views/sun.js?v=20261112232336-49fa4b1'), more: () => import('./views/more.js?v=20261112232336-49fa4b1'),
+  layers: () => import('./views/layers.js?v=20261113010538-c99624f'), open: () => import('./views/open.js?v=20261113010538-c99624f'), log: () => import('./views/log.js?v=20261113010538-c99624f'),
+  trips: () => import('./views/trips.js?v=20261113010538-c99624f'), tags: () => import('./views/tags.js?v=20261113010538-c99624f'), insights: () => import('./views/insights.js?v=20261113010538-c99624f'),
+  import: () => import('./views/import.js?v=20261113010538-c99624f'), sun: () => import('./views/sun.js?v=20261113010538-c99624f'), more: () => import('./views/more.js?v=20261113010538-c99624f'),
 };
 export const app = { tab: 'layers', date: todayISO(), dropMode: false };
 const isPhone = () => innerWidth <= 760;
@@ -37,6 +37,7 @@ async function showTab(tab) {
   try { localStorage.setItem('hunthq_tab', tab); } catch {}
 }
 export const rerender = () => showTab(app.tab);
+export const showTabPublic = (t) => showTab(t);
 // If a view can't load (usually a half-updated cache right after a deploy) say so instead of doing nothing.
 const loadFail = (e) => `<div class="empty" style="margin-top:24px"><b>This section didn't load</b><span class="muted">The app was probably just updated. Reloading fixes it.${e ? '<br><small>' + esc(String(e.message || e)).slice(0, 140) + '</small>' : ''}</span>
   <button class="primary" onclick="location.reload()">Reload app</button></div>`;
@@ -49,7 +50,7 @@ export function closePanel() {
   M.setSelection?.(null); M.map?.setPadding({ left: 0, top: 0, right: 0, bottom: 0 });
 }
 export async function openWmu(mu, region) {
-  const { showWmu } = await import('./views/wmu.js?v=20261112232336-49fa4b1');
+  const { showWmu } = await import('./views/wmu.js?v=20261113010538-c99624f');
   if (app.tab === 'open') views.open?.onLeave?.();
   $$('#tabs button').forEach((b) => b.classList.remove('active'));
   openPanel(); const v = $('#view'); v.scrollTop = 0;
@@ -159,6 +160,21 @@ function wireUI() {
   ctrl.append($('#baseBtn'), $('#terrainBtn'));
   M.map.addControl({ onAdd: () => ctrl, onRemove: () => ctrl.remove() }, 'top-right');
   $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-tab]'); if (b) showTab(b.dataset.tab); });
+  // Tab bar scroll cue: a thin track showing where you are, plus › / ‹ buttons when more tabs are off-screen.
+  const nav = $('#tabs'), thumb = $('#tabsThumb');
+  const syncTabs = () => {
+    const max = nav.scrollWidth - nav.clientWidth; const frac = nav.clientWidth / nav.scrollWidth;
+    $('#tabsTrack').classList.toggle('hidden', max <= 2);
+    thumb.style.width = `${Math.max(12, frac * 100)}%`;
+    thumb.style.transform = `translateX(${max > 0 ? (nav.scrollLeft / max) * ((1 - frac) / frac) * 100 : 0}%)`;
+    $('#tabsMore').classList.toggle('hidden', nav.scrollLeft >= max - 2);
+    $('#tabsLess').classList.toggle('hidden', nav.scrollLeft <= 2);
+  };
+  nav.addEventListener('scroll', syncTabs, { passive: true }); addEventListener('resize', syncTabs);
+  new ResizeObserver(syncTabs).observe(nav);
+  $('#tabsMore').onclick = () => nav.scrollBy({ left: nav.clientWidth * 0.7, behavior: M.reducedMotion() ? 'auto' : 'smooth' });
+  $('#tabsLess').onclick = () => nav.scrollBy({ left: -nav.clientWidth * 0.7, behavior: M.reducedMotion() ? 'auto' : 'smooth' });
+  syncTabs();
   $('#menuBtn').onclick = () => (panelOpen() && app.tab !== 'layers' ? closePanel() : showTab(app.tab === 'layers' ? 'log' : app.tab));
   $('#layersBtn').onclick = () => (app.tab === 'layers' && panelOpen() ? closePanel() : showTab('layers'));
   $('#panelX').onclick = closePanel;
@@ -183,10 +199,10 @@ function wireUI() {
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const { act, id } = b.dataset;
-    if (act === 'edit-spot') (await import('./views/log.js?v=20261112232336-49fa4b1')).openSpotForm(store.spots.find((s) => s.id === id));
-    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261112232336-49fa4b1')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'edit-spot') (await import('./views/log.js?v=20261113010538-c99624f')).openSpotForm(store.spots.find((s) => s.id === id));
+    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261113010538-c99624f')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
     if (act === 'wmu') { e.preventDefault(); popup?.remove(); M.selectWmu(b.dataset.mu); openWmu(b.dataset.mu, b.dataset.region); }
-    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261112232336-49fa4b1')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261113010538-c99624f')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
   });
   document.addEventListener('submit', (e) => {
     if (!e.target.matches('[data-wmuform]')) return; e.preventDefault();
@@ -197,7 +213,7 @@ function wireUI() {
     if (R.drawing()) { R.add(e.lngLat); return; }
     if (app.dropMode) {
       setDropMode(false);
-      const { openSpotForm } = await import('./views/log.js?v=20261112232336-49fa4b1');
+      const { openSpotForm } = await import('./views/log.js?v=20261113010538-c99624f');
       const form = openSpotForm({ lat: e.lngLat.lat, lon: e.lngLat.lng });
       const res = await M.identify(e.lngLat, ['wmu']);
       const w = M.wmuFromIdentify(res); if (w && form?.wmu && !form.wmu.value) form.wmu.value = w;

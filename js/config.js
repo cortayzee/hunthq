@@ -70,7 +70,7 @@ export const KINDS = [
   { id: 'feed', name: 'Feeding area', color: '#7cb342', group: 'scout' },
   { id: 'water', name: 'Water', color: '#0288d1', group: 'scout' },
   { id: 'bedding', name: 'Bedding area', color: '#8d6e63', group: 'scout' },
-  { id: 'sign', name: 'Rub / scrape / sign', color: '#ef6c00', group: 'scout' },
+  { id: 'sign', name: 'Sign (rub, tracks, scat…)', color: '#ef6c00', group: 'scout' },
   { id: 'wallow', name: 'Wallow', color: '#6d4c41', group: 'scout' },
   { id: 'glass', name: 'Glassing spot', color: '#546e7a', group: 'scout' },
   { id: 'trailcam', name: 'Trail cam', color: '#17becf', group: 'scout' },
@@ -84,6 +84,7 @@ export const KINDS = [
   { id: 'hazard', name: 'Hazard', color: '#f9a825', group: 'place' },
   { id: 'note', name: 'Note', color: '#7f7f7f', group: 'place' },
 ];
+export const SIGN_TYPES = ['Rub', 'Scrape', 'Tracks', 'Droppings', 'Bed', 'Shed', 'Hair', 'Trail', 'Kill site', 'Other'];
 export const KIND_GROUPS = [['hunt', 'Hunt'], ['scout', 'Scouting'], ['place', 'Camp & access']];
 export const kindColor = (k) => (KINDS.find((x) => x.id === k) || KINDS[KINDS.length - 1]).color;
 

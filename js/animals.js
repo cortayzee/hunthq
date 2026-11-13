@@ -109,7 +109,9 @@ export const sexTerms = (sp) => TERMS[termKey(sp)] || ['Male', 'Female'];
 export const hasPoints = (sp) => ['deer', 'elk', 'moose', 'caribou'].includes(animalFor(sp));
 const shortSp = (sp) => (sp || '').replace(/^White-?tailed Deer$/i, 'Whitetail').replace(/ \(.*\)$/, '').trim();
 const PLACE = { camp: 'Camp', trailcam: 'Trail Cam', stand: 'Stand', access: 'Parking', service: 'Cell Service', note: 'Note', feed: 'Feeding Area', water: 'Water', bedding: 'Bedding Area', sign: 'Sign', wallow: 'Wallow', glass: 'Glassing Spot', trailhead: 'Trailhead', bridge: 'Bridge', gate: 'Gate', hazard: 'Hazard' };
-export function autoName({ kind, species, sex } = {}) {
+export function autoName({ kind, species, sex, sign } = {}) {
+  // Sign: "Elk Rub", "Deer Tracks", "Bear Droppings"
+  if (kind === 'sign') { const sp = species ? shortSp(species).replace(/\b\w/g, (c) => c.toUpperCase()) + ' ' : ''; return (sp + (sign || 'Sign')).trim(); }
   if (PLACE[kind] && !species) return PLACE[kind];
   if (!species) return kind === 'kill' ? 'Kill' : kind === 'sighting' ? 'Sighting' : PLACE[kind] || '';
   const k = termKey(species); const i = sex === 'M' ? 0 : sex === 'F' ? 1 : -1;
@@ -119,4 +121,4 @@ export function autoName({ kind, species, sex } = {}) {
   return k === 'bullcow' ? `${t} ${sp}` : `${sp} ${t}`;
 }
 // Map/list label: name plus points when known.
-export const spotLabel = (s) => (s.name || autoName(s)) + (s.extra?.points ? ` · ${s.extra.points} pt` : '');
+export const spotLabel = (s) => (s.name || autoName({ ...s, sign: s.extra?.sign_type })) + (s.extra?.points ? ` · ${s.extra.points} pt` : '');
