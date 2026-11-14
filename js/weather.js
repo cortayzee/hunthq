@@ -1,7 +1,7 @@
 // Weather (Open-Meteo, no key) + an hour-by-hour movement index for big game.
 // The movement index is a transparent rule-based estimate from known drivers (light, rut, temperature change,
 // pressure, wind, precipitation, moon). It is NOT trained on trail-cam data; the UI says so.
-import { rutStatus, solunar } from './rut.js?v=20261114004928-4d6f117';
+import { rutStatus, solunar } from './rut.js?v=20261114005258-175d440';
 
 const H = 'temperature_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation_probability,precipitation,snowfall,pressure_msl,cloud_cover,is_day,relative_humidity_2m';
 const D = 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,sunrise,sunset';
@@ -87,25 +87,35 @@ export function movement(wx, sp, lat, lon, abund = null) {
     const hr = (x) => (h.t - x) / 36e5;
     const crep = Math.max(gauss(hr(d.sunrise) - 0.3, 1.25), gauss(hr(d.sunset) + 0.1, 1.25));
     const dark = h.t < d.sunrise - 36e5 || h.t > +d.sunset + 36e5;
-    let s = (dark ? 0.13 : 0.09) + 0.3 * crep;
+    // Baseline: deer are crepuscular. ~33% at first/last light, ~7% midday, ~10% in the dark.
+    let s = (dark ? 0.10 : 0.07) + 0.26 * crep;
     const rs = rutStatus(sp, h.t); const hot = rs?.cur && RUT_HOT.test(rs.cur.name);
-    if (hot) { const add = 0.08 + 0.1 * (1 - crep) * (dark ? 0.3 : 1); s += add; f.push([add, /rut/i.test(rs.cur.name) ? `the ${rs.cur.name.toLowerCase()}` : `the ${rs.cur.name.toLowerCase()} phase of the rut`]); }
+    // Rut: bucks move at all hours, so it lifts midday more than it lifts the already-busy twilight.
+    if (hot) { const add = 0.05 + 0.08 * (1 - crep) * (dark ? 0.3 : 1); s += add; f.push([add, /rut/i.test(rs.cur.name) ? `the ${rs.cur.name.toLowerCase()}` : `the ${rs.cur.name.toLowerCase()} phase of the rut`]); }
+    // Temperature: a sudden drop below recent days is one of the strongest triggers; heat shuts daylight movement down.
     const dev = mean(d) - recent;
-    if (Math.abs(dev) >= 2) { const v = Math.max(-0.12, Math.min(0.12, -dev * 0.02)); s += v; f.push([v, dev < 0 ? `${Math.round(-dev)}° colder than recent days` : `${Math.round(dev)}° warmer than recent days`]); }
+    if (Math.abs(dev) >= 2) { const v = Math.max(-0.08, Math.min(0.1, -dev * 0.018)); s += v; f.push([v, dev < 0 ? `${Math.round(-dev)}° colder than recent days` : `${Math.round(dev)}° warmer than recent days`]); }
     if (h.temp > 14) { const v = -Math.min(0.12, (h.temp - 14) * 0.015); s += v; f.push([v, 'warm temperatures']); }
-    const p3 = hours[i - 3]?.hpa; if (p3 != null) {
-      const dp = h.hpa - p3;
-      if (dp <= -1.5) { s += 0.05; f.push([0.05, 'falling pressure ahead of a front']); }
-      else if (dp >= 1.2 && h.hpa < 1016) { s += 0.07; f.push([0.07, 'rising pressure after a front']); }
-    }
-    if (h.wind >= 30) { s -= 0.14; f.push([-0.14, `strong wind (${Math.round(h.wind)} km/h)`]); }
-    else if (h.wind >= 20) { s -= 0.06; f.push([-0.06, `breezy (${Math.round(h.wind)} km/h)`]); }
-    if (h.gust >= 55) { s -= 0.06; f.push([-0.06, 'gusts over 55 km/h']); }
-    if (h.mm >= 2) { s -= 0.14; f.push([-0.14, 'heavy precipitation']); }
-    else if (h.mm >= 0.4) { s -= 0.05; f.push([-0.05, h.snow > 0.2 ? 'steady snow' : 'steady rain']); }
-    else { const prev = hours.slice(Math.max(0, i - 8), i).reduce((a, x) => a + (x.mm || 0), 0); if (prev >= 3) { s += 0.08; f.push([0.08, 'the storm clearing out']); } }
+    // Barometric pressure: the 3-hour trend (fronts) plus the level itself (high, steady pressure is good; deep lows are poor).
+    const p3 = hours[i - 3]?.hpa; const dp = p3 != null ? h.hpa - p3 : 0;
+    if (dp <= -1.5) { s += 0.04; f.push([0.04, 'falling pressure ahead of a front']); }
+    else if (dp >= 1.2 && h.hpa < 1018) { s += 0.06; f.push([0.06, 'rising pressure after a front']); }
+    else if (h.hpa >= 1018 && Math.abs(dp) < 1) { s += 0.03; f.push([0.03, `high, steady pressure (${Math.round(h.hpa)} hPa)`]); }
+    else if (h.hpa < 1004) { s -= 0.04; f.push([-0.04, `low pressure (${Math.round(h.hpa)} hPa)`]); }
+    // Wind: a moderate breeze (8–24 km/h, about 5–15 mph) helps; strong wind keeps deer bedded.
+    if (h.wind >= 35) { s -= 0.12; f.push([-0.12, `strong wind (${Math.round(h.wind)} km/h)`]); }
+    else if (h.wind >= 25) { s -= 0.05; f.push([-0.05, `windy (${Math.round(h.wind)} km/h)`]); }
+    else if (h.wind >= 8) { s += 0.02; f.push([0.02, `a moderate breeze (${Math.round(h.wind)} km/h)`]); }
+    if (h.gust >= 55) { s -= 0.05; f.push([-0.05, 'gusts over 55 km/h']); }
+    // Rain/snow: light precipitation is fine or slightly good; heavy stuff isn't. Movement jumps when a storm clears.
+    if (h.mm >= 2.5) { s -= 0.12; f.push([-0.12, h.snow > 1 ? 'heavy snow' : 'heavy rain']); }
+    else if (h.mm >= 1) { s -= 0.03; f.push([-0.03, h.snow > 0.4 ? 'steady snow' : 'steady rain']); }
+    else if (h.mm >= 0.1) { s += 0.02; f.push([0.02, h.snow > 0.05 ? 'light snow' : 'light rain']); }
+    else { const prev = hours.slice(Math.max(0, i - 8), i).reduce((a, x) => a + (x.mm || 0), 0); if (prev >= 3) { s += 0.07; f.push([0.07, 'the storm clearing out']); } }
+    // Overcast days stretch the twilight: more daytime movement.
+    if (!dark && h.cloud >= 75 && crep < 0.6 && h.mm < 1) { s += 0.03; f.push([0.03, 'overcast skies']); }
     const w = sol(dk, h.t).find((x) => h.t >= x.s && h.t <= x.e);
-    if (w) { const v = w.kind === 'major' ? 0.04 : 0.02; s += v; f.push([v, `a solunar ${w.kind} (${w.what})`]); }
+    if (w) { const v = w.kind === 'major' ? 0.03 : 0.015; s += v; f.push([v, `a solunar ${w.kind} (${w.what})`]); }
     // Compare with an average unit (f ≈ 0.775), so plentiful animals read as helping and scarce ones as hurting.
     if (abund) { s *= abund.f; const vsAvg = s - s * (0.775 / abund.f); if (abund.label !== 'Average' && Math.abs(vsAvg) >= 0.02) f.push([vsAvg, abund.note]); }
     const legal = h.t >= d.sunrise - 18e5 && h.t <= +d.sunset + 18e5;
