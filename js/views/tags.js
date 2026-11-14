@@ -1,14 +1,14 @@
-import * as db from '../db.js?v=20261113181344-c6f16a5';
-import { store, hunters } from '../db.js?v=20261113181344-c6f16a5';
-import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261113181344-c6f16a5';
-import { hunterDatalist, speciesDatalist } from './log.js?v=20261113181344-c6f16a5';
-import { icon } from '../icons.js?v=20261113181344-c6f16a5';
-import * as M from '../map.js?v=20261113181344-c6f16a5';
-import * as LIC from '../licences.js?v=20261113181344-c6f16a5';
-import * as A from '../access.js?v=20261113181344-c6f16a5';
-import * as L from '../limits.js?v=20261113181344-c6f16a5';
-import { SEASONS, openRange } from '../seasons.js?v=20261113181344-c6f16a5';
-import { muSort } from '../seasons.js?v=20261113181344-c6f16a5';
+import * as db from '../db.js?v=20261114003344-7b8631d';
+import { store, hunters } from '../db.js?v=20261114003344-7b8631d';
+import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261114003344-7b8631d';
+import { hunterDatalist, speciesDatalist } from './log.js?v=20261114003344-7b8631d';
+import { icon } from '../icons.js?v=20261114003344-7b8631d';
+import * as M from '../map.js?v=20261114003344-7b8631d';
+import * as LIC from '../licences.js?v=20261114003344-7b8631d';
+import * as A from '../access.js?v=20261114003344-7b8631d';
+import * as L from '../limits.js?v=20261114003344-7b8631d';
+import { SEASONS, openRange } from '../seasons.js?v=20261114003344-7b8631d';
+import { muSort } from '../seasons.js?v=20261114003344-7b8631d';
 
 // Tags & LEH. LEH hunts come from the 2026-2027 LEH synopsis (hunt-hq-handoff/data/leh_2026.json, scripts/parse_leh.py).
 const yr = new Date().getFullYear();
@@ -91,17 +91,18 @@ export function huntCard(h, { compact = false } = {}) {
   return `<article class="leh-card ${p ? 'picked' : ''}" data-hl="${h.code}" tabindex="0" title="Tap to show on the map">
     <span class="leh-code tnum">${h.code}</span>
     <div class="t"><b>${esc(h.sp || '')}, ${esc(h.class.toLowerCase())}</b><span class="muted">${esc(where)}</span>
-      <span class="leh-meta tnum">${esc(h.dates)} · ${h.auth} tag${h.auth === 1 ? '' : 's'}${h.tag ? ` · ${esc(youthHunt(h) ? 'youth only (under 18)' : h.tag.toLowerCase())}` : ''}</span>${compact ? '' : `<span class="leh-flags">${flagChips(h)}${groupChip(h)}</span>`}</div>
+      <span class="leh-meta tnum">${esc(h.dates)} · ${h.auth} tag${h.auth === 1 ? '' : 's'}${h.tag ? ` · ${esc(youthHunt(h) ? 'youth only (under 18)' : h.tag.toLowerCase())}` : ''}</span></div>
     <div class="leh-side"><span class="leh-odds ${o.cls}" title="${esc(o.small)}">${o.big}</span>
       ${compact ? '' : p ? `<button class="pick-btn on" data-unpick="${p.id}" aria-label="Remove ${h.code} from my picks">${icon('check', { size: 16 })}${p.choice === 2 ? '2nd' : '1st'}</button>`
         : `<button class="pick-btn" data-pick="${h.code}" aria-label="Add ${h.code} to my picks">${icon('plus', { size: 16 })}Pick</button>`}</div>
+    ${compact ? '' : `<div class="leh-flags">${flagChips(h)}${groupChip(h)}</div>`}
   </article>`;
 }
 
 // ---- Recommended LEH hunts ----
 // score = 45% odds + 20% hunter success in that unit + 20% familiarity (units/regions you hunt) + 15% timing (months you hunt)
 const REC_W = { odds: 0.45, succ: 0.2, fam: 0.2, time: 0.15 };
-let HV = null; const harvestData = () => HV || (HV = import('../wildlife.js?v=20261113181344-c6f16a5').then((m) => m.harvest()).catch(() => null));
+let HV = null; const harvestData = () => HV || (HV = import('../wildlife.js?v=20261114003344-7b8631d').then((m) => m.harvest()).catch(() => null));
 function recContext(H) {
   const mus = new Set([...store.trips.map((t) => t.wmu), ...store.spots.map((x) => x.wmu)].filter(Boolean));
   const regions = new Set([...mus].map((m) => String(m).split('-')[0]));
@@ -178,15 +179,27 @@ export async function render(v) {
     <div id="recList"><p class="muted">Scoring hunts…</p></div></details>
   <h3 class="sub-h">Find hunts <span class="muted tnum">${hunts.length}</span></h3>
   <div class="sp-filter" id="findSp">${['', ...species].map((s) => `<button class="f-chip" aria-pressed="${ui.sp === s}" data-sp="${esc(s)}">${esc(s || 'All')}</button>`).join('')}</div>
-  <div class="grid2" style="margin:8px 0">
-    <label>Region <select id="lReg"><option value="">All regions</option>${REGIONS.map(([id, n]) => `<option value="${id}" ${ui.region === id ? 'selected' : ''}>${id} · ${n}</option>`).join('')}</select></label>
-    <label>When <select id="lWhen">${WHEN_OPTS.map(([v, n]) => `<option value="${v}" ${ui.when === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
-    <label id="lDayWrap" class="${ui.when === 'day' ? '' : 'hidden'}">Date <input type="date" id="lDay" value="${ui.day}"></label>
-    <label>Access <select id="lAcc">${[['', 'Any access'], ['easy', 'Easy access only'], ['drive', 'Easy or rough roads'], ['remote', 'Remote only']].map(([k, n]) => `<option value="${k}" ${ui.acc === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
-    <label>Sort <select id="lSort">${opts([{ id: 'rec', name: 'Recommended for me' }, { id: 'odds', name: 'Best odds' }, { id: 'popular', name: 'Most popular (worst odds)' }, { id: 'tags', name: 'Most tags' }, { id: 'code', name: 'Hunt code' }, { id: 'date', name: 'Season start' }], ui.sort)}</select></label>
-    <input id="lQ" class="span2" type="search" placeholder="Search area, WMU or class" value="${esc(ui.q)}">
+  <div class="find-bar"><input id="lQ" type="search" placeholder="Search area, WMU, code or class" value="${esc(ui.q)}" aria-label="Search hunts">
+    <button type="button" id="lFilt" class="filt-btn" aria-expanded="${!!ui.fOpen}" aria-controls="lPanel">${icon('list', { size: 18 })}<span>Filters</span><b class="filt-n hidden"></b></button></div>
+  <div id="lPanel" class="filt-panel ${ui.fOpen ? '' : 'hidden'}">
+    <div class="fp-sec"><h4>Where</h4><div class="grid2">
+      <label>Region <select id="lReg"><option value="">All regions</option>${REGIONS.map(([id, n]) => `<option value="${id}" ${ui.region === id ? 'selected' : ''}>${id} · ${n}</option>`).join('')}</select></label>
+      <label>Season dates <select id="lWhen">${WHEN_OPTS.map(([v, n]) => `<option value="${v}" ${ui.when === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      <label id="lDayWrap" class="span2 ${ui.when === 'day' ? '' : 'hidden'}">Open on <input type="date" id="lDay" value="${ui.day}"></label></div>
+      <label class="switch"><input type="checkbox" id="lMine" ${ui.mine ? 'checked' : ''}><span>Only units I've hunted (${myMus().size})</span></label></div>
+    <div class="fp-sec"><h4>Road access</h4><div class="seg seg-full" data-fseg="acc"><button type="button" data-v="" class="${(ui.acc || '') === '' ? 'on' : ''}">Any</button><button type="button" data-v="easy" class="${(ui.acc || '') === 'easy' ? 'on' : ''}">Easy</button><button type="button" data-v="drive" class="${(ui.acc || '') === 'drive' ? 'on' : ''}">Easy + rough</button><button type="button" data-v="remote" class="${(ui.acc || '') === 'remote' ? 'on' : ''}">Remote</button></div></div>
+    <div class="fp-sec"><h4>Animal</h4><div class="seg seg-full" data-fseg="cls"><button type="button" data-v="" class="${(ui.cls || '') === '' ? 'on' : ''}">Any</button><button type="button" data-v="male" class="${(ui.cls || '') === 'male' ? 'on' : ''}">Bulls, bucks, rams</button><button type="button" data-v="anl" class="${(ui.cls || '') === 'anl' ? 'on' : ''}">Antlerless</button></div></div>
+    <div class="fp-sec"><h4>Draw odds</h4><div class="seg seg-full" data-fseg="odds"><button type="button" data-v="" class="${(ui.odds || '') === '' ? 'on' : ''}">Any</button><button type="button" data-v="10" class="${(ui.odds || '') === '10' ? 'on' : ''}">1 in 10 or better</button><button type="button" data-v="3" class="${(ui.odds || '') === '3' ? 'on' : ''}">1 in 3 or better</button></div></div>
+    <div class="fp-sec"><h4>Hide</h4>
+      <label class="switch"><input type="checkbox" data-fsw="hPriv" ${ui.hPriv ? 'checked' : ''}><span>Private land (landowner permission)</span></label>
+      <label class="switch"><input type="checkbox" data-fsw="hArch" ${ui.hArch ? 'checked' : ''}><span>Archery only</span></label>
+      <label class="switch"><input type="checkbox" data-fsw="hHard" ${ui.hHard ? 'checked' : ''}><span>Hard access (parks, snow machines)</span></label></div>
+    <div class="fp-sec"><h4>Applying</h4>
+      <label class="switch"><input type="checkbox" data-fsw="grp" ${ui.grp ? 'checked' : ''}><span>Can apply with my crew (shared or group)</span></label></div>
+    <div class="fp-foot"><button type="button" class="link" id="fClear">Clear filters</button><button type="button" class="primary small" id="fDone">Show hunts</button></div>
   </div>
-  <label class="switch"><input type="checkbox" id="lMine" ${ui.mine ? 'checked' : ''}><span>Only units I've hunted (${myMus().size})</span></label>
+  <div id="lActive" class="active-chips"></div>
+  <div class="res-bar"><span id="lCount" class="muted"></span><label class="sort-inline"><span>Sort</span><select id="lSort" aria-label="Sort hunts">${opts([{ id: 'rec', name: 'Recommended' }, { id: 'odds', name: 'Best odds' }, { id: 'popular', name: 'Most popular' }, { id: 'tags', name: 'Most tags' }, { id: 'date', name: 'Season start' }, { id: 'code', name: 'Hunt code' }], ui.sort)}</select></label></div>
   <div id="lList"></div>`;
   let fitNext = false;
   render.reveal = (code) => { ui.pin = code; draw(); };
@@ -197,10 +210,28 @@ export async function render(v) {
     el.innerHTML = top.length ? top.map((h) => { const r = scoreOf.get(h.code); return `<div class="rec-item"><span class="rec-score tnum" title="Score out of 100">${r.score}</span>${huntCard(h)}<div class="rec-why">${r.why.map((w) => `<span>${esc(w)}</span>`).join('')}</div></div>`; }).join('')
       : '<p class="muted">Pick at least one species above.</p>';
   };
+
+  const ACC_N = { easy: 'Easy access', drive: 'Easy or rough roads', remote: 'Remote' }, CLS_N = { male: 'Bulls, bucks, rams', anl: 'Antlerless' };
+  const active = () => [
+    ui.region && ['region', `Region ${ui.region}`], ui.when && ['when', ui.when === 'day' ? `Open ${ui.day || 'on a date'}` : WHEN_OPTS.find((w) => w[0] === ui.when)?.[1]],
+    ui.mine && ['mine', "Units I've hunted"], ui.acc && ['acc', ACC_N[ui.acc]], ui.cls && ['cls', CLS_N[ui.cls]], ui.odds && ['odds', `1 in ${ui.odds} or better`],
+    ui.hPriv && ['hPriv', 'No private land'], ui.hArch && ['hArch', 'No archery only'], ui.hHard && ['hHard', 'No hard access'], ui.grp && ['grp', 'Crew can apply'],
+  ].filter(Boolean);
+  const drawActive = (n) => {
+    const a = active(); const badge = body.querySelector('.filt-n'); badge.textContent = a.length; badge.classList.toggle('hidden', !a.length);
+    body.querySelector('#fDone').textContent = `Show ${n} hunt${n === 1 ? '' : 's'}`;
+    body.querySelector('#lActive').innerHTML = a.length ? a.map(([k, n]) => `<button class="act-chip" data-clr="${k}">${esc(n)}${icon('x', { size: 14 })}</button>`).join('') + '<button class="link act-clear" data-clr="*">Clear all</button>' : '';
+  };
+  const clearKey = (k) => { if (k === 'region') ui.region = ''; else if (k === 'when') { ui.when = ''; ui.day = ''; } else if (k === 'mine') ui.mine = false; else if (['hPriv', 'hArch', 'hHard', 'grp'].includes(k)) ui[k] = false; else ui[k] = ''; };
   const draw = () => {
     const q = ui.q.toLowerCase(); const mine = myMus();
     const accOk = (h) => { if (!ui.acc) return true; const lv = A.level(A.forKey(lehKey(h), h.mus[0])); return ui.acc === 'drive' ? lv !== 'remote' : lv === ui.acc; };
-    let list = hunts.filter((h) => visible(h) && accOk(h) && whenOk(h) && (!ui.sp || h.sp === ui.sp) && (!ui.region || h.rn === ui.region) && (!ui.mine || h.mus.some((m) => mine.has(m)))
+    const fl = (h) => h.flags || [];
+    const clsOk = (h) => !ui.cls || (ui.cls === 'male' ? maleOnly(h) : /antlerless|cow|calf|ewe|nanny|doe/i.test(h.class || ''));
+    const oddsOk = (h) => !ui.odds || (h.odds != null && h.odds <= +ui.odds);
+    const hideOk = (h) => !(ui.hPriv && fl(h).includes('private')) && !(ui.hArch && archeryHunt(h)) && !(ui.hHard && fl(h).includes('access'));
+    const grpOk = (h) => !ui.grp || !!groupRule(h);
+    let list = hunts.filter((h) => visible(h) && accOk(h) && clsOk(h) && oddsOk(h) && hideOk(h) && grpOk(h) && whenOk(h) && (!ui.sp || h.sp === ui.sp) && (!ui.region || h.rn === ui.region) && (!ui.mine || h.mus.some((m) => mine.has(m)))
       && (!q || [h.code, h.area, h.mu, h.mus.join(' '), h.class, h.tag, h.sp].join(' ').toLowerCase().includes(q)));
     const startKey = (h) => { const r = huntRanges(h)[0]; if (!r) return '99'; const m = +r[0].slice(0, 2); return (m < 7 ? m + 12 : m) + r[0].slice(2); }; // season year runs Aug -> spring
     list.sort(ui.sort === 'rec' ? (a, b) => scoreOf.get(b.code).score - scoreOf.get(a.code).score : ui.sort === 'popular' ? (a, b) => (b.odds ?? -1) - (a.odds ?? -1) : ui.sort === 'date' ? (a, b) => startKey(a).localeCompare(startKey(b)) : ui.sort === 'odds' ? (a, b) => (a.odds ?? 1e9) - (b.odds ?? 1e9) : ui.sort === 'tags' ? (a, b) => b.auth - a.auth : (a, b) => a.code.localeCompare(b.code));
@@ -208,14 +239,26 @@ export async function render(v) {
     const shown = list.slice(0, ui.limit);
     showFiltered(list, { fit: fitNext }); fitNext = false;
     const hidY = youthEligible() ? 0 : hunts.filter(youthHunt).length;
-    body.querySelector('#lList').innerHTML = `<p class="muted fine">${list.length} hunts${hidY ? ` · ${hidY} youth-only hunts hidden` : ''}${ui.when ? ` ${ui.when === 'day' ? 'open on ' + (ui.day || 'that date') : 'with days in ' + WHEN_OPTS.find((w) => w[0] === ui.when)[1]}` : ''}${list.length > shown.length ? ` · showing ${shown.length}` : ''}</p>${shown.map((h) => huntCard(h)).join('')}
-      ${list.length > shown.length ? '<button id="lMore" class="small" style="width:100%">Show more</button>' : ''}${!list.length ? '<div class="empty"><b>No hunts match</b><span class="muted">Try another species or region.</span></div>' : ''}`;
+    body.querySelector('#lCount').textContent = `${list.length} hunt${list.length === 1 ? '' : 's'}${hidY ? `, ${hidY} youth-only hidden` : ''}`;
+    drawActive(list.length);
+    body.querySelector('#lList').innerHTML = `${shown.map((h) => huntCard(h)).join('')}
+      ${list.length > shown.length ? '<button id="lMore" class="small" style="width:100%">Show more</button>' : ''}${!list.length ? '<div class="empty"><b>No hunts match</b><span class="muted">Loosen a filter or pick another species.</span></div>' : ''}`;
   };
   draw(); drawRec();
   body.querySelector('#findSp').onclick = (e) => { const b = e.target.closest('[data-sp]'); if (!b) return; ui.sp = b.dataset.sp; ui.limit = 40; ui.pin = ''; fitNext = true; body.querySelectorAll('#findSp .f-chip').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); draw(); };
   body.querySelector('#lReg').onchange = (e) => { ui.region = e.target.value; ui.limit = 40; ui.pin = ''; fitNext = true; draw(); };
   body.querySelector('#lSort').onchange = (e) => { ui.sort = e.target.value; draw(); };
-  body.querySelector('#lAcc').onchange = (e) => { ui.acc = e.target.value; ui.limit = 40; draw(); };
+  const syncPanel = () => {
+    body.querySelector('#lReg').value = ui.region || ''; body.querySelector('#lWhen').value = ui.when || ''; body.querySelector('#lDayWrap').classList.toggle('hidden', ui.when !== 'day');
+    body.querySelector('#lMine').checked = !!ui.mine; body.querySelectorAll('[data-fsw]').forEach((x) => { x.checked = !!ui[x.dataset.fsw]; });
+    body.querySelectorAll('[data-fseg]').forEach((g) => g.querySelectorAll('[data-v]').forEach((b) => b.classList.toggle('on', (ui[g.dataset.fseg] || '') === b.dataset.v)));
+  };
+  body.querySelector('#lFilt').onclick = () => { ui.fOpen = !ui.fOpen; body.querySelector('#lPanel').classList.toggle('hidden', !ui.fOpen); body.querySelector('#lFilt').setAttribute('aria-expanded', String(ui.fOpen)); };
+  body.querySelector('#fDone').onclick = () => { ui.fOpen = false; body.querySelector('#lPanel').classList.add('hidden'); body.querySelector('#lFilt').setAttribute('aria-expanded', 'false'); body.querySelector('#lCount').scrollIntoView({ block: 'start', behavior: M.reducedMotion() ? 'auto' : 'smooth' }); };
+  body.querySelector('#fClear').onclick = () => { for (const [k] of active()) clearKey(k); ui.limit = 40; syncPanel(); draw(); };
+  body.querySelector('#lPanel').addEventListener('click', (e) => { const b = e.target.closest('[data-fseg] [data-v]'); if (!b) return; ui[b.closest('[data-fseg]').dataset.fseg] = b.dataset.v; ui.limit = 40; syncPanel(); draw(); });
+  body.querySelector('#lPanel').addEventListener('change', (e) => { const k = e.target.dataset?.fsw; if (k) { ui[k] = e.target.checked; ui.limit = 40; draw(); } });
+  body.querySelector('#lActive').onclick = (e) => { const b = e.target.closest('[data-clr]'); if (!b) return; if (b.dataset.clr === '*') for (const [k] of active()) clearKey(k); else clearKey(b.dataset.clr); ui.limit = 40; syncPanel(); draw(); };
   body.querySelector('.rec-sp').onclick = (e) => { const b = e.target.closest('[data-rsp]'); if (!b) return; const set = recSp(); set.has(b.dataset.rsp) ? set.delete(b.dataset.rsp) : set.add(b.dataset.rsp); b.setAttribute('aria-pressed', String(set.has(b.dataset.rsp))); drawRec(); };
   body.querySelector('#recMale').onchange = (e) => { ui.recMale = e.target.checked; drawRec(); };
   body.querySelector('#recPub').onchange = (e) => { ui.recPub = e.target.checked; drawRec(); };
@@ -309,7 +352,7 @@ async function lehArea(h) {
   return areaCache.get(key);
 }
 export async function highlightHunt(h) {
-  const { selChip } = await import('../main.js?v=20261113181344-c6f16a5');
+  const { selChip } = await import('../main.js?v=20261114003344-7b8631d');
   let fc = await lehArea(h); let exact = !!fc;
   if (!fc) fc = { type: 'FeatureCollection', features: (M.WMU_GEO?.features || []).filter((f) => h.mus.includes(f.properties.id)) };
   fc = { type: 'FeatureCollection', features: fc.features.map((f) => ({ ...f, properties: { stroke: '#ff8a00', fill: '#ff8a00', fillOpacity: 0.22 } })) };
@@ -385,7 +428,7 @@ function renderTags(body) {
   ${S.untagged.length ? `<div class="notice tip-h">${S.untagged.length} kill${S.untagged.length === 1 ? '' : 's'} without a tag: ${S.untagged.map((k) => esc(`${k.s.species} ${fmtD(k.d)}`)).join(', ')}.&nbsp;<button class="link" id="tagKills">Add tag${S.untagged.length === 1 ? '' : 's'}</button></div>` : ''}`;
   body.onclick = async (e) => {
     const yb = e.target.closest('[data-ly]'); if (yb) { tui.year = +yb.dataset.ly; renderTags(body); return; }
-    if (e.target.closest('#goLic')) { import('../main.js?v=20261113181344-c6f16a5').then((m) => m.showTabPublic('more')); return; }
+    if (e.target.closest('#goLic')) { import('../main.js?v=20261114003344-7b8631d').then((m) => m.showTabPublic('more')); return; }
     if (e.target.closest('#addTags')) { addTagsSheet(y); return; }
     if (e.target.closest('#allRegs')) { tui.allRegs = !tui.allRegs; renderTags(body); return; }
     if (e.target.closest('#tagKills')) { for (const k of S.untagged) await db.insert('tags', { year: y, species: k.s.species, tag_type: 'General', hunter: 'Me' }); toast('Tags added'); return; }
