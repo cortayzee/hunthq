@@ -1,9 +1,9 @@
 // MapLibre map: base styles, 3D terrain, BC WMS overlays, identify, waypoints/tracks, open-WMU shading.
-import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261114003344-7b8631d';
-import { store } from './db.js?v=20261114003344-7b8631d';
-import { MODES, fmtKm } from './elevation.js?v=20261114003344-7b8631d';
-import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261114003344-7b8631d';
-import { esc, fmtDT } from './util.js?v=20261114003344-7b8631d';
+import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261114004928-4d6f117';
+import { store } from './db.js?v=20261114004928-4d6f117';
+import { MODES, fmtKm } from './elevation.js?v=20261114004928-4d6f117';
+import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261114004928-4d6f117';
+import { esc, fmtDT } from './util.js?v=20261114004928-4d6f117';
 
 export let map;
 const state = { base: 'sat', terrain: false, exag: 1.5, hillshade: false, ref: false, hiddenWmu: [], layers: {}, opacity: {}, shade: null, custom: [] };
@@ -163,6 +163,15 @@ export function setCustomLayers(list) {
 
 // ---- WMU vector layer: numbers, per-unit hide, season shading (simplified shapes; exact lines stay WMS) ----
 export let WMU_GEO = null;
+// Which WMU a point falls in (simplified shapes; good enough for labels and search results).
+export function wmuAt(lon, lat) {
+  const inRing = (r) => { let o = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const [xi, yi] = r[i], [xj, yj] = r[j]; if ((yi > lat) !== (yj > lat) && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) o = !o; } return o; };
+  for (const f of WMU_GEO?.features || []) {
+    const g = f.geometry; const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
+    if (polys.some((p) => inRing(p[0]) && !p.slice(1).some(inRing))) return f.properties.id;
+  }
+  return null;
+}
 async function addWmuVector() {
   const [geo, lab] = await Promise.all([fetch(WMU_GEO_URL).then((r) => r.json()), fetch(WMU_LABELS_URL).then((r) => r.json())]);
   WMU_GEO = geo;
@@ -374,6 +383,18 @@ export function setForecastPin(c) {
       paint: { 'text-color': '#fff', 'text-halo-color': 'rgba(12,16,12,.9)', 'text-halo-width': 1.5 } });
   }
   map.getSource('fpin').setData(c ? { type: 'Feature', properties: { label: 'Forecast' + (c.label ? ': ' + c.label : '') }, geometry: { type: 'Point', coordinates: [c.lng, c.lat] } } : { type: 'FeatureCollection', features: [] });
+}
+// Search result marker: a white-ringed pin with the place name under it.
+export function setSearchPin(c) {
+  if (!map?.getSource('spots')) return;
+  if (!map.getSource('spin')) {
+    map.addSource('spin', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    map.addLayer({ id: 'spin-halo', type: 'circle', source: 'spin', paint: { 'circle-radius': 16, 'circle-color': 'rgba(255,255,255,.16)', 'circle-stroke-color': '#fff', 'circle-stroke-width': 1.5 } });
+    map.addLayer({ id: 'spin-dot', type: 'circle', source: 'spin', paint: { 'circle-radius': 6.5, 'circle-color': '#e9a23b', 'circle-stroke-color': '#fff', 'circle-stroke-width': 2.5 } });
+    map.addLayer({ id: 'spin-label', type: 'symbol', source: 'spin', layout: { 'text-field': ['get', 'label'], 'text-font': ['Open Sans Semibold'], 'text-size': 13, 'text-offset': [0, 1.9], 'text-anchor': 'top', 'text-allow-overlap': true, 'text-max-width': 12 },
+      paint: { 'text-color': '#fff', 'text-halo-color': 'rgba(12,16,12,.92)', 'text-halo-width': 1.6 } });
+  }
+  map.getSource('spin').setData(c ? { type: 'Feature', properties: { label: c.label || '' }, geometry: { type: 'Point', coordinates: [c.lng, c.lat] } } : { type: 'FeatureCollection', features: [] });
 }
 // Route name + distance sit in a small dark pill centred on the line (the pill breaks the line under it).
 const PILL_LAYOUT = { 'text-field': ['get', 'label'], 'text-font': ['Open Sans Semibold'], 'text-size': 12, 'text-max-width': 14, 'text-anchor': 'center',

@@ -14,7 +14,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <script>try { const t = localStorage.getItem('hunthq_theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="css/app.css?v=20261114003344-7b8631d">
+<link rel="stylesheet" href="css/app.css?v=20261114004928-4d6f117">
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/supabase.js"></script>
 <script src="vendor/suncalc.js"></script>
@@ -50,6 +50,13 @@
 
   <div class="chrome chrome-tl">
     <button id="menuBtn" class="fab-btn" aria-label="Open menu" aria-expanded="false" title="Menu"><i data-icon="menu"></i><span>Menu</span></button>
+    <div id="search" class="search" role="search">
+      <span class="search-ic" aria-hidden="true"><i data-icon="search"></i></span>
+      <input id="searchQ" type="search" placeholder="Search lakes, roads, places" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"
+        role="combobox" aria-label="Search the map" aria-controls="searchRes" aria-expanded="false" aria-autocomplete="list">
+      <button id="searchX" class="search-x hidden" type="button" aria-label="Clear search"><i data-icon="x"></i></button>
+      <ul id="searchRes" class="search-res hidden" role="listbox" aria-label="Search results"></ul>
+    </div>
   </div>
 
   <div class="chrome chrome-r">
@@ -98,6 +105,6 @@
 <div id="modal" class="modal hidden"><div class="modal-card" role="dialog" aria-modal="true"><button class="modal-x icon-btn" aria-label="Close"><i data-icon="x"></i></button><div id="modalBody"></div></div></div>
 <div id="toast" class="toast off" role="status" aria-live="polite"></div>
 
-<script type="module" src="js/main.js?v=20261114003344-7b8631d"></script>
+<script type="module" src="js/main.js?v=20261114004928-4d6f117"></script>
 </body>
 </html>

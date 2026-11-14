@@ -1,20 +1,21 @@
-import * as db from './db.js?v=20261114003344-7b8631d';
-import { store } from './db.js?v=20261114003344-7b8631d';
-import * as M from './map.js?v=20261114003344-7b8631d';
-import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261114003344-7b8631d';
-import { $, $$, esc, initTips, toast, closeModal, requestClose, todayISO } from './util.js?v=20261114003344-7b8631d';
-import { REGS_URL, BASES } from './config.js?v=20261114003344-7b8631d';
-import { sunInfo } from './views/sun.js?v=20261114003344-7b8631d';
-import { mvprSummary, mvprStatus } from './mvpr.js?v=20261114003344-7b8631d';
-import { icon, hydrateIcons } from './icons.js?v=20261114003344-7b8631d';
-import * as R from './route.js?v=20261114003344-7b8631d';
-import * as V from './vis.js?v=20261114003344-7b8631d';
+import * as db from './db.js?v=20261114004928-4d6f117';
+import { store } from './db.js?v=20261114004928-4d6f117';
+import * as M from './map.js?v=20261114004928-4d6f117';
+import { loadSeasons, seasonsFor, openRange, normMU } from './seasons.js?v=20261114004928-4d6f117';
+import { $, $$, esc, initTips, toast, closeModal, requestClose, todayISO } from './util.js?v=20261114004928-4d6f117';
+import { REGS_URL, BASES } from './config.js?v=20261114004928-4d6f117';
+import { sunInfo } from './views/sun.js?v=20261114004928-4d6f117';
+import { mvprSummary, mvprStatus } from './mvpr.js?v=20261114004928-4d6f117';
+import { icon, hydrateIcons } from './icons.js?v=20261114004928-4d6f117';
+import * as R from './route.js?v=20261114004928-4d6f117';
+import * as V from './vis.js?v=20261114004928-4d6f117';
+import { initSearch } from './search.js?v=20261114004928-4d6f117';
 
 const views = {};
 const viewModules = {
-  layers: () => import('./views/layers.js?v=20261114003344-7b8631d'), open: () => import('./views/open.js?v=20261114003344-7b8631d'), log: () => import('./views/log.js?v=20261114003344-7b8631d'),
-  trips: () => import('./views/trips.js?v=20261114003344-7b8631d'), tags: () => import('./views/tags.js?v=20261114003344-7b8631d'), insights: () => import('./views/insights.js?v=20261114003344-7b8631d'),
-  import: () => import('./views/import.js?v=20261114003344-7b8631d'), sun: () => import('./views/sun.js?v=20261114003344-7b8631d'), more: () => import('./views/more.js?v=20261114003344-7b8631d'),
+  layers: () => import('./views/layers.js?v=20261114004928-4d6f117'), open: () => import('./views/open.js?v=20261114004928-4d6f117'), log: () => import('./views/log.js?v=20261114004928-4d6f117'),
+  trips: () => import('./views/trips.js?v=20261114004928-4d6f117'), tags: () => import('./views/tags.js?v=20261114004928-4d6f117'), insights: () => import('./views/insights.js?v=20261114004928-4d6f117'),
+  import: () => import('./views/import.js?v=20261114004928-4d6f117'), sun: () => import('./views/sun.js?v=20261114004928-4d6f117'), more: () => import('./views/more.js?v=20261114004928-4d6f117'),
 };
 export const app = { tab: 'layers', date: todayISO(), dropMode: false };
 const isPhone = () => innerWidth <= 760;
@@ -66,7 +67,7 @@ export function selChip(label) {
 }
 export function clearSelection() { M.setSelection?.(null); selChip(null); }
 export async function openWmu(mu, region) {
-  const { showWmu } = await import('./views/wmu.js?v=20261114003344-7b8631d');
+  const { showWmu } = await import('./views/wmu.js?v=20261114004928-4d6f117');
   $$('#tabs button').forEach((b) => b.classList.remove('active'));
   openPanel(); const v = $('#view'); v.scrollTop = 0; v.onclick = v.onchange = v.oninput = v.onkeydown = null;
   await showWmu(v, mu, { region, date: app.date, onBack: () => showTab(app.tab) });
@@ -135,7 +136,7 @@ function syncBanner(msg) {
   b.querySelector('.t').textContent = msg;
 }
 async function licReminder() {
-  const LIC = await import('./licences.js?v=20261114003344-7b8631d'); const due = LIC.due();
+  const LIC = await import('./licences.js?v=20261114004928-4d6f117'); const due = LIC.due();
   document.querySelector('#tabs [data-tab="more"]')?.classList.toggle('has-dot', due.length > 0);
   if (!due.length) return;
   const today = todayISO(); try { if (localStorage.getItem('hunthq_licnote') === today) return; localStorage.setItem('hunthq_licnote', today); } catch {}
@@ -165,7 +166,7 @@ async function start() {
   await loadSeasons();
   const saved = store.prefs.map || {};
   await M.initMap('map', store.prefs);
-  import('./wildlife.js?v=20261114003344-7b8631d').then((W) => { const go = () => (M.map.getLayer('wmu-fill') ? W.restore() : setTimeout(go, 300)); go(); });
+  import('./wildlife.js?v=20261114004928-4d6f117').then((W) => { const go = () => (M.map.getLayer('wmu-fill') ? W.restore() : setTimeout(go, 300)); go(); });
   if (saved.pitch && !saved.terrain) M.map.setPitch(0);
   V.apply();
   wireUI();
@@ -262,12 +263,12 @@ function wireUI() {
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const { act, id } = b.dataset;
-    if (act === 'edit-spot') (await import('./views/log.js?v=20261114003344-7b8631d')).openSpotForm(store.spots.find((s) => s.id === id));
-    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261114003344-7b8631d')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'edit-spot') (await import('./views/log.js?v=20261114004928-4d6f117')).openSpotForm(store.spots.find((s) => s.id === id));
+    if (act === 'drop-here') { popup?.remove(); (await import('./views/log.js?v=20261114004928-4d6f117')).openSpotForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '', name: b.dataset.name || '' }); }
     if (act === 'wmu') { e.preventDefault(); popup?.remove(); M.selectWmu(b.dataset.mu); openWmu(b.dataset.mu, b.dataset.region); }
     if (act === 'fc-here') { e.preventDefault(); popup?.remove(); popup = null; const I = views.insights || (views.insights = await viewModules.insights());
       I.openForecast({ lat: +b.dataset.lat, lng: +b.dataset.lon, label: b.dataset.label || '' }); await showTab('insights'); }
-    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261114003344-7b8631d')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
+    if (act === 'trip-here') { e.preventDefault(); popup?.remove(); (await import('./views/trips.js?v=20261114004928-4d6f117')).openTripForm({ lat: +b.dataset.lat, lon: +b.dataset.lon, wmu: b.dataset.wmu || '' }); }
   });
   document.addEventListener('submit', (e) => {
     if (!e.target.matches('[data-wmuform]')) return; e.preventDefault();
@@ -285,7 +286,7 @@ function wireUI() {
     }
     if (app.dropMode) {
       setDropMode(false);
-      const { openSpotForm } = await import('./views/log.js?v=20261114003344-7b8631d');
+      const { openSpotForm } = await import('./views/log.js?v=20261114004928-4d6f117');
       const form = openSpotForm({ lat: e.lngLat.lat, lon: e.lngLat.lng });
       const res = await M.identify(e.lngLat, ['wmu']);
       const w = M.wmuFromIdentify(res); if (w && form?.wmu && !form.wmu.value) form.wmu.value = w;
@@ -315,7 +316,40 @@ function wireUI() {
     }
     identifyPopup(e.lngLat);
   });
+  initSearch(searchPick);
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-lehpop]'); if (!b) return; popup?.remove(); popup = null; views.tags?.pickHunt(b.dataset.lehpop); });
+}
+
+// A search result was chosen (or the search was cleared: go = null).
+let searchSel = false;
+async function searchPick(go) {
+  M.setSearchPin(null);
+  if (searchSel) { clearSelection(); searchSel = false; }
+  if (!go) return;
+  popup?.remove(); popup = null;
+  const dur = M.reducedMotion() ? 0 : 1100;
+  const after = (fn) => { if (!dur) { fn(); return; } M.map.once('moveend', fn); };
+  if (go.type === 'place' || go.type === 'spot') {
+    const s = go.type === 'spot' ? store.spots.find((x) => x.id === go.id) : null; if (go.type === 'spot' && !s) return;
+    const ll = s ? { lat: +s.lat, lng: +s.lon } : { lat: go.lat, lng: go.lng };
+    if (isPhone()) closePanel();
+    if (!s) M.setSearchPin({ ...ll, label: go.label });
+    M.map.flyTo({ center: [ll.lng, ll.lat], zoom: Math.max(M.map.getZoom(), go.zoom || 14), duration: dur });
+    after(() => (s ? showPopup(ll, M.spotPopupHTML(s)) : identifyPopup(ll, go.label)));
+  } else if (go.type === 'road') {
+    if (isPhone()) closePanel();
+    M.setSelection({ type: 'FeatureCollection', features: go.feats.map((f) => ({ type: 'Feature', geometry: f.geometry, properties: { stroke: '#ffd23f' } })) });
+    M.fitTo([[go.bb[0], go.bb[1]], [go.bb[2], go.bb[3]]], { maxZoom: 15 });
+    selChip(go.name); searchSel = true;
+  } else if (go.type === 'track') {
+    const t = store.tracks.find((x) => x.id === go.id); if (t) R.openRoute(t);
+  } else if (go.type === 'wmu') {
+    await openWmu(go.mu, go.region);
+    const f = M.WMU_GEO?.features.find((x) => x.properties.id === go.mu);
+    if (f) { const cs = []; const walk = (a) => (typeof a[0] === 'number' ? cs.push(a) : a.forEach(walk)); walk(f.geometry.coordinates); M.fitTo(cs); }
+  } else if (go.type === 'leh') {
+    await showTab('tags'); views.tags?.pickHunt(go.code);
+  }
 }
 
 export function pickOnMap(msg = 'Tap the map to pick a location') {
@@ -363,10 +397,11 @@ function fitPopup(p) {
 }
 
 const ico = (name, cls = '') => `<span class="pop-ico ${cls}">${icon(name, { size: 17 })}</span>`;
-async function identifyPopup(lngLat) {
+async function identifyPopup(lngLat, title = '') {
   const { lat, lng } = lngLat;
-  const head = (wx, wmu = '') => `<div class="pop-head"><div><div class="coords">${lat.toFixed(6)}, ${lng.toFixed(6)}</div><div class="wx">${wx}</div></div>
-    <button data-act="drop-here" data-lat="${lat}" data-lon="${lng}" data-wmu="${esc(wmu)}" aria-label="Drop a waypoint here">${icon('pinPlus', { size: 16 })}Waypoint</button></div>`;
+  const xy = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  const head = (wx, wmu = '') => `<div class="pop-head"><div>${title ? `<div class="coords ptitle">${esc(title)}</div><div class="wx tnum">${xy}</div>` : `<div class="coords">${xy}</div>`}<div class="wx">${wx}</div></div>
+    <button data-act="drop-here" data-lat="${lat}" data-lon="${lng}" data-wmu="${esc(wmu)}" data-name="${esc(title)}" aria-label="Drop a waypoint here">${icon('pinPlus', { size: 16 })}Waypoint</button></div>`;
   const p = showPopup(lngLat, `<div class="popup">${head('&nbsp;')}<div class="pop-row">${ico('grid', 'wmu')}<div class="t"><div class="skeleton" style="width:60%"></div><div class="skeleton" style="width:85%;margin-top:6px"></div></div></div></div>`);
   const wxP = weather(lat, lng);
   const res = await M.identify(lngLat);
