@@ -29,3 +29,11 @@ s = css.read_text(); n = re.sub(r'--build: "[^"]*";', f'--build: "{ver}";', s)
 if n != s: css.write_text(n); changed += 1
 (root / 'js' / 'version.txt').write_text(ver + '\n')
 print(f'version {ver}: updated {changed} files')
+
+# Service worker: stamp the version and the list of versioned code files to keep on the phone.
+sw = root / 'sw.js'
+core = [f"{p.relative_to(root).as_posix()}?v={ver}" for p in sorted((root / 'js').rglob('*.js'))] + [f'css/app.css?v={ver}']
+s = sw.read_text()
+s = re.sub(r"const VER = '[^']*';", f"const VER = '{ver}';", s)
+s = re.sub(r"const CORE = \[[^\]]*\];", 'const CORE = [' + ', '.join(f"'{c}'" for c in core) + '];', s)
+sw.write_text(s)
