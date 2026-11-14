@@ -1,12 +1,12 @@
 // Map search: your own waypoints and routes, WMUs and LEH codes, coordinates, BC place names
 // (lakes, creeks, peaks, towns: BC Geographical Names) and road names (BC Digital Road Atlas).
 // Both BC sources are public WFS layers on openmaps.gov.bc.ca, the same server as the map layers.
-import { store } from './db.js?v=20261114194315-8bbd867';
-import * as M from './map.js?v=20261114194315-8bbd867';
-import { $, esc, parseLatLon, haversineKm } from './util.js?v=20261114194315-8bbd867';
-import { icon } from './icons.js?v=20261114194315-8bbd867';
-import { spotLabel } from './animals.js?v=20261114194315-8bbd867';
-import { REGION_NAMES, regionOf } from './limits.js?v=20261114194315-8bbd867';
+import { store } from './db.js?v=20261114203930-16c5f4a';
+import * as M from './map.js?v=20261114203930-16c5f4a';
+import { $, esc, parseLatLon, haversineKm } from './util.js?v=20261114203930-16c5f4a';
+import { icon } from './icons.js?v=20261114203930-16c5f4a';
+import { spotLabel } from './animals.js?v=20261114203930-16c5f4a';
+import { REGION_NAMES, regionOf } from './limits.js?v=20261114203930-16c5f4a';
 
 const WFS = 'https://openmaps.gov.bc.ca/geo/pub/wfs';
 const GNS = 'WHSE_BASEMAPPING.GNS_GEOGRAPHICAL_NAMES_SP';
@@ -115,7 +115,7 @@ const ORDER = ['Coordinates', 'Units', 'Yours', 'Places', 'Roads'];
 const LIMIT = { Places: 7, Roads: 5 };
 export function initSearch(onPick) {
   const box = $('#search'), inp = $('#searchQ'), res = $('#searchRes'), clr = $('#searchX');
-  import('./views/tags.js?v=20261114194315-8bbd867').then((T) => T.loadLeh()).then((d) => (lehHunts = d.hunts || [])).catch(() => {});
+  import('./views/tags.js?v=20261114203930-16c5f4a').then((T) => T.loadLeh()).then((d) => (lehHunts = d.hunts || [])).catch(() => {});
   let items = [], active = -1, ctl = null, timer = 0, seq = 0;
   const cache = new Map();
   const open = (on) => { res.classList.toggle('hidden', !on); inp.setAttribute('aria-expanded', String(on)); box.classList.toggle('open', on); };

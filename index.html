@@ -14,7 +14,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <script>try { const t = localStorage.getItem('hunthq_theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="css/app.css?v=20261114194315-8bbd867">
+<link rel="stylesheet" href="css/app.css?v=20261114203930-16c5f4a">
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/supabase.js"></script>
 <script src="vendor/suncalc.js"></script>
@@ -61,9 +61,11 @@
 
   <div class="chrome chrome-r">
     <button id="baseBtn" class="round-btn" aria-label="Map type" aria-haspopup="dialog" aria-expanded="false" title="Map type"><i data-icon="basemap"></i></button>
+    <button id="terrBtn" class="round-btn" aria-label="Terrain: sun and slopes" aria-haspopup="dialog" aria-expanded="false" aria-pressed="false" title="Terrain"><i data-icon="peak"></i></button>
     <button id="terrainBtn" class="round-btn" aria-label="3D terrain" aria-pressed="false" title="3D terrain"><span class="txt3d">3D</span></button>
   </div>
 
+  <div id="terrPop" class="popover t-pop hidden" role="dialog" aria-label="Terrain"></div>
   <div id="basePop" class="popover hidden" role="dialog" aria-label="Map type">
     <label class="switch"><input type="checkbox" id="t3dChk"><span>3D terrain</span></label>
     <div id="exagRow" class="exag-row"><span class="muted">Steepness</span><input type="range" id="exagRng" min="1" max="3" step="0.1" aria-label="3D exaggeration"><output id="exagOut"></output></div>
@@ -105,6 +107,6 @@
 <div id="modal" class="modal hidden"><div class="modal-card" role="dialog" aria-modal="true"><button class="modal-x icon-btn" aria-label="Close"><i data-icon="x"></i></button><div id="modalBody"></div></div></div>
 <div id="toast" class="toast off" role="status" aria-live="polite"></div>
 
-<script type="module" src="js/main.js?v=20261114194315-8bbd867"></script>
+<script type="module" src="js/main.js?v=20261114203930-16c5f4a"></script>
 </body>
 </html>

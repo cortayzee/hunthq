@@ -1,14 +1,14 @@
-import * as db from '../db.js?v=20261114194315-8bbd867';
-import { store, hunters } from '../db.js?v=20261114194315-8bbd867';
-import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261114194315-8bbd867';
-import { hunterDatalist, speciesDatalist } from './log.js?v=20261114194315-8bbd867';
-import { icon } from '../icons.js?v=20261114194315-8bbd867';
-import * as M from '../map.js?v=20261114194315-8bbd867';
-import * as LIC from '../licences.js?v=20261114194315-8bbd867';
-import * as A from '../access.js?v=20261114194315-8bbd867';
-import * as L from '../limits.js?v=20261114194315-8bbd867';
-import { SEASONS, openRange } from '../seasons.js?v=20261114194315-8bbd867';
-import { muSort } from '../seasons.js?v=20261114194315-8bbd867';
+import * as db from '../db.js?v=20261114203930-16c5f4a';
+import { store, hunters } from '../db.js?v=20261114203930-16c5f4a';
+import { esc, opts, modal, closeModal, toast, formData, num, tip } from '../util.js?v=20261114203930-16c5f4a';
+import { hunterDatalist, speciesDatalist } from './log.js?v=20261114203930-16c5f4a';
+import { icon } from '../icons.js?v=20261114203930-16c5f4a';
+import * as M from '../map.js?v=20261114203930-16c5f4a';
+import * as LIC from '../licences.js?v=20261114203930-16c5f4a';
+import * as A from '../access.js?v=20261114203930-16c5f4a';
+import * as L from '../limits.js?v=20261114203930-16c5f4a';
+import { SEASONS, openRange } from '../seasons.js?v=20261114203930-16c5f4a';
+import { muSort } from '../seasons.js?v=20261114203930-16c5f4a';
 
 // Tags & LEH. LEH hunts come from the 2026-2027 LEH synopsis (hunt-hq-handoff/data/leh_2026.json, scripts/parse_leh.py).
 const yr = new Date().getFullYear();
@@ -102,7 +102,7 @@ export function huntCard(h, { compact = false } = {}) {
 // ---- Recommended LEH hunts ----
 // score = 45% odds + 20% hunter success in that unit + 20% familiarity (units/regions you hunt) + 15% timing (months you hunt)
 const REC_W = { odds: 0.45, succ: 0.2, fam: 0.2, time: 0.15 };
-let HV = null; const harvestData = () => HV || (HV = import('../wildlife.js?v=20261114194315-8bbd867').then((m) => m.harvest()).catch(() => null));
+let HV = null; const harvestData = () => HV || (HV = import('../wildlife.js?v=20261114203930-16c5f4a').then((m) => m.harvest()).catch(() => null));
 function recContext(H) {
   const mus = new Set([...store.trips.map((t) => t.wmu), ...store.spots.map((x) => x.wmu)].filter(Boolean));
   const regions = new Set([...mus].map((m) => String(m).split('-')[0]));
@@ -352,7 +352,7 @@ async function lehArea(h) {
   return areaCache.get(key);
 }
 export async function highlightHunt(h) {
-  const { selChip } = await import('../main.js?v=20261114194315-8bbd867');
+  const { selChip } = await import('../main.js?v=20261114203930-16c5f4a');
   let fc = await lehArea(h); let exact = !!fc;
   if (!fc) fc = { type: 'FeatureCollection', features: (M.WMU_GEO?.features || []).filter((f) => h.mus.includes(f.properties.id)) };
   fc = { type: 'FeatureCollection', features: fc.features.map((f) => ({ ...f, properties: { stroke: '#ff8a00', fill: '#ff8a00', fillOpacity: 0.22 } })) };
@@ -428,7 +428,7 @@ function renderTags(body) {
   ${S.untagged.length ? `<div class="notice tip-h">${S.untagged.length} kill${S.untagged.length === 1 ? '' : 's'} without a tag: ${S.untagged.map((k) => esc(`${k.s.species} ${fmtD(k.d)}`)).join(', ')}.&nbsp;<button class="link" id="tagKills">Add tag${S.untagged.length === 1 ? '' : 's'}</button></div>` : ''}`;
   body.onclick = async (e) => {
     const yb = e.target.closest('[data-ly]'); if (yb) { tui.year = +yb.dataset.ly; renderTags(body); return; }
-    if (e.target.closest('#goLic')) { import('../main.js?v=20261114194315-8bbd867').then((m) => m.showTabPublic('more')); return; }
+    if (e.target.closest('#goLic')) { import('../main.js?v=20261114203930-16c5f4a').then((m) => m.showTabPublic('more')); return; }
     if (e.target.closest('#addTags')) { addTagsSheet(y); return; }
     if (e.target.closest('#allRegs')) { tui.allRegs = !tui.allRegs; renderTags(body); return; }
     if (e.target.closest('#tagKills')) { for (const k of S.untagged) await db.insert('tags', { year: y, species: k.s.species, tag_type: 'General', hunter: 'Me' }); toast('Tags added'); return; }
