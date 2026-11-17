@@ -1,9 +1,9 @@
 // MapLibre map: base styles, 3D terrain, BC WMS overlays, identify, waypoints/tracks, open-WMU shading.
-import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261114203930-16c5f4a';
-import { store } from './db.js?v=20261114203930-16c5f4a';
-import { MODES, fmtKm } from './elevation.js?v=20261114203930-16c5f4a';
-import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261114203930-16c5f4a';
-import { esc, fmtDT } from './util.js?v=20261114203930-16c5f4a';
+import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261117165301-ebeb5b2';
+import { store } from './db.js?v=20261117165301-ebeb5b2';
+import { MODES, fmtKm } from './elevation.js?v=20261117165301-ebeb5b2';
+import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261117165301-ebeb5b2';
+import { esc, fmtDT } from './util.js?v=20261117165301-ebeb5b2';
 
 export let map;
 const state = { base: 'sat', terrain: false, exag: 1.5, hillshade: false, ref: false, hiddenWmu: [], layers: {}, opacity: {}, shade: null, custom: [] };
@@ -74,6 +74,7 @@ export function initMap(container, saved = {}) {
     if (state.hillshade) setHillshade(true);
     if (state.terrain) setTerrain(true, { animate: false });
     map.on('click', (e) => clickHandler && clickHandler(e));
+    freeLook();
     res(map);
   }));
 }
@@ -95,6 +96,41 @@ export function setBase(id, first = false) {
 }
 // Roads & place names overlay (forced on for Hybrid).
 export function setRef(on) { state.ref = on; applyRef(); changed(); }
+// Google Earth–style camera moves, on top of MapLibre's own (right-drag / Ctrl-drag rotate and tilt, pinch, Shift+arrows):
+//  - Hold the scroll wheel (middle button) and drag: left/right turns, up/down tilts, pivoting on the point you grabbed.
+//  - Shift + drag (mouse or trackpad): the same, for trackpads with no middle button.
+//  - Shift + two-finger scroll on a trackpad (or Shift + wheel): sideways turns, up/down tilts.
+//  - Safari trackpad: twist two fingers to turn.
+function freeLook() {
+  const el = map.getCanvasContainer(); const box = map.getContainer();
+  map.boxZoom.disable(); // Shift-drag is ours now
+  let drag = null;
+  const look = (dx, dy, around) => {
+    const bearing = map.getBearing() + dx * 0.35, pitch = Math.max(0, Math.min(map.getMaxPitch(), map.getPitch() - dy * 0.3));
+    map.easeTo({ bearing, pitch, duration: 0, ...(around ? { around } : {}) });
+  };
+  el.addEventListener('mousedown', (e) => {
+    if (!(e.button === 1 || (e.button === 0 && e.shiftKey))) return;
+    e.preventDefault(); e.stopPropagation(); // no autoscroll, no pan
+    const r = box.getBoundingClientRect();
+    drag = { x: e.clientX, y: e.clientY, around: map.unproject([e.clientX - r.left, e.clientY - r.top]) };
+    box.classList.add('looking');
+  }, true);
+  addEventListener('mousemove', (e) => { if (!drag) return; look(e.clientX - drag.x, e.clientY - drag.y, drag.around); drag.x = e.clientX; drag.y = e.clientY; });
+  addEventListener('mouseup', () => { if (!drag) return; drag = null; box.classList.remove('looking'); changed(); });
+  el.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefault(); });
+  box.addEventListener('wheel', (e) => {
+    if (!e.shiftKey || e.ctrlKey) return;
+    e.preventDefault(); e.stopPropagation();
+    const k = e.deltaMode === 1 ? 16 : 1; // lines vs pixels
+    look(-e.deltaX * k * 0.5, e.deltaY * k * 0.5);
+  }, { capture: true, passive: false });
+  let g0 = null;
+  box.addEventListener('gesturestart', (e) => { g0 = map.getBearing(); e.preventDefault(); });
+  box.addEventListener('gesturechange', (e) => { if (g0 == null) return; e.preventDefault(); if (Math.abs(e.rotation) > 2) map.setBearing(g0 - e.rotation); });
+  box.addEventListener('gestureend', () => { g0 = null; changed(); });
+}
+
 export const refOn = () => !!(state.ref || BASES[state.base]?.ref);
 function applyRef() {
   const want = refOn();
