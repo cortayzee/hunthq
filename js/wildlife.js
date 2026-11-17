@@ -1,6 +1,6 @@
 // Wildlife & harvest map layers: BC Hunter Sample harvest stats per WMU (choropleth), 2018 grizzly density by
 // population unit, and aerial-survey density areas. Data files are built by hunt-hq-handoff/scripts/*.
-import * as M from './map.js?v=20261117165301-ebeb5b2';
+import * as M from './map.js?v=20261117165732-a0f8a4e';
 
 const cache = {};
 const get = (k, url) => cache[k] || (cache[k] = fetch(url).then((r) => r.json()));

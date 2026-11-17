@@ -1,10 +1,10 @@
 // Terrain tools (right-hand map controls): sun & shadow for any date/time, slope direction (aspect) and steepness.
 // Both read the same free elevation tiles the 3D view uses. Slopes are computed in the browser per tile.
-import * as M from './map.js?v=20261117165301-ebeb5b2';
-import * as db from './db.js?v=20261117165301-ebeb5b2';
-import { store } from './db.js?v=20261117165301-ebeb5b2';
-import { TERRAIN_TILES } from './config.js?v=20261117165301-ebeb5b2';
-import { $, $$, esc, todayISO, tip } from './util.js?v=20261117165301-ebeb5b2';
+import * as M from './map.js?v=20261117165732-a0f8a4e';
+import * as db from './db.js?v=20261117165732-a0f8a4e';
+import { store } from './db.js?v=20261117165732-a0f8a4e';
+import { TERRAIN_TILES } from './config.js?v=20261117165732-a0f8a4e';
+import { $, $$, esc, todayISO, tip } from './util.js?v=20261117165732-a0f8a4e';
 
 export const DIRS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 export const DIR_COLORS = { N: '#2f6fd6', NE: '#1fa7b8', E: '#4fb35a', SE: '#c9c227', S: '#f08a24', SW: '#e0443a', W: '#c1449e', NW: '#7357d6' };

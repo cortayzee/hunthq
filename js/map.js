@@ -1,9 +1,9 @@
 // MapLibre map: base styles, 3D terrain, BC WMS overlays, identify, waypoints/tracks, open-WMU shading.
-import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261117165301-ebeb5b2';
-import { store } from './db.js?v=20261117165301-ebeb5b2';
-import { MODES, fmtKm } from './elevation.js?v=20261117165301-ebeb5b2';
-import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261117165301-ebeb5b2';
-import { esc, fmtDT } from './util.js?v=20261117165301-ebeb5b2';
+import { BASES, REF_TILES, GLYPHS, WMU_GEO_URL, WMU_LABELS_URL, TERRAIN_TILES, BC_LAYERS, BC_WMS, WMU_LAYER, WMU_FIELD, kindColor, KINDS } from './config.js?v=20261117165732-a0f8a4e';
+import { store } from './db.js?v=20261117165732-a0f8a4e';
+import { MODES, fmtKm } from './elevation.js?v=20261117165732-a0f8a4e';
+import { badgeImage, glyphFor, glyphSVG, spotLabel, sexTerms } from './animals.js?v=20261117165732-a0f8a4e';
+import { esc, fmtDT } from './util.js?v=20261117165732-a0f8a4e';
 
 export let map;
 const state = { base: 'sat', terrain: false, exag: 1.5, hillshade: false, ref: false, hiddenWmu: [], layers: {}, opacity: {}, shade: null, custom: [] };
@@ -101,6 +101,7 @@ export function setRef(on) { state.ref = on; applyRef(); changed(); }
 //  - Shift + drag (mouse or trackpad): the same, for trackpads with no middle button.
 //  - Shift + two-finger scroll on a trackpad (or Shift + wheel): sideways turns, up/down tilts.
 //  - Safari trackpad: twist two fingers to turn.
+let autoTerrain = false;
 function freeLook() {
   const el = map.getCanvasContainer(); const box = map.getContainer();
   map.boxZoom.disable(); // Shift-drag is ours now
@@ -108,6 +109,9 @@ function freeLook() {
   const look = (dx, dy, around) => {
     const bearing = map.getBearing() + dx * 0.35, pitch = Math.max(0, Math.min(map.getMaxPitch(), map.getPitch() - dy * 0.3));
     map.easeTo({ bearing, pitch, duration: 0, ...(around ? { around } : {}) });
+    // Tilting a flat map switches 3D on; flattening it again switches it back off (only if we turned it on).
+    if (!state.terrain && pitch > 8) { setTerrain(true, { keepView: true }); autoTerrain = true; }
+    else if (state.terrain && autoTerrain && pitch < 2) setTerrain(false, { keepView: true });
   };
   el.addEventListener('mousedown', (e) => {
     if (!(e.button === 1 || (e.button === 0 && e.shiftKey))) return;
@@ -125,6 +129,12 @@ function freeLook() {
     const k = e.deltaMode === 1 ? 16 : 1; // lines vs pixels
     look(-e.deltaX * k * 0.5, e.deltaY * k * 0.5);
   }, { capture: true, passive: false });
+  // The same for MapLibre's own tilt gestures (right-drag, Ctrl-drag, two-finger drag on a phone).
+  map.on('pitch', (e) => {
+    if (!e.originalEvent) return; const p = map.getPitch();
+    if (!state.terrain && p > 8) { setTerrain(true, { keepView: true }); autoTerrain = true; }
+    else if (state.terrain && autoTerrain && p < 2) setTerrain(false, { keepView: true });
+  });
   let g0 = null;
   box.addEventListener('gesturestart', (e) => { g0 = map.getBearing(); e.preventDefault(); });
   box.addEventListener('gesturechange', (e) => { if (g0 == null) return; e.preventDefault(); if (Math.abs(e.rotation) > 2) map.setBearing(g0 - e.rotation); });
@@ -150,18 +160,18 @@ export function setHillshade(on) {
   changed();
 }
 
-export function setTerrain(on, { animate = true } = {}) {
-  state.terrain = on;
+export function setTerrain(on, { animate = true, keepView = false } = {}) {
+  state.terrain = on; if (!on) autoTerrain = false;
   const ease = { duration: animate && !reducedMotion() ? 700 : 0 };
   if (on) {
     map.setTerrain({ source: 'terrain', exaggeration: state.exag });
     if (!map.getLayer('hillshade')) map.addLayer({ id: 'hillshade', type: 'hillshade', source: 'hillshade-dem', paint: { 'hillshade-exaggeration': 0.25 } }, map.getStyle().layers.find((l) => l.id !== 'base')?.id);
     try { map.setSky({ 'sky-color': '#9cc3e6', 'horizon-color': '#dfe9f2', 'fog-color': '#e7edf2', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.5, 'fog-ground-blend': 0.85, 'atmosphere-blend': 0.8 }); } catch {}
-    if (map.getPitch() < 30) map.easeTo({ pitch: 62, ...ease });
+    if (!keepView && map.getPitch() < 30) map.easeTo({ pitch: 62, ...ease });
   } else {
     map.setTerrain(null);
     if (map.getLayer('hillshade') && !state.hillshade) map.removeLayer('hillshade');
-    map.easeTo({ pitch: 0, bearing: 0, ...ease });
+    if (!keepView) map.easeTo({ pitch: 0, bearing: 0, ...ease });
   }
   changed();
 }

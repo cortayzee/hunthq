@@ -1,10 +1,10 @@
-import * as db from '../db.js?v=20261117165301-ebeb5b2';
-import { store } from '../db.js?v=20261117165301-ebeb5b2';
-import { KINDS, SPECIES } from '../config.js?v=20261117165301-ebeb5b2';
-import { esc, opts, toast, parseCSV, haversineKm, localDT } from '../util.js?v=20261117165301-ebeb5b2';
-import { hunterDatalist, speciesDatalist } from './log.js?v=20261117165301-ebeb5b2';
-import { icon } from '../icons.js?v=20261117165301-ebeb5b2';
-import * as M from '../map.js?v=20261117165301-ebeb5b2';
+import * as db from '../db.js?v=20261117165732-a0f8a4e';
+import { store } from '../db.js?v=20261117165732-a0f8a4e';
+import { KINDS, SPECIES } from '../config.js?v=20261117165732-a0f8a4e';
+import { esc, opts, toast, parseCSV, haversineKm, localDT } from '../util.js?v=20261117165732-a0f8a4e';
+import { hunterDatalist, speciesDatalist } from './log.js?v=20261117165732-a0f8a4e';
+import { icon } from '../icons.js?v=20261117165732-a0f8a4e';
+import * as M from '../map.js?v=20261117165732-a0f8a4e';
 
 let items = []; let tracks = [];
 
@@ -15,7 +15,7 @@ export function render(v) {
   <label>Hunter <input id="iHunter" list="hunterList" value="Me"></label></div>
   <label class="drop-zone" for="iFile">${icon('upload', { size: 22 })}<b>Choose files</b><span>KML, KMZ, GPX, GeoJSON or CSV</span></label><input type="file" id="iFile" class="visually-hidden" multiple accept=".kml,.kmz,.gpx,.geojson,.json,.csv">
   <div id="iPrev"></div>${hunterDatalist()}${speciesDatalist()}`;
-  v.querySelector('[data-back]').onclick = () => import('../main.js?v=20261117165301-ebeb5b2').then((m) => m.showTabPublic('more'));
+  v.querySelector('[data-back]').onclick = () => import('../main.js?v=20261117165732-a0f8a4e').then((m) => m.showTabPublic('more'));
   v.querySelector('#iFile').onchange = async (e) => {
     items = []; tracks = [];
     for (const file of e.target.files) {
